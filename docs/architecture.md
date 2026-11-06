@@ -8,16 +8,19 @@ state, persistence, navigation, and server-rendered diffs.
 
 ## Current prototype
 
-The application writes ordinary HEEx and marks one subtree with the `LiveLift`
-hook and `phx-update="ignore"`. `LiveLift.Client` retains a small Elixir
-action's AST, and `mix live_lift.compile` emits a JavaScript function. The hook
-holds a JSON map of local integer state. On a click it calls a compiled action
-named by `data-live-lift-action`, then updates only nodes marked with
-`data-live-lift-text`. The app owns the HTML structure and action names. No
-event is sent to the server on a local click.
+The application defines a `LiveLift.Client` module with `client_template` and
+`defclient` actions. The template compiler turns `{@field}` and `$click` into
+DOM bindings. `LiveLift.View.island/1` renders initial HTML on the server and
+creates a `phx-update="ignore"` boundary. `mix live_lift.compile` discovers
+the app's views and emits their templates and actions as a JavaScript registry.
+On mount, the browser uses the matching template and stores a local JSON map
+of integer state. On a click it runs a
+compiled action and updates the bound text nodes. The app owns the view's
+markup and actions. No event is sent to the server on a local click.
 
 This gives the client and server separate DOM ownership. It also means the
-island cannot reflect later server updates without a deliberate protocol.
+island cannot reflect later server updates without a deliberate protocol. The
+current renderer updates text nodes; it is not Hologram's general renderer.
 
 ## Next technical questions
 

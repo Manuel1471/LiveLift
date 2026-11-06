@@ -1,15 +1,17 @@
 defmodule LiveLift.Client do
   @moduledoc """
-  Defines a small, pure Elixir function that LiveLift can compile for the browser.
+  Defines a client view in Elixir and compiles it for the browser.
 
-  `defclient` also defines a normal Elixir function, so its behavior can be
-  exercised on the server. Currently one argument, safe integer literals,
-  `+`, `-`, `*`, atom-keyed map literals, and field reads are supported.
+  `client_template` holds static HTML with text bindings and click actions.
+  `defclient` defines normal Elixir functions as well as browser actions.
+  Currently the expression compiler supports one argument, safe integer
+  literals, `+`, `-`, `*`, atom-keyed map literals, and field reads.
 
-      defmodule CounterActions do
+      defmodule ScoreView do
         use LiveLift.Client
 
-        defclient increment(count), do: count + 1
+        client_template "<button $click=\"advance\">Add</button><output>{@score}</output>"
+        defclient advance(state), do: %{score: state.score + 1}
       end
   """
 

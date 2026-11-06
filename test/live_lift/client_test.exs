@@ -25,6 +25,12 @@ defmodule LiveLift.ClientTest do
     client_template("<button $click=\"missing\">Go</button>")
   end
 
+  defmodule ReadOnlyView do
+    use LiveLift.Client
+
+    client_template("<p>{@value}</p>")
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -69,10 +75,11 @@ defmodule LiveLift.ClientTest do
   end
 
   test "builds a registry without manual JavaScript module mapping" do
-    javascript = Compiler.compile_registry([TemplatedActions])
+    javascript = Compiler.compile_registry([TemplatedActions, ReadOnlyView])
 
     assert javascript =~ "export const views = {"
     assert javascript =~ "\"LiveLift.ClientTest.TemplatedActions\""
+    assert javascript =~ "\"LiveLift.ClientTest.ReadOnlyView\""
     assert javascript =~ "actions: {increment: (state) => ({count: (state.count + 1)})}"
     assert javascript =~ "template: "
   end
