@@ -3,8 +3,8 @@ defmodule LiveLift.Client do
   Defines a small, pure Elixir function that LiveLift can compile for the browser.
 
   `defclient` also defines a normal Elixir function, so its behavior can be
-  exercised on the server. Currently only one integer argument, integer
-  literals, and `+`, `-`, `*` are supported.
+  exercised on the server. Currently one argument, safe integer literals,
+  `+`, `-`, `*`, atom-keyed map literals, and field reads are supported.
 
       defmodule CounterActions do
         use LiveLift.Client

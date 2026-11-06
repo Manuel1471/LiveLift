@@ -9,12 +9,14 @@ defmodule LiveLift.ClientTest do
     defclient(increment(count), do: count + 1)
     defclient(decrement(count), do: count - 1)
     defclient(double_plus_one(count), do: count * 2 + 1)
+    defclient(advance(state), do: %{count: state.count + state.step, step: state.step})
   end
 
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
     assert CounterActions.double_plus_one(10) == 21
+    assert CounterActions.advance(%{count: 10, step: 3}) == %{count: 13, step: 3}
 
     assert Compiler.compile_module(CounterActions) ==
              """
@@ -22,7 +24,8 @@ defmodule LiveLift.ClientTest do
              export const actions = {
                increment: (count) => (count + 1),
                decrement: (count) => (count - 1),
-               double_plus_one: (count) => ((count * 2) + 1)
+               double_plus_one: (count) => ((count * 2) + 1),
+               advance: (state) => ({count: (state.count + state.step), step: state.step})
              };
              """
   end

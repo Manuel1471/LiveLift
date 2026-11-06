@@ -1,6 +1,6 @@
 defmodule LiveLift.Client.Compiler do
   @moduledoc """
-  Compiles LiveLift's deliberately small integer expression subset to JavaScript.
+  Compiles LiveLift's deliberately small pure expression subset to JavaScript.
 
   Unsupported Elixir syntax raises instead of silently changing semantics.
   """
@@ -37,6 +37,23 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr({name, _, context}, arg)
        when name == arg and (is_atom(context) or is_nil(context)),
        do: Atom.to_string(arg)
+
+  defp compile_expr({{:., _, [source, key]}, _, []}, arg) when is_atom(key) do
+    "#{compile_expr(source, arg)}.#{identifier!(key)}"
+  end
+
+  defp compile_expr({:%{}, _, fields}, arg) when is_list(fields) do
+    entries =
+      Enum.map(fields, fn
+        {key, value} when is_atom(key) ->
+          "#{identifier!(key)}: #{compile_expr(value, arg)}"
+
+        other ->
+          raise ArgumentError, "unsupported client map field: #{Macro.to_string(other)}"
+      end)
+
+    "({#{Enum.join(entries, ", ")}})"
+  end
 
   defp compile_expr({op, _, [left, right]}, arg) when op in [:+, :-, :*] do
     "(#{compile_expr(left, arg)} #{op} #{compile_expr(right, arg)})"
