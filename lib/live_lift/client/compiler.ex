@@ -61,6 +61,7 @@ defmodule LiveLift.Client.Compiler do
   def compile_registry(modules) do
     entries =
       modules
+      |> expand_components()
       |> Enum.sort()
       |> Enum.map(fn module ->
         {actions, template} = compile_parts(module)
@@ -225,7 +226,7 @@ defmodule LiveLift.Client.Compiler do
     {entries, template}
   end
 
-  defp template_actions(nodes) do
+  defp template_actions(nodes, visited \\ MapSet.new()) do
     Enum.flat_map(nodes, fn
       %{type: "element", attrs: attrs, children: children} ->
         actions =
@@ -233,10 +234,59 @@ defmodule LiveLift.Client.Compiler do
               name in ~w(data-live-lift-action data-live-lift-input data-live-lift-change data-live-lift-submit),
               do: value
 
-        actions ++ template_actions(children)
+        actions ++ template_actions(children, visited)
+
+      %{type: "component", module: name} ->
+        module = component_module!(name)
+
+        if MapSet.member?(visited, module) do
+          raise ArgumentError, "recursive LiveLift client component: #{name}"
+        end
+
+        template_actions(module.__live_lift_client_template__(), MapSet.put(visited, module))
 
       _ ->
         []
     end)
+  end
+
+  defp expand_components(modules) do
+    Enum.reduce(modules, MapSet.new(), &collect_components(&1, &2)) |> MapSet.to_list()
+  end
+
+  defp collect_components(module, seen) do
+    if MapSet.member?(seen, module) do
+      seen
+    else
+      seen = MapSet.put(seen, module)
+      template = module.__live_lift_client_template__()
+
+      unless is_list(template),
+        do: raise(ArgumentError, "#{inspect(module)} has no client_template")
+
+      template
+      |> component_names()
+      |> Enum.reduce(seen, fn name, acc -> collect_components(component_module!(name), acc) end)
+    end
+  end
+
+  defp component_names(nodes) do
+    Enum.flat_map(nodes, fn
+      %{type: "component", module: name} -> [name]
+      %{type: "element", children: children} -> component_names(children)
+      _ -> []
+    end)
+  end
+
+  defp component_module!(name) do
+    module = Module.concat(String.split(name, "."))
+
+    unless Code.ensure_loaded?(module) and
+             function_exported?(module, :__live_lift_component__, 0) and
+             function_exported?(module, :__live_lift_client_template__, 0) do
+      raise ArgumentError, "unknown LiveLift client component: #{name}"
+    end
+
+    module
   end
 end

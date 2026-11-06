@@ -66,6 +66,27 @@ defmodule LiveLift.ClientTest do
     )
   end
 
+  defmodule ButtonComponent do
+    use LiveLift.Client.Component
+    client_template("<button $click=\"missing\">Go</button>")
+  end
+
+  defmodule ComponentParent do
+    use LiveLift.Client
+    client_template("<LiveLift.ClientTest.ButtonComponent />")
+  end
+
+  defmodule ValidComponent do
+    use LiveLift.Client.Component
+    client_template("<button $click=\"go\">Go</button>")
+  end
+
+  defmodule ValidParent do
+    use LiveLift.Client
+    client_template("<LiveLift.ClientTest.ValidComponent />")
+    defclient(go(state), do: state)
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -170,5 +191,14 @@ defmodule LiveLift.ClientTest do
 
     {output, 0} = System.cmd("node", ["--input-type=module", "--eval", source])
     assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
+  end
+
+  test "checks nested component actions against the parent and bundles dependencies" do
+    assert_raise ArgumentError, ~r/unknown client template action: missing/, fn ->
+      Compiler.compile_registry([ComponentParent])
+    end
+
+    javascript = Compiler.compile_registry([ValidParent])
+    assert javascript =~ "LiveLift.ClientTest.ValidComponent"
   end
 end
