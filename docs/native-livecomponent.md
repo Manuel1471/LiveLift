@@ -40,9 +40,11 @@ predictions with the new server snapshot.
 This path currently accepts a literal `~H` render and a marked
 `handle_event/3` whose body returns `{:noreply, assign(socket, field, expr)}`
 or `{:noreply, update(socket, field, &expr)}`. The expression must fit the
-[client language subset](language.md). Marked handlers cannot read event
-params yet. The template supports a static `phx-click` and
-`phx-target={@myself}`; other LiveView features remain server only. Unsupported
+[client language subset](language.md). Marked handlers can read flat string
+keys with `params["name"]` or `Map.get(params, "name")`. The template supports
+static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
+`phx-target={@myself}`. Nested form params and other LiveView features remain
+server only. Unsupported
 forms fail during compilation with a source location and a suggestion to keep
 that handler on the server.
 

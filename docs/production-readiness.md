@@ -9,11 +9,12 @@ restricted to 1.2.x. LiveView 1.3 and later are not claimed compatible.
 An optional CI lane tests LiveView `main` without blocking releases. It passed
 locally on 2026-11-06 after installing the property harness dependencies;
 that is an early compatibility signal, not a supported version claim.
-The `use LiveLift` / `@client true` LiveComponent API currently covers only
-simple click handlers with one `assign/3` or `update/3` and a literal `~H`
-template. It has real Chromium tests for optimistic clicks, server replies,
-an unmarked server handler and reconnect. It does not yet cover forms,
-nested components, streams, offline actions or arbitrary Elixir handlers.
+The `use LiveLift` / `@client true` LiveComponent API currently covers simple
+click, change and submit handlers with one `assign/3` or `update/3`, flat event
+params and a literal `~H` template. It has real Chromium tests for optimistic
+events, server replies, an unmarked server handler and reconnect. It does not
+yet cover nested form params, nested components, streams, offline actions or
+arbitrary Elixir handlers.
 
 ## Accessibility
 

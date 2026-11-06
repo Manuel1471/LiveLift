@@ -42,9 +42,17 @@ defmodule LiveLift.Template do
         raise ArgumentError,
               "#{file}:#{meta.line}: @client supports phx-target={@myself}; move other targets to a server handler"
 
-      {"phx-click", {:string, event, _} = value, meta} = attr ->
+      {event_attr, {:string, event, _} = value, meta} = attr
+      when event_attr in ~w(phx-click phx-change phx-submit) ->
         if event in events do
-          [attr, {"$click", value, meta}]
+          directive =
+            case event_attr do
+              "phx-click" -> "$click"
+              "phx-change" -> "$change"
+              "phx-submit" -> "$submit"
+            end
+
+          [attr, {directive, value, meta}]
         else
           [attr]
         end
@@ -113,7 +121,8 @@ defmodule LiveLift.Template do
       raise ArgumentError, "#{file}:#{meta.line}: click events require a native button"
     end
 
-    if (directive.("$input") || directive.("$change")) && tag not in ~w(input select textarea) do
+    if (directive.("$input") || directive.("$change")) &&
+         tag not in ~w(input select textarea form) do
       raise ArgumentError, "#{file}:#{meta.line}: input events require a native form control"
     end
 

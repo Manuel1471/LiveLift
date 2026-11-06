@@ -10,23 +10,25 @@ defmodule LiveLift.Component.Compiler do
         _ -> invalid_handler!(file, line)
       end
 
-    if used_variable?(params, update) do
+    body = update_to_state!(update, socket, file, line)
+    {body, uses_params} = rewrite_params(body, params)
+    name = String.to_atom(event)
+    args = if uses_params, do: [:state, :event], else: :state
+
+    if used_variable?(params, body) do
       raise ArgumentError,
-            "#{file}:#{line}: @client handler reads event params; move it to a server handler for now"
+            "#{file}:#{line}: @client supports params[\"name\"] and Map.get(params, \"name\"); move other parameter handling to the server"
     end
 
-    body = update_to_state!(update, socket, file, line)
-    name = String.to_atom(event)
-
     try do
-      LiveLift.Client.Compiler.compile_action(name, :state, body)
+      LiveLift.Client.Compiler.compile_action(name, args, body)
     rescue
       error in ArgumentError ->
         raise ArgumentError,
               "#{file}:#{line}: unsupported @client handler: #{Exception.message(error)}; move it to a server handler"
     end
 
-    {name, :state, body}
+    {name, args, body}
   end
 
   def action!(_event, _params, _socket, _body, file, line), do: invalid_handler!(file, line)
@@ -81,6 +83,31 @@ defmodule LiveLift.Component.Compiler do
 
   defp map_update(field, expression, meta) do
     {:%{}, meta, [{:|, meta, [{:state, meta, nil}, [{field, expression}]]}]}
+  end
+
+  defp rewrite_params(body, {name, _, _}) when is_atom(name) do
+    Macro.prewalk(body, false, fn
+      {{:., _, [Access, :get]}, _, [{^name, _, _}, key]}, _used when is_binary(key) ->
+        {event_param(key), true}
+
+      {{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [{^name, _, _}, key]}, _used
+      when is_binary(key) ->
+        {event_param(key), true}
+
+      node, used ->
+        {node, used}
+    end)
+  end
+
+  defp rewrite_params(body, _params), do: {body, false}
+
+  defp event_param(key) do
+    unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
+             key not in ~w(__proto__ constructor prototype) do
+      raise ArgumentError, "unsupported @client event parameter: #{key}"
+    end
+
+    {{:., [], [{{:., [], [{:event, [], nil}, :params]}, [], []}, String.to_atom(key)]}, [], []}
   end
 
   defp used_variable?({name, _, context}, ast)

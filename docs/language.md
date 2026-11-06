@@ -4,9 +4,11 @@ LiveLift compiles a deliberately limited subset of Elixir. A module uses
 `LiveLift.Client` for an island view or `LiveLift.Client.Component` for a
 presentation component inside a view. Both define a literal `client_template`.
 Unsupported syntax raises an error during compilation with a source location.
-The native LiveComponent opt-in currently translates only literal `~H`,
-static `phx-click`, `phx-target={@myself}`, and one `assign/3` or `update/3`
-inside a marked `handle_event/3`. See [the component guide](native-livecomponent.md).
+The native LiveComponent opt-in currently translates literal `~H`, static
+`phx-click`, `phx-change`, `phx-submit`, `phx-value-*`,
+`phx-target={@myself}`, flat `params["name"]` reads, and one `assign/3` or
+`update/3` inside a marked `handle_event/3`. See
+[the component guide](native-livecomponent.md).
 
 ## Template bindings
 

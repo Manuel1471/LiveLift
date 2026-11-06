@@ -308,7 +308,7 @@ export function createClientHook(views) {
         this.runAction(control.dataset.liveLiftAction, control);
       };
 
-      this.runAction = (actionName, control) => {
+      this.runAction = (actionName, control, paramsOverride = null) => {
         const actions = this.view.actions;
         const action = Object.hasOwn(actions, actionName) ? actions[actionName] : undefined;
         if (typeof action !== "function") {
@@ -318,7 +318,7 @@ export function createClientHook(views) {
         const eventData = {
           value: "value" in control ? control.value : null,
           checked: "checked" in control ? control.checked : false,
-          params: control.dataset.liveLiftParams ? JSON.parse(control.dataset.liveLiftParams) : {},
+          params: paramsOverride || (control.dataset.liveLiftParams ? JSON.parse(control.dataset.liveLiftParams) : {}),
         };
         const actionState = action(this.state, eventData);
         validateState(actionState);
@@ -334,6 +334,18 @@ export function createClientHook(views) {
         return eventData;
       };
 
+      this.sendOptimistic = (control, eventName, params) => {
+        const sequence = this.nextSequence++;
+        const eventData = this.runAction(eventName, control, params);
+        this.pending.push({sequence, action: eventName, eventData});
+        const payload = {...params, _live_lift_seq: sequence};
+        const epoch = this.connectionEpoch;
+        this.pushEventTo(control, eventName, payload, (reply) => {
+          if (epoch !== this.connectionEpoch) return;
+          this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq);
+        });
+      };
+
       this.onOptimisticClick = (event) => {
         if (!this.optimistic) return;
         const control = event.target.closest("[phx-click]");
@@ -342,19 +354,37 @@ export function createClientHook(views) {
         if (!Object.hasOwn(this.view.actions, eventName)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        const action = eventName;
-        const sequence = this.nextSequence++;
-        const eventData = this.runAction(action, control);
-        this.pending.push({sequence, action, eventData});
-        const params = {_live_lift_seq: sequence};
+        const params = {};
         for (const attr of control.attributes) {
           if (attr.name.startsWith("phx-value-")) params[attr.name.slice(10)] = attr.value;
         }
-        const epoch = this.connectionEpoch;
-        this.pushEventTo(control, eventName, params, (reply) => {
-          if (epoch !== this.connectionEpoch) return;
-          this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq);
-        });
+        this.sendOptimistic(control, eventName, params);
+      };
+
+      this.onOptimisticChange = (event) => {
+        if (!this.optimistic) return;
+        const control = event.target.closest("[phx-change]");
+        if (!control || !this.el.contains(control)) return;
+        if (event.type === "change" && event.target.matches('input:not([type="checkbox"]):not([type="radio"]), textarea')) return;
+        if (event.type === "input" && event.target.matches('select, input[type="checkbox"], input[type="radio"]')) return;
+        const eventName = control.getAttribute("phx-change");
+        if (!Object.hasOwn(this.view.actions, eventName)) return;
+        event.stopImmediatePropagation();
+        const params = control.tagName === "FORM"
+          ? Object.fromEntries(new FormData(control))
+          : {value: control.value, ...(control.name ? {[control.name]: control.value} : {})};
+        this.sendOptimistic(control, eventName, params);
+      };
+
+      this.onOptimisticSubmit = (event) => {
+        if (!this.optimistic) return;
+        const form = event.target.closest("form[phx-submit]");
+        if (!form || !this.el.contains(form)) return;
+        const eventName = form.getAttribute("phx-submit");
+        if (!Object.hasOwn(this.view.actions, eventName)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.sendOptimistic(form, eventName, Object.fromEntries(new FormData(form)));
       };
 
       this.onInput = (event) => {
@@ -374,8 +404,14 @@ export function createClientHook(views) {
         this.runAction(control.dataset.liveLiftSubmit, control);
       };
 
-      if (this.optimistic) this.el.addEventListener("click", this.onOptimisticClick, true);
-      else this.el.addEventListener("click", this.onClick);
+      if (this.optimistic) {
+        this.el.addEventListener("click", this.onOptimisticClick, true);
+        this.el.addEventListener("input", this.onOptimisticChange, true);
+        this.el.addEventListener("change", this.onOptimisticChange, true);
+        this.el.addEventListener("submit", this.onOptimisticSubmit, true);
+      } else {
+        this.el.addEventListener("click", this.onClick);
+      }
       this.el.addEventListener("input", this.onInput);
       this.el.addEventListener("change", this.onChange);
       this.el.addEventListener("submit", this.onSubmit);
@@ -384,7 +420,12 @@ export function createClientHook(views) {
 
     destroyed() {
       if (this.syncRef && typeof this.removeHandleEvent === "function") this.removeHandleEvent(this.syncRef);
-      if (this.optimistic) this.el.removeEventListener("click", this.onOptimisticClick, true);
+      if (this.optimistic) {
+        this.el.removeEventListener("click", this.onOptimisticClick, true);
+        this.el.removeEventListener("input", this.onOptimisticChange, true);
+        this.el.removeEventListener("change", this.onOptimisticChange, true);
+        this.el.removeEventListener("submit", this.onOptimisticSubmit, true);
+      }
       this.el.removeEventListener("click", this.onClick);
       this.el.removeEventListener("input", this.onInput);
       this.el.removeEventListener("change", this.onChange);

@@ -21,6 +21,7 @@ defmodule LiveLiftDemoWeb.Router do
     live "/form-parity", FormParityLive
     live "/native-counter", NativeCounterLive
     live "/native-counter-server", NativeCounterLive, :server
+    live "/native-form", NativeFormLive
   end
 
   # Other scopes may use custom stacks.

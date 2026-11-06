@@ -102,6 +102,9 @@ test("a normal LiveComponent runs a marked handler locally and converges with th
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await expect(count).toHaveText("1");
   await expect(root.getByRole("button", {name: "Add one"})).toHaveAttribute("phx-target", /\d+/);
+  await root.getByRole("button", {name: "Set label"}).click();
+  await expect(root.locator("span")).toHaveText("ready", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
 });
 
 test("pending native component clicks converge after server replies", async ({page}) => {
@@ -144,4 +147,18 @@ test("the same LiveComponent without opt-in keeps normal server behavior", async
   await root.getByRole("button", {name: "Add one"}).click();
   await expect(count).toHaveText("0", {timeout: 200});
   await expect(count).toHaveText("1");
+});
+
+test("native phx-change and phx-submit use the same params on client and server", async ({page}) => {
+  await page.goto("/native-form");
+  const root = page.locator("#native-form");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+  await root.getByRole("textbox", {name: "Draft"}).fill("Client draft");
+  await expect(root.locator("output")).toHaveText("Client draft", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("textbox", {name: "Note"}).fill("Saved locally");
+  await root.getByRole("button", {name: "Save note"}).click();
+  await expect(root.locator("p")).toHaveText("Saved: Saved locally", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(root.locator("p")).toHaveText("Saved: Saved locally");
 });

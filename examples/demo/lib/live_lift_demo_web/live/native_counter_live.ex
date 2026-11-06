@@ -1,7 +1,7 @@
 defmodule LiveLiftDemoWeb.NativeCounterLive do
   use LiveLiftDemoWeb, :live_view
 
-  def mount(_params, _session, socket), do: {:ok, assign(socket, count: 0)}
+  def mount(_params, _session, socket), do: {:ok, assign(socket, count: 0, label: "")}
 
   def render(assigns) do
     component =
@@ -18,6 +18,7 @@ defmodule LiveLiftDemoWeb.NativeCounterLive do
         module={@component}
         id="native-counter"
         count={@count}
+        label={@label}
       />
     </main>
     """

@@ -30,6 +30,22 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule ParamCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns) do
+      ~H"""
+      <button phx-click="label" phx-value-label="ready" phx-target={@myself}>{@label}</button>
+      """
+    end
+
+    @client true
+    def handle_event("label", params, socket) do
+      {:noreply, assign(socket, :label, params["label"])}
+    end
+  end
+
   test "uses the real HEEx render and compiles the marked event" do
     html =
       render_component(&Counter.render/1,
@@ -81,6 +97,31 @@ defmodule LiveLift.ComponentTest do
       after
         File.rm(path)
       end
+    end
+  end
+
+  test "phx-value params have the same value in the handler and JavaScript" do
+    socket = %Phoenix.LiveView.Socket{assigns: %{label: "", id: "param", __changed__: %{}}}
+
+    assert {:reply, %{state: %{label: "ready"}}, _} =
+             ParamCounter.handle_event("label", %{"label" => "ready"}, socket)
+
+    javascript = LiveLift.Client.Compiler.compile_module(ParamCounter)
+
+    path =
+      Path.join(System.tmp_dir!(), "live_lift_params_#{System.unique_integer([:positive])}.mjs")
+
+    try do
+      File.write!(
+        path,
+        javascript <>
+          "\nconsole.log(JSON.stringify(actions.label({label: ''}, {params: {label: 'ready'}})));\n"
+      )
+
+      {output, 0} = System.cmd("node", [path])
+      assert Jason.decode!(output) == %{"label" => "ready"}
+    after
+      File.rm(path)
     end
   end
 

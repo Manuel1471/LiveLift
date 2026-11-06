@@ -93,7 +93,8 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 - [x] El servidor renderiza con el `~H` real en la API nueva (el renderizador de
   strings permanece para compatibilidad con la API anterior).
 - [x] Frontera `phx-update="ignore"` generada automáticamente.
-- [ ] `phx-click`, `phx-change`, `phx-submit`, `phx-value-*` en lugar de `$click`.
+- [x] `phx-click`, `phx-change`, `phx-submit`, `phx-value-*` en lugar de `$click`
+  en el subconjunto inicial de eventos con parámetros planos.
 - [ ] Deprecar `client_template`, `defclient`, `$click` y `island` con avisos.
 - [ ] `mix live_lift.migrate` para convertir la API anterior.
 - [ ] Aislar el parser interno de Phoenix tras un módulo adaptador; CI contra LiveView
