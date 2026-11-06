@@ -10,7 +10,14 @@ defmodule LiveLift.MixProject do
       deps: deps(),
       description: "Opt-in client-side interactions for Phoenix LiveView",
       package: [
-        files: ["lib", "assets/js/live_lift/client_hook.js", "docs", "mix.exs", "README.md", "LICENSE"],
+        files: [
+          "lib",
+          "assets/js/live_lift/client_hook.js",
+          "docs",
+          "mix.exs",
+          "README.md",
+          "LICENSE"
+        ],
         licenses: ["MIT"],
         links: %{"GitHub" => "https://github.com/Manuel1471/LiveLift"}
       ]
@@ -20,6 +27,6 @@ defmodule LiveLift.MixProject do
   def application, do: [extra_applications: [:logger]]
 
   defp deps do
-    [{:phoenix_live_view, "~> 1.0"}, {:jason, "~> 1.4"}]
+    [{:phoenix_live_view, "~> 1.2"}, {:jason, "~> 1.4"}]
   end
 end
