@@ -21,8 +21,33 @@ defmodule LiveLift.ViewTest do
     assert html =~ ~s(id="score")
     assert html =~ ~s(phx-hook="LiveLift")
     assert html =~ ~s(phx-update="ignore")
+    assert html =~ ~s(data-live-lift-server-revision="0")
     assert html =~ ~s(data-live-lift-action="add")
     assert html =~ ~s(data-live-lift-text="count">4</span>)
+  end
+
+  test "includes a validated server snapshot revision" do
+    html =
+      render_component(&LiveLift.View.island/1,
+        id: "score",
+        module: Score,
+        state: %{count: 4, saved: 3},
+        server_fields: [:saved],
+        server_revision: 7
+      )
+
+    assert html =~ ~s(data-live-lift-server-revision="7")
+    assert html =~ ~s(data-live-lift-server-fields="[&quot;saved&quot;]")
+
+    assert_raise ArgumentError, ~r/server_revision must be a non-negative safe integer/, fn ->
+      render_component(&LiveLift.View.island/1,
+        id: "score",
+        module: Score,
+        state: %{count: 4, saved: 3},
+        server_fields: [:saved],
+        server_revision: -1
+      )
+    end
   end
 
   test "rejects state that the browser cannot represent safely" do

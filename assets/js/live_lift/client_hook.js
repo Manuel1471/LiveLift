@@ -74,6 +74,7 @@ function renderNode(node, scope, views, stack) {
   if (node.type === "text") {
     if (!decodedText.has(node.value)) {
       const decoder = document.createElement("textarea");
+      // Text comes from a compile-time literal template; dynamic values use textContent.
       decoder.innerHTML = node.value;
       decodedText.set(node.value, decoder.value);
     }
@@ -145,18 +146,22 @@ function reconcile(parent, desired) {
     if (node.nodeType !== 1) { unmarked.push(node); continue; }
     const key = node.getAttribute("data-live-lift-key");
     const id = node.getAttribute("data-live-lift-node-id");
-    if (key !== null) keyed.set(`${node.tagName}:${key}`, node);
+    if (key !== null) keyed.set(`${node.tagName}:${id}:${key}`, node);
     else if (id !== null) identified.set(`${node.tagName}:${id}`, node);
     else unmarked.push(node);
   }
   desired.forEach((next, index) => {
     const key = next.nodeType === 1 ? next.getAttribute("data-live-lift-key") : null;
     const nodeId = next.nodeType === 1 ? next.getAttribute("data-live-lift-node-id") : null;
+    const indexed = previous[index];
+    const matchesUnmarked = (node) => node && !used.has(node) &&
+      (node.nodeType !== 1 || (!node.hasAttribute("data-live-lift-key") && !node.hasAttribute("data-live-lift-node-id"))) &&
+      node.nodeType === next.nodeType && (node.nodeType !== 1 || node.tagName === next.tagName);
     const current = key !== null
-      ? keyed.get(`${next.tagName}:${key}`)
+      ? keyed.get(`${next.tagName}:${nodeId}:${key}`)
       : nodeId !== null
         ? identified.get(`${next.tagName}:${nodeId}`)
-        : unmarked.find((node) => !used.has(node) && node.nodeType === next.nodeType && (node.nodeType !== 1 || node.tagName === next.tagName));
+        : matchesUnmarked(indexed) ? indexed : unmarked.find(matchesUnmarked);
     const chosen = current || next;
     if (current) patchNode(current, next);
     used.add(chosen);
@@ -202,22 +207,29 @@ export function createClientHook(views) {
       for (const field of this.serverFields) {
         if (!Object.hasOwn(this.state, field)) throw new Error(`Missing server-owned field: ${field}`);
       }
-      this.serverRevision = 0;
+      this.serverRevision = Number(this.el.dataset.liveLiftServerRevision || "0");
+      if (!Number.isSafeInteger(this.serverRevision) || this.serverRevision < 0) {
+        throw new Error("Invalid LiveLift server revision");
+      }
+      this.applyServerPatch = (revision, patch) => {
+        if (!Number.isSafeInteger(revision) || revision <= this.serverRevision) return;
+        if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("Invalid LiveLift server patch");
+        for (const field of Object.keys(patch)) {
+          if (!this.serverFields.has(field)) throw new Error(`Server cannot patch client-owned field: ${field}`);
+        }
+        const nextState = {...this.state, ...patch};
+        validateState(nextState);
+        this.render(nextState);
+        this.state = nextState;
+        this.serverRevision = revision;
+      };
       if (this.serverFields.size && typeof this.handleEvent === "function") {
         this.syncRef = this.handleEvent("live_lift:patch", ({id, revision, patch}) => {
-          if (id !== this.el.id || !Number.isSafeInteger(revision) || revision <= this.serverRevision) return;
-          if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("Invalid LiveLift server patch");
-          for (const field of Object.keys(patch)) {
-            if (!this.serverFields.has(field)) throw new Error(`Server cannot patch client-owned field: ${field}`);
-          }
-          const nextState = {...this.state, ...patch};
-          validateState(nextState);
-          this.state = nextState;
-          this.serverRevision = revision;
-          this.render();
+          if (id === this.el.id) this.applyServerPatch(revision, patch);
         });
       }
       if (!this.el.hasChildNodes() && typeof this.view.template === "string") {
+        // Legacy string templates are generated from app-owned literals, never client state.
         this.el.innerHTML = this.view.template;
       }
 
@@ -258,8 +270,8 @@ export function createClientHook(views) {
         }
         const nextState = {...actionState};
         for (const field of this.serverFields) nextState[field] = this.state[field];
+        this.render(nextState);
         this.state = nextState;
-        this.render();
       };
 
       this.onInput = (event) => {
@@ -294,38 +306,65 @@ export function createClientHook(views) {
       this.el.removeEventListener("submit", this.onSubmit);
     },
 
-    render() {
+    updated() {
+      if (!this.serverFields.size) return;
+      const revision = Number(this.el.dataset.liveLiftServerRevision);
+      if (!Number.isSafeInteger(revision) || revision <= this.serverRevision) return;
+      const serverState = JSON.parse(this.el.dataset.liveLiftState);
+      validateState(serverState);
+      const patch = {};
+      for (const field of this.serverFields) {
+        if (!Object.hasOwn(serverState, field)) throw new Error(`Missing server-owned field: ${field}`);
+        patch[field] = serverState[field];
+      }
+      this.applyServerPatch(revision, patch);
+    },
+
+    render(state = this.state) {
       if (Array.isArray(this.view.template) && typeof document !== "undefined") {
-        reconcile(this.el, renderNodes(this.view.template, {state: this.state}, views));
+        const focused = this.el.contains(document.activeElement) ? document.activeElement : null;
+        const selection = focused && typeof focused.selectionStart === "number"
+          ? [focused.selectionStart, focused.selectionEnd] : null;
+        reconcile(this.el, renderNodes(this.view.template, {state}, views));
+        if (focused && focused.isConnected && document.activeElement !== focused) {
+          focused.focus({preventScroll: true});
+          if (selection && typeof focused.setSelectionRange === "function") {
+            focused.setSelectionRange(...selection);
+          }
+        }
         return;
       }
 
+      const updates = [];
       for (const node of this.el.querySelectorAll("[data-live-lift-text]")) {
         const field = node.dataset.liveLiftText;
-        if (!Object.hasOwn(this.state, field)) {
+        if (!Object.hasOwn(state, field)) {
           throw new Error(`Unknown LiveLift state field: ${field}`);
         }
-        node.textContent = this.state[field] === null ? "" : String(this.state[field]);
+        const value = display(state[field]);
+        updates.push(() => { node.textContent = value; });
       }
 
       for (const attribute of ["class", "title", "aria-label", "value"]) {
         for (const node of this.el.querySelectorAll(`[data-live-lift-bind-${attribute}]`)) {
           const field = node.getAttribute(`data-live-lift-bind-${attribute}`);
-          if (!Object.hasOwn(this.state, field)) {
+          if (!Object.hasOwn(state, field)) {
             throw new Error(`Unknown LiveLift state field: ${field}`);
           }
-          const value = this.state[field];
-          node.setAttribute(attribute, value === null ? "" : String(value));
+          const value = display(state[field]);
+          updates.push(() => node.setAttribute(attribute, value));
         }
       }
 
       for (const node of this.el.querySelectorAll("[data-live-lift-show]")) {
         const field = node.dataset.liveLiftShow;
-        if (!Object.hasOwn(this.state, field)) {
+        if (!Object.hasOwn(state, field)) {
           throw new Error(`Unknown LiveLift state field: ${field}`);
         }
-        node.hidden = this.state[field] === false || this.state[field] === null;
+        const hidden = state[field] === false || state[field] === null;
+        updates.push(() => { node.hidden = hidden; });
       }
+      updates.forEach((apply) => apply());
     },
   };
 }

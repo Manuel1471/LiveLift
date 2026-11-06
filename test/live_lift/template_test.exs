@@ -146,6 +146,23 @@ defmodule LiveLift.TemplateTest do
     end
   end
 
+  test "namespaces keys from sibling loops" do
+    tree =
+      Template.compile(
+        ~s(<div><p :for={item <- @first} :key={item.id}>{@item.name}</p><p :for={item <- @second} :key={item.id}>{@item.name}</p></div>)
+      )
+
+    html =
+      tree
+      |> Template.render_server(%{first: [%{id: 1, name: "A"}], second: [%{id: 1, name: "B"}]})
+      |> Phoenix.HTML.safe_to_string()
+
+    assert html =~ ~s(data-live-lift-key="1")
+    assert length(Regex.scan(~r/data-live-lift-key="1"/, html)) == 2
+    ids = Regex.scan(~r/data-live-lift-node-id="([^"]+)"/, html, capture: :all_but_first)
+    assert ids |> Enum.map(&hd/1) |> Enum.uniq() |> length() == 2
+  end
+
   test "requires native keyboard-accessible controls for events" do
     assert_raise ArgumentError, ~r/click events require a native button/, fn ->
       Template.compile(~s(<div $click="add">Add</div>), "controls.ex")

@@ -10,7 +10,7 @@ defmodule LiveLiftDemoWeb.CounterLive do
     ~H"""
     <main class="demo-shell">
       <header class="site-header">
-        <a href="/" class="brand" aria-label="LiveLift home"><span class="brand-mark">L<span>↗</span></span><span>LiveLift<span class="brand-period">.</span></span></a>
+        <a href="/" class="brand"><span class="brand-mark" aria-hidden="true">L<span>↗</span></span><span>LiveLift<span class="brand-period">.</span></span></a>
         <div class="header-right">
           <span class="version-chip">DEVELOPER PREVIEW</span><a
             href="https://github.com/Manuel1471/LiveLift"
@@ -54,11 +54,12 @@ defmodule LiveLiftDemoWeb.CounterLive do
                 step: 2,
                 tone: "regular",
                 milestone: false,
-                saved_score: nil,
-                server_total: 0
+                saved_score: @saved_score,
+                server_total: @server_count
               }
             }
             server_fields={[:saved_score, :server_total]}
+            server_revision={@sync_revision}
           />
           <section class="server-panel" aria-label="LiveView server counter">
             <div class="panel-topline">

@@ -107,6 +107,20 @@ test("rejects unsafe action results", () => {
   assert.equal(el.countNode.textContent, "1");
 });
 
+test("does not commit state when rendering a client action fails", () => {
+  const el = element({count: 1, step: 1});
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: () => ({count: 2})},
+      template: "<output></output>",
+    }}), el,
+  };
+  hook.mounted();
+  assert.throws(() => el.click("advance"), /Unknown LiveLift state field: step/);
+  assert.deepEqual(hook.state, {count: 1, step: 1});
+  assert.equal(el.countNode.textContent, "1");
+});
+
 test("accepts nested state and rejects dangerous keys", () => {
   const el = element({count: 1, step: 1, items: [{id: "a", done: false}]});
   const hook = {
@@ -217,4 +231,25 @@ test("applies only fresh server-owned patches while local actions remain indepen
   el.click("save");
   assert.deepEqual(sent[0].payload, {state: {count: 12, step: 2}, revision: 1});
   hook.destroyed();
+});
+
+test("starts at the server revision supplied by the initial render", () => {
+  const el = element({count: 1, step: 1, saved_score: 4});
+  el.id = "score";
+  el.dataset.liveLiftServerFields = '["saved_score"]';
+  el.dataset.liveLiftServerRevision = "4";
+  let receive;
+  const hook = {
+    ...createClientHook({"App.Score": {actions: {}, template: "<p></p>"}}), el,
+    handleEvent: (_name, callback) => { receive = callback; return 1; },
+  };
+  hook.mounted();
+  receive({id: "score", revision: 3, patch: {saved_score: 3}});
+  assert.equal(hook.state.saved_score, 4);
+  receive({id: "score", revision: 5, patch: {saved_score: 5}});
+  assert.equal(hook.state.saved_score, 5);
+  el.dataset.liveLiftServerRevision = "6";
+  el.dataset.liveLiftState = JSON.stringify({count: 0, step: 1, saved_score: 6});
+  hook.updated();
+  assert.deepEqual(hook.state, {count: 1, step: 1, saved_score: 6});
 });

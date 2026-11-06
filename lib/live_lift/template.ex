@@ -108,7 +108,7 @@ defmodule LiveLift.Template do
       for: loop,
       key: key,
       if: condition,
-      node_id: if(condition, do: "#{meta.line}:#{meta.column}", else: nil)
+      node_id: if(condition || loop, do: "#{meta.line}:#{meta.column}", else: nil)
     }
   end
 
