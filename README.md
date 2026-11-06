@@ -11,6 +11,8 @@ The [Phoenix demo](examples/demo/README.md) contains a user-defined client
 view inside a regular LiveView. From `examples/demo`, run `mix setup` and
 `mix phx.server`, then visit <http://localhost:4000>.
 
+For an existing Phoenix app, follow the [integration guide](docs/phoenix-integration.md).
+
 ## Use it in a Phoenix app
 
 Add the local package to your app's `mix.exs`:

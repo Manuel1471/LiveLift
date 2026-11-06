@@ -10,7 +10,7 @@ defmodule LiveLift.MixProject do
       deps: deps(),
       description: "Opt-in client-side interactions for Phoenix LiveView",
       package: [
-        files: ["lib", "assets/js/live_lift/client_hook.js", "mix.exs", "README.md", "LICENSE"],
+        files: ["lib", "assets/js/live_lift/client_hook.js", "docs", "mix.exs", "README.md", "LICENSE"],
         licenses: ["MIT"],
         links: %{"GitHub" => "https://github.com/Manuel1471/LiveLift"}
       ]
