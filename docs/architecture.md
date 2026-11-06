@@ -8,14 +8,16 @@ state, persistence, navigation, and server-rendered diffs.
 
 ## Current prototype
 
-`LiveLift.Counter.counter/1` renders the initial HTML with HEEx. Its root has a
-LiveView hook and `phx-update="ignore"`. `LiveLift.Client` retains a small
-Elixir action's AST, and `mix live_lift.compile` emits a JavaScript function.
-The hook calls that function and owns only the count and output text after
-mounting. No event is sent to the server on a click.
+The application writes ordinary HEEx and marks one subtree with the `LiveLift`
+hook and `phx-update="ignore"`. `LiveLift.Client` retains a small Elixir
+action's AST, and `mix live_lift.compile` emits a JavaScript function. The hook
+holds a JSON map of local integer state. On a click it calls a compiled action
+named by `data-live-lift-action`, then updates only nodes marked with
+`data-live-lift-text`. The app owns the HTML structure and action names. No
+event is sent to the server on a local click.
 
 This gives the client and server separate DOM ownership. It also means the
-counter cannot reflect later server updates without a deliberate protocol.
+island cannot reflect later server updates without a deliberate protocol.
 
 ## Next technical questions
 

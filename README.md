@@ -1,14 +1,15 @@
 # LiveLift
 
-LiveLift explores opt-in client-side interactions inside Phoenix LiveView. Its
-first prototype compiles simple Elixir actions into JavaScript so a counter
-responds to clicks without a server round trip. It is a separate library; it
-does not patch LiveView or Hologram.
+LiveLift explores opt-in client-side interactions inside Phoenix LiveView. You
+write your own HEEx and Elixir actions. LiveLift compiles the supported Elixir
+expressions to JavaScript and connects them to your chosen DOM elements. It
+does not ship UI components or patch LiveView or Hologram.
 
 ## Run the browser demo
 
-The [Phoenix demo](examples/demo/README.md) contains a working LiveView, two
-Elixir client actions, and the JavaScript hook. From `examples/demo`, run
+The [Phoenix demo](examples/demo/README.md) contains a working LiveView with
+app-owned markup, two Elixir client actions, and the generic hook. From
+`examples/demo`, run
 `mix setup` and `mix phx.server`, then visit <http://localhost:4000>.
 
 ## Use it in a Phoenix app
@@ -22,49 +23,63 @@ Add the local package to your app's `mix.exs`:
 Define the actions in Elixir:
 
 ```elixir
-defmodule MyApp.CounterActions do
+defmodule MyApp.ScoreActions do
   use LiveLift.Client
 
-  defclient increment(count), do: count + 1
-  defclient decrement(count), do: count - 1
+  defclient advance(state), do: %{score: state.score + state.step, step: state.step}
+  defclient retreat(state), do: %{score: state.score - state.step, step: state.step}
 end
 ```
 
 Generate the browser module before bundling your assets:
 
 ```sh
-mix live_lift.compile MyApp.CounterActions --output assets/js/generated_actions.js
+mix live_lift.compile MyApp.ScoreActions --output assets/js/generated_actions.js
 ```
 
 Register the hook in `assets/js/app.js`:
 
 ```javascript
-import {createCounterHook} from "../../../../assets/js/live_lift/counter.js"
-import {actions as counterActions} from "./generated_actions.js"
+import {createClientHook} from "../../../../assets/js/live_lift/client_hook.js"
+import {actions as scoreActions} from "./generated_actions.js"
 
 let liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
-  hooks: {"LiveLift.Counter": createCounterHook(counterActions)}
+  hooks: {LiveLift: createClientHook(scoreActions)}
 })
 ```
 
 That hook import path is for the included demo. In your own app, adjust it to
 the location of your LiveLift checkout. If you already have hooks, merge them
 into the `hooks` object. Run the compile task as part of your asset build, as
-the demo's `mix.exs` does. Then use the component in a LiveView template:
+the demo's `mix.exs` does. Write your own markup in a LiveView template:
 
 ```heex
-<LiveLift.Counter.counter id="demo-counter" initial={10} />
+<section
+  id="score"
+  phx-hook="LiveLift"
+  phx-update="ignore"
+  data-live-lift-state={Jason.encode!(%{score: 10, step: 2})}
+>
+  <button type="button" data-live-lift-action="retreat">−</button>
+  <output data-live-lift-text="score">10</output>
+  <button type="button" data-live-lift-action="advance">+</button>
+</section>
 ```
 
-The component requires a unique `id`. Its count is browser-local after mount;
-it is not an assign, is not persisted, and resets if the component remounts.
-The `phx-update="ignore"` boundary keeps LiveView's DOM patches from replacing
-the counter's children. Do not put server-managed content inside that boundary.
+The island requires a unique `id`. `data-live-lift-state` is a JSON map of safe
+integers. `data-live-lift-action` names a compiled action, while each
+`data-live-lift-text` names a state field to display. You can choose any HTML
+structure and any field or action names.
 
-`defclient` currently accepts one integer argument, integer literals, and
-`+`, `-`, `*`. Unsupported syntax fails during compilation. JavaScript numbers
-are limited to safe integers; the hook rejects results outside that range.
+The state is browser-local after mount: it is not an assign, is not persisted,
+and resets if the island remounts. The `phx-update="ignore"` boundary prevents
+LiveView from replacing its children. Keep server-managed content outside it.
+
+`defclient` currently accepts one argument, safe integer literals, `+`, `-`,
+`*`, atom-keyed map literals, and map field reads. Actions must return a map of
+safe integers. Unsupported syntax fails during compilation. This is a small
+Elixir subset, not automatic conversion of an entire LiveView.
 
 ## Development
 
