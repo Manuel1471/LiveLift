@@ -47,4 +47,15 @@ defmodule LiveLift.TemplateTest do
     assert Template.compile("<button $server=\"save_score\">Save</button>") ==
              "<button data-live-lift-server=\"save_score\">Save</button>"
   end
+
+  test "renders conditional visibility with Elixir truthiness" do
+    compiled = Template.compile(~s(<p $show="visible">Hello</p>))
+    assert compiled == ~s(<p data-live-lift-show="visible">Hello</p>)
+
+    assert compiled |> Template.render_server(%{visible: false}) |> Phoenix.HTML.safe_to_string() ==
+             ~s(<p data-live-lift-show="visible" hidden>Hello</p>)
+
+    assert compiled |> Template.render_server(%{visible: 0}) |> Phoenix.HTML.safe_to_string() ==
+             ~s(<p data-live-lift-show="visible">Hello</p>)
+  end
 end

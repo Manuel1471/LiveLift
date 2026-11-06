@@ -13,7 +13,7 @@ defmodule LiveLiftDemoWeb.CounterLive do
       <LiveLift.View.island
         id="local-counter"
         module={LiveLiftDemo.ScoreView}
-        state={%{count: 10, step: 2, tone: "regular"}}
+        state={%{count: 10, step: 2, tone: "regular", milestone: false}}
       />
 
       <p>The second counter is handled by Phoenix LiveView on the server.</p>

@@ -88,6 +88,26 @@ test("renders browser-safe primitives and dynamic attributes", () => {
   assert.equal(attributes.get("title"), "<ready>");
 });
 
+test("updates conditional visibility using Elixir truthiness", () => {
+  const el = element({count: 0, step: 1, visible: false});
+  const node = {dataset: {liveLiftShow: "visible"}, hidden: false};
+  const originalQuery = el.querySelectorAll;
+  el.querySelectorAll = (selector) => selector === "[data-live-lift-show]" ?
+    [node] : originalQuery(selector);
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, visible: 0})},
+      template: "<p data-live-lift-show=\"visible\">Hi</p>",
+    }}),
+    el,
+  };
+
+  hook.mounted();
+  assert.equal(node.hidden, true);
+  el.click("advance");
+  assert.equal(node.hidden, false);
+});
+
 test("sends a deliberate server event with the current local state", () => {
   const el = element({count: 10, step: 3});
   const sent = [];

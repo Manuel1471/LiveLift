@@ -80,6 +80,14 @@ export function createClientHook(views) {
           node.setAttribute(attribute, value === null ? "" : String(value));
         }
       }
+
+      for (const node of this.el.querySelectorAll("[data-live-lift-show]")) {
+        const field = node.dataset.liveLiftShow;
+        if (!Object.hasOwn(this.state, field)) {
+          throw new Error(`Unknown LiveLift state field: ${field}`);
+        }
+        node.hidden = this.state[field] === false || this.state[field] === null;
+      }
     },
   };
 }
