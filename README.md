@@ -15,7 +15,7 @@ Add the local package to your app's `mix.exs`:
 Register the hook in `assets/js/app.js`:
 
 ```javascript
-import {hooks as liveLiftHooks} from "../../deps/live_lift/assets/js/live_lift/counter.js"
+import {hooks as liveLiftHooks} from "../../../../assets/js/live_lift/counter.js"
 
 let liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
@@ -23,7 +23,9 @@ let liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
-If you already have hooks, merge them into the `hooks` object. Then use the
+That import path is for the included `examples/demo` app. In your own app,
+adjust it to the location of your local LiveLift checkout. If you already have
+hooks, merge them into the `hooks` object. Then use the
 component in a LiveView template:
 
 ```heex
@@ -42,6 +44,8 @@ mix deps.get
 mix test
 cd assets && npm test
 ```
+
+For a complete Phoenix integration, run the [browser demo](examples/demo/README.md).
 
 ## Direction
 

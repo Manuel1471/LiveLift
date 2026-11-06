@@ -21,3 +21,13 @@ jobs:
       - run: mix test
       - run: npm test
         working-directory: assets
+      - run: mix deps.get
+        working-directory: examples/demo
+      - run: mix format --check-formatted
+        working-directory: examples/demo
+      - run: mix test
+        working-directory: examples/demo
+      - run: mix assets.setup
+        working-directory: examples/demo
+      - run: mix assets.build
+        working-directory: examples/demo
