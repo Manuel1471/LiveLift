@@ -1,5 +1,6 @@
 # Run with: mix run spikes/liveview_api.exs
 # A compile-time feasibility test. This does not add a public LiveLift API.
+require Phoenix.LiveViewTest
 
 defmodule LiveLiftSpike.Capture do
   defmacro __using__(_) do
@@ -145,3 +146,79 @@ unless socket.private.live_temp.push_events == [["live_lift:patch", %{id: "spike
   do: raise("S3: public push_event did not queue a response")
 
 IO.puts("S3 passed: marked handler can be wrapped; public push_event queues a response")
+
+# S4 keeps the actual render and event source identical. Only the opt-in use
+# line and one attribute differ. This is a migration surface check, not yet a
+# browser execution test.
+defmodule LiveLiftSpike.OptIn do
+  defmacro __using__(_) do
+    quote do
+      use Phoenix.LiveComponent
+      Module.register_attribute(__MODULE__, :client, persist: false)
+      Module.register_attribute(__MODULE__, :captured, accumulate: true)
+      @on_definition {LiveLiftSpike.Capture, :on_definition}
+      @before_compile LiveLiftSpike.Capture
+      @before_compile LiveLiftSpike.Boundary
+    end
+  end
+end
+
+shared_source = ~S'''
+  def render(assigns) do
+    ~H"""
+    <button phx-click="inc" phx-target={@myself}>{@count}</button>
+    """
+  end
+
+  def handle_event("inc", _params, socket), do: {:noreply, socket}
+'''
+
+plain_source = """
+defmodule LiveLiftSpike.PlainCounter do
+  use Phoenix.LiveComponent
+#{shared_source}
+end
+"""
+
+opted_source =
+  plain_source
+  |> String.replace("LiveLiftSpike.PlainCounter", "LiveLiftSpike.OptedCounter")
+  |> String.replace("use Phoenix.LiveComponent", "use LiveLiftSpike.OptIn")
+  |> String.replace("  def handle_event", "  @client true\n  def handle_event")
+
+Code.compile_string(plain_source, "plain_counter.ex")
+Code.compile_string(opted_source, "opted_counter.ex")
+
+defmodule LiveLiftSpike.MigrationRenderCheck do
+  import Phoenix.LiveViewTest, only: [render_component: 2]
+
+  def plain do
+    render_component(&LiveLiftSpike.PlainCounter.render/1,
+      id: "migration-spike",
+      count: 3,
+      myself: %Phoenix.LiveComponent.CID{cid: 1}
+    )
+  end
+
+  def opted do
+    render_component(&LiveLiftSpike.OptedCounter.render/1,
+      id: "migration-spike",
+      count: 3,
+      myself: %Phoenix.LiveComponent.CID{cid: 1}
+    )
+  end
+end
+
+plain_html = LiveLiftSpike.MigrationRenderCheck.plain()
+opted_html = LiveLiftSpike.MigrationRenderCheck.opted()
+
+unless plain_html =~ ~s(phx-click="inc") and opted_html =~ ~s(phx-click="inc") and
+         plain_html =~ ">3</button>" and opted_html =~ ">3</button>" and
+         opted_html =~ ~s(phx-update="ignore"),
+  do: raise("S4: opt-in changed the original HEEx or failed to create the boundary")
+
+captured = LiveLiftSpike.OptedCounter.__captured__()
+unless Enum.count(captured, fn {name, _, marked, _} -> name == :handle_event and marked == true end) == 1,
+  do: raise("S4: the two-line opt-in did not mark exactly one handler")
+
+IO.puts("S4 passed: unchanged HEEx and handler compile with only use + @client changed")

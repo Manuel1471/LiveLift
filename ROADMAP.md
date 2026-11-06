@@ -52,7 +52,7 @@ end
 
 ## Fase S: Spikes de viabilidad (1 semana)
 
-Resolver estas tres preguntas antes de construir sobre la API objetivo. Documentar
+Resolver estas preguntas antes de construir sobre la API objetivo. Documentar
 cada resultado en `docs/`.
 
 - [x] **S1.** `use LiveLift` lee `@client true` con `@on_definition` y extrae el `~H`
@@ -61,11 +61,17 @@ cada resultado en `docs/`.
   sin que el usuario cambie cómo escribe sus componentes.
 - [x] **S3.** Se puede envolver `handle_event/3` con `defoverridable` para empujar el
   parche autoritativo sin depender de internos de LiveView.
+- [x] **S4.** Un componente con el mismo `~H` y `handle_event/3` compila y renderiza
+  con solo cambiar el `use` y añadir `@client true`. El spike corre en CI.
+- [ ] **S5 (puerta de migración).** El mismo componente funciona en Chromium en
+  ambos modos: el clic optimista y la respuesta autoritativa convergen sin
+  reescribir `~H`, `phx-*` ni `handle_event/3`. Bloquea el lanzamiento de la API
+  nueva aunque S1–S4 pasen.
 
 **Si alguno falla:** plan B con marca explícita (por ejemplo `<.client>` en el
 template o macro propio). Se debilita la promesa de cero aprendizaje, no la idea.
 
-Resultados y límites de los tres spikes: `docs/liveview-api-spikes.md`.
+Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 
 ## Fase 0: Cimientos (1 a 2 semanas, v0.2)
 
@@ -94,6 +100,7 @@ Resultados y límites de los tres spikes: `docs/liveview-api-spikes.md`.
 
 **Listo cuando:** el mismo módulo corre en modo servidor y en modo cliente con HTML
 equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.
+La API no se anuncia como lista hasta pasar S5 en el navegador.
 
 ## Fase 2: Compilador v2 (4 a 6 semanas, v0.4)
 

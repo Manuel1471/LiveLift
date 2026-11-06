@@ -36,6 +36,25 @@ replayed or rejected.
 
 ## Decision
 
-Proceed with a narrow `use LiveLift` prototype on a real LiveComponent.
+## S4 — migration surface
+
+**Passed in the executable spike.** Two copies of a normal LiveComponent use
+identical `~H` and `handle_event/3` source. The opt-in copy changes its `use`
+line and adds `@client true` above the handler. Both compile and render the
+same button and count; the opt-in copy gains the generated DOM boundary.
+CI now runs the spike on the supported toolchains and in the optional LiveView
+`main` lane.
+
+## S5 — browser acceptance gate
+
+**Pending.** S1–S4 do not execute that handler in the browser. Before shipping
+`use LiveLift`, a real mounted LiveComponent must run the marked handler
+optimistically, send the normal LiveView event, receive an authoritative
+response and converge after reconnect. Its source diff must remain only the
+`use` line and `@client true`; no template or handler rewrite is acceptable.
+
+## Decision
+
+Proceed with a narrow `use LiveLift` implementation behind this browser gate.
 Keep the current `client_template` API working. Do not claim the target API
-is production-ready from these compile-time spikes alone.
+is production-ready from compile-time spikes alone.

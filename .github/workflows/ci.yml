@@ -29,6 +29,7 @@ jobs:
       - run: npm ci
         working-directory: bench
       - run: mix test
+      - run: mix run spikes/liveview_api.exs
       - run: npm test
         working-directory: assets
       - run: mix deps.get
@@ -83,3 +84,4 @@ jobs:
       - run: npm ci
         working-directory: bench
       - run: mix test
+      - run: mix run spikes/liveview_api.exs
