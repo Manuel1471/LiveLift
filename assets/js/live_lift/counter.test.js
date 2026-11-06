@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import Counter from "./counter.js";
+import {createCounterHook} from "./counter.js";
 
 function element(initial) {
   const output = {textContent: ""};
@@ -27,7 +27,10 @@ function element(initial) {
 
 test("counter updates locally and releases its listener", () => {
   const el = element(10);
-  const hook = {...Counter, el};
+  const hook = {
+    ...createCounterHook({increment: (count) => count + 1, decrement: (count) => count - 1}),
+    el,
+  };
 
   hook.mounted();
   assert.equal(el.output.textContent, "10");

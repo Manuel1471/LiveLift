@@ -65,8 +65,13 @@ defmodule LiveLiftDemo.MixProject do
     [
       setup: ["deps.get", "assets.setup", "assets.build"],
       "assets.setup": ["esbuild.install --if-missing"],
-      "assets.build": ["compile", "esbuild live_lift_demo"],
+      "assets.build": [
+        "compile",
+        "live_lift.compile LiveLiftDemo.CounterActions --output assets/js/generated_actions.js",
+        "esbuild live_lift_demo"
+      ],
       "assets.deploy": [
+        "live_lift.compile LiveLiftDemo.CounterActions --output assets/js/generated_actions.js",
         "esbuild live_lift_demo --minify",
         "phx.digest"
       ],
