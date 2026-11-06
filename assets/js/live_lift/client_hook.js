@@ -182,6 +182,25 @@ export function createClientHook(views) {
 
       this.state = JSON.parse(this.el.dataset.liveLiftState);
       validateState(this.state);
+      this.serverFields = new Set(JSON.parse(this.el.dataset.liveLiftServerFields || "[]"));
+      for (const field of this.serverFields) {
+        if (!Object.hasOwn(this.state, field)) throw new Error(`Missing server-owned field: ${field}`);
+      }
+      this.serverRevision = 0;
+      if (this.serverFields.size && typeof this.handleEvent === "function") {
+        this.syncRef = this.handleEvent("live_lift:patch", ({id, revision, patch}) => {
+          if (id !== this.el.id || !Number.isSafeInteger(revision) || revision <= this.serverRevision) return;
+          if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("Invalid LiveLift server patch");
+          for (const field of Object.keys(patch)) {
+            if (!this.serverFields.has(field)) throw new Error(`Server cannot patch client-owned field: ${field}`);
+          }
+          const nextState = {...this.state, ...patch};
+          validateState(nextState);
+          this.state = nextState;
+          this.serverRevision = revision;
+          this.render();
+        });
+      }
       if (!this.el.hasChildNodes() && typeof this.view.template === "string") {
         this.el.innerHTML = this.view.template;
       }
@@ -194,7 +213,8 @@ export function createClientHook(views) {
 
         const serverEvent = control.dataset.liveLiftServer;
         if (serverEvent) {
-          this.pushEvent(serverEvent, {state: this.state});
+          const state = Object.fromEntries(Object.entries(this.state).filter(([key]) => !this.serverFields.has(key)));
+          this.pushEvent(serverEvent, {state, revision: this.serverRevision});
           return;
         }
 
@@ -213,8 +233,15 @@ export function createClientHook(views) {
           checked: "checked" in control ? control.checked : false,
           params: control.dataset.liveLiftParams ? JSON.parse(control.dataset.liveLiftParams) : {},
         };
-        const nextState = action(this.state, eventData);
-        validateState(nextState);
+        const actionState = action(this.state, eventData);
+        validateState(actionState);
+        for (const field of this.serverFields) {
+          if (Object.hasOwn(actionState, field) && !Object.is(actionState[field], this.state[field])) {
+            throw new Error(`Client action cannot change server-owned field: ${field}`);
+          }
+        }
+        const nextState = {...actionState};
+        for (const field of this.serverFields) nextState[field] = this.state[field];
         this.state = nextState;
         this.render();
       };
@@ -244,6 +271,7 @@ export function createClientHook(views) {
     },
 
     destroyed() {
+      if (this.syncRef && typeof this.removeHandleEvent === "function") this.removeHandleEvent(this.syncRef);
       this.el.removeEventListener("click", this.onClick);
       this.el.removeEventListener("input", this.onInput);
       this.el.removeEventListener("change", this.onChange);

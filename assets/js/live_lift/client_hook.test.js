@@ -186,5 +186,34 @@ test("sends a deliberate server event with the current local state", () => {
   el.click("advance");
   el.click("save");
 
-  assert.deepEqual(sent, [{name: "save_score", payload: {state: {count: 13, step: 3}}}]);
+  assert.deepEqual(sent, [{name: "save_score", payload: {state: {count: 13, step: 3}, revision: 0}}]);
+});
+
+test("applies only fresh server-owned patches while local actions remain independent", () => {
+  const el = element({count: 10, step: 2, saved_score: null});
+  el.id = "local-counter";
+  el.dataset.liveLiftServerFields = '["saved_score"]';
+  const sent = [];
+  let receive;
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({count: state.count + state.step, step: state.step})},
+      template: "<p></p>",
+    }}),
+    el,
+    pushEvent: (name, payload) => sent.push({name, payload}),
+    handleEvent: (_name, callback) => { receive = callback; return 1; },
+    removeHandleEvent: (ref) => assert.equal(ref, 1),
+  };
+
+  hook.mounted();
+  el.click("advance");
+  receive({id: "local-counter", revision: 1, patch: {saved_score: 10}});
+  assert.deepEqual(hook.state, {count: 12, step: 2, saved_score: 10});
+  receive({id: "local-counter", revision: 1, patch: {saved_score: 0}});
+  assert.equal(hook.state.saved_score, 10);
+  assert.throws(() => receive({id: "local-counter", revision: 2, patch: {count: 0}}), /client-owned/);
+  el.click("save");
+  assert.deepEqual(sent[0].payload, {state: {count: 12, step: 2}, revision: 1});
+  hook.destroyed();
 });

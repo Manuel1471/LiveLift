@@ -2,7 +2,7 @@ defmodule LiveLiftDemoWeb.CounterLive do
   use LiveLiftDemoWeb, :live_view
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, server_count: 0, server_history: [0], saved_score: nil)}
+    {:ok, assign(socket, server_count: 0, server_history: [0], saved_score: nil, sync_revision: 0)}
   end
 
   def render(assigns) do
@@ -47,7 +47,8 @@ defmodule LiveLiftDemoWeb.CounterLive do
           <LiveLift.View.island
             id="local-counter"
             module={LiveLiftDemo.ScoreView}
-            state={%{count: 10, step: 2, tone: "regular", milestone: false}}
+            state={%{count: 10, step: 2, tone: "regular", milestone: false, saved_score: nil, server_total: 0}}
+            server_fields={[:saved_score, :server_total]}
           />
           <section class="server-panel" aria-label="LiveView server counter">
             <div class="panel-topline">
@@ -134,11 +135,15 @@ defmodule LiveLiftDemoWeb.CounterLive do
   def handle_event("server_increment", _params, socket) do
     next_count = socket.assigns.server_count + 1
     history = Enum.take(socket.assigns.server_history ++ [next_count], -8)
-    {:noreply, assign(socket, server_count: next_count, server_history: history)}
+    revision = socket.assigns.sync_revision + 1
+    socket = assign(socket, server_count: next_count, server_history: history, sync_revision: revision)
+    {:noreply, LiveLift.Sync.push(socket, "local-counter", revision, %{server_total: next_count})}
   end
 
   def handle_event("save_score", %{"state" => %{"count" => count}}, socket)
       when is_integer(count) do
-    {:noreply, assign(socket, :saved_score, count)}
+    revision = socket.assigns.sync_revision + 1
+    socket = assign(socket, saved_score: count, sync_revision: revision)
+    {:noreply, LiveLift.Sync.push(socket, "local-counter", revision, %{saved_score: count})}
   end
 end

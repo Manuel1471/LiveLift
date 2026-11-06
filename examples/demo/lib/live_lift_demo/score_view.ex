@@ -32,6 +32,7 @@ defmodule LiveLiftDemo.ScoreView do
       <div><strong>Send this value to LiveView</strong><span>Explicit bridge through <code>handle_event/3</code></span></div>
       <button type="button" class="button-sync" $server="save_score">Sync score <span aria-hidden="true">→</span></button>
     </div>
+    <p class="milestone-note" aria-live="polite">Server saved: {@saved_score} · Server events: {@server_total}</p>
   </section>
   """)
 

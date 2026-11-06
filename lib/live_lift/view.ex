@@ -11,9 +11,17 @@ defmodule LiveLift.View do
   attr(:id, :string, required: true)
   attr(:module, :atom, required: true)
   attr(:state, :map, required: true)
+  attr(:server_fields, :list, default: [])
 
   def island(assigns) do
     LiveLift.State.validate!(assigns.state)
+    fields = Enum.map(assigns.server_fields, &to_string/1)
+
+    state_fields = Map.keys(assigns.state) |> Enum.map(&to_string/1)
+
+    unless Enum.uniq(fields) == fields and Enum.all?(fields, &(&1 in state_fields)) do
+      raise ArgumentError, "server_fields must be unique keys present in island state"
+    end
 
     template = assigns.module.__live_lift_client_template__()
 
@@ -22,7 +30,7 @@ defmodule LiveLift.View do
     end
 
     html = LiveLift.Template.render_server(template, assigns.state)
-    assigns = assign(assigns, :html, html)
+    assigns = assigns |> assign(:html, html) |> assign(:server_fields_json, Jason.encode!(fields))
 
     ~H"""
     <div
@@ -31,6 +39,7 @@ defmodule LiveLift.View do
       phx-update="ignore"
       data-live-lift-module={inspect(@module)}
       data-live-lift-state={Jason.encode!(@state)}
+      data-live-lift-server-fields={@server_fields_json}
     >
       {@html}
     </div>

@@ -7,6 +7,7 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
     {:ok, view, html} = live(conn, "/")
 
     assert html =~ ~s(id="local-counter")
+    assert html =~ ~s(data-live-lift-server-fields="[&quot;saved_score&quot;,&quot;server_total&quot;]")
     assert html =~ ~s(phx-hook="LiveLift")
     assert html =~ ~s(data-live-lift-action="advance")
     assert html =~ ~s(data-live-lift-bind-value="count")
@@ -18,6 +19,7 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
     assert view |> element("#server-increment") |> render_click() =~ ~s(id="server-count")
     assert view |> element("#server-count") |> render() =~ ">1</strong>"
     assert view |> element(".history-chart") |> render() =~ "current count 1"
+    assert_push_event(view, "live_lift:patch", %{id: "local-counter", revision: 1, patch: %{server_total: 1}})
 
     assert view
            |> element("#local-counter")
@@ -25,5 +27,6 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
              ~s(id="saved-score")
 
     assert view |> element("#saved-score") |> render() =~ ">12</output>"
+    assert_push_event(view, "live_lift:patch", %{id: "local-counter", revision: 2, patch: %{saved_score: 12}})
   end
 end
