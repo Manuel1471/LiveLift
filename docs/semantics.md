@@ -16,6 +16,7 @@ form outside this table is unsupported even if it is valid Elixir.
 | Templates | Text and dynamic attributes are HTML-escaped on the server; the browser uses text nodes and DOM attributes. `:if` removes false/nil content. `:for` requires unique string or safe-integer keys within each loop. |
 | Forms | `checked={...}` on input and `selected={...}` on option accept only booleans or `nil`. `<textarea>{@value}</textarea>` renders plain escaped text. The client reconciler updates `checked`, selected options and textarea values. |
 | Server sync | Browser actions own every field except `server_fields`. Server patches must have increasing revisions. On reconnect, a newer server snapshot updates only server-owned fields. |
+| Native component predictions | At most 100 marked actions may be pending. Server replies carry a revision, an acknowledged action sequence, and authoritative state. Reconnect resets the local prediction from the server snapshot. |
 
 Invalid state, missing fields, arithmetic overflow and unsupported syntax fail
 explicitly. The compiler must reject unsupported source at build time; runtime

@@ -142,4 +142,14 @@ defmodule LiveLift.ComponentTest do
                    Code.compile_string(source, "unsupported.ex")
                  end
   end
+
+  test "rejects unsafe native event parameter names at compilation" do
+    assert_raise ArgumentError, ~r/unsafe.ex:1: unsafe phx-value parameter __proto__/, fn ->
+      LiveLift.Template.compile_liveview(
+        ~s(<button phx-click="inc" phx-value-__proto__="x">Go</button>),
+        "unsafe.ex",
+        ["inc"]
+      )
+    end
+  end
 end

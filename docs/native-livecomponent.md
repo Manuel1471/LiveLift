@@ -47,6 +47,8 @@ static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
 server only. Unsupported
 forms fail during compilation with a source location and a suggestion to keep
 that handler on the server.
+The browser caps pending marked actions at 100 and rejects unsafe parameter
+names before changing local state. There is no offline queue yet.
 
 The demo route `/native-counter` runs the opt-in component;
 `/native-counter-server` runs the same render and handlers without LiveLift. These paths are also tested

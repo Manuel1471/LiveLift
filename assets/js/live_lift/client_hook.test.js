@@ -253,3 +253,36 @@ test("starts at the server revision supplied by the initial render", () => {
   hook.updated();
   assert.deepEqual(hook.state, {count: 1, step: 1, saved_score: 6});
 });
+
+test("native component rejects a full pending queue before changing state", () => {
+  const el = element({count: 1, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: () => {},
+  };
+  hook.mounted();
+  hook.pending = Array.from({length: 100}, (_, sequence) => ({sequence}));
+  assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", {}), /pending action limit/);
+  assert.equal(hook.state.count, 1);
+});
+
+test("native component rejects unsafe event parameters", () => {
+  const el = element({count: 1, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: () => {},
+  };
+  hook.mounted();
+  assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", {__proto__: 1, constructor: 1}), /Unsafe LiveLift event parameter/);
+  assert.equal(hook.state.count, 1);
+});

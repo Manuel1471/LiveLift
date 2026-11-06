@@ -103,7 +103,7 @@ defmodule LiveLift.Component.Compiler do
 
   defp event_param(key) do
     unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
-             key not in ~w(__proto__ constructor prototype) do
+             key not in ~w(__proto__ constructor prototype _live_lift_seq) do
       raise ArgumentError, "unsupported @client event parameter: #{key}"
     end
 

@@ -232,6 +232,9 @@ export function createClientHook(views) {
         this.authoritativeState = this.state;
         this.pending = [];
         this.nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
+        if (!Number.isSafeInteger(this.nextSequence) || this.nextSequence < 1) {
+          throw new Error("Invalid LiveLift event sequence");
+        }
         this.connectionEpoch = 0;
         this.reconnectPending = false;
         this.resetOptimisticSnapshot = () => {
@@ -248,6 +251,9 @@ export function createClientHook(views) {
           this.reconnectPending = false;
         };
         this.applyAuthoritative = (revision, state, ackSequence = 0) => {
+          if (!Number.isSafeInteger(ackSequence) || ackSequence < 0) {
+            throw new Error("Invalid LiveLift acknowledged sequence");
+          }
           if (this.reconnectPending) {
             this.authoritativeState = state;
             this.serverRevision = -1;
@@ -335,6 +341,13 @@ export function createClientHook(views) {
       };
 
       this.sendOptimistic = (control, eventName, params) => {
+        if (this.pending.length >= 100) throw new Error("LiveLift pending action limit reached");
+        if (!Number.isSafeInteger(this.nextSequence)) throw new Error("LiveLift event sequence overflow");
+        for (const key of Object.keys(params)) {
+          if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
+            throw new Error(`Unsafe LiveLift event parameter: ${key}`);
+          }
+        }
         const sequence = this.nextSequence++;
         const eventData = this.runAction(eventName, control, params);
         this.pending.push({sequence, action: eventName, eventData});
@@ -354,9 +367,15 @@ export function createClientHook(views) {
         if (!Object.hasOwn(this.view.actions, eventName)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        const params = {};
+        const params = Object.create(null);
         for (const attr of control.attributes) {
-          if (attr.name.startsWith("phx-value-")) params[attr.name.slice(10)] = attr.value;
+          if (attr.name.startsWith("phx-value-")) {
+            const key = attr.name.slice(10);
+            if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
+              throw new Error(`Unsafe LiveLift event parameter: ${key}`);
+            }
+            params[key] = attr.value;
+          }
         }
         this.sendOptimistic(control, eventName, params);
       };

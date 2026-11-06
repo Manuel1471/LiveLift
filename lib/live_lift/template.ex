@@ -198,6 +198,16 @@ defmodule LiveLift.Template do
     do: raise(ArgumentError, "#{file}:#{meta.line}: :for requires an Elixir expression")
 
   defp convert_attr({name, {:string, value, _}, meta}, file) do
+    if String.starts_with?(name, "phx-value-") do
+      key = String.replace_prefix(name, "phx-value-", "")
+
+      unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
+               key not in ~w(__proto__ constructor prototype _live_lift_seq) do
+        raise ArgumentError,
+              "#{file}:#{meta.line}: unsafe phx-value parameter #{key}; use a safe field name"
+      end
+    end
+
     if Regex.match?(~r/^on[a-z]/i, name) or
          (name in ~w(href src action formaction) and
             Regex.match?(~r/^\s*javascript:/i, value)) do
