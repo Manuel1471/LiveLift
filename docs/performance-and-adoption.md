@@ -13,13 +13,13 @@ On an Apple M4 Mac with Elixir 1.20.2 / OTP 29 on 2026-11-06:
 
 | Production JavaScript | Phoenix | Phoenix + one LiveLift view | Difference |
 | --- | ---: | ---: | ---: |
-| Raw | 152,732 bytes | 162,251 bytes | +9,519 bytes |
-| Gzip | 47,221 bytes | 50,037 bytes | +2,816 bytes (6.0%) |
+| Raw | 152,732 bytes | 163,785 bytes | +11,053 bytes |
+| Gzip | 47,221 bytes | 50,478 bytes | +3,257 bytes (6.9%) |
 
 Run `bench/phoenix_event.sh` for two generated apps with the same `add`
 LiveView handler. Five runs of 200 `Phoenix.LiveViewTest.render_click/1` calls
-(after 20 warmups) gave median per-event times of 41 µs without an island and
-54 µs with one tiny island. That is about 13 µs extra in this local test. It
+(after 20 warmups) gave median per-event times of 49 µs without an island and
+60 µs with one tiny island. That is about 11 µs extra in this local test. It
 does not measure network,
 browser rendering, concurrent users or a deployed BEAM. The app's island and
 server event workload affect the result; do not extrapolate a universal
@@ -27,8 +27,8 @@ percentage from it.
 
 Run `cd examples/demo && mix assets.build`, then `cd ../../bench && npm ci &&
 npm run dom` for a DOM-model benchmark of reversing the demo's keyed list.
-With Node 26.5.0 and linkedom, median times were about 0.35 ms for 10 rows,
-3.28 ms for 100 rows, and 71.7 ms for 1,000 rows. Linkedom is not a browser,
+With Node 26.5.0 and linkedom, median times were about 0.38 ms for 10 rows,
+3.87 ms for 100 rows, and 72.86 ms for 1,000 rows. Linkedom is not a browser,
 so these are a regression signal for LiveLift's DOM work, not a browser
 latency claim. Every action currently rebuilds a desired subtree; large
 lists are an important limit. Prefer LiveView streams for large collections.
