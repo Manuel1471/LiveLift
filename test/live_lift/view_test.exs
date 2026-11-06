@@ -24,4 +24,14 @@ defmodule LiveLift.ViewTest do
     assert html =~ ~s(data-live-lift-action="add")
     assert html =~ ~s(data-live-lift-text="count">4</span>)
   end
+
+  test "rejects state that the browser cannot represent safely" do
+    assert_raise ArgumentError, ~r/safe integers/, fn ->
+      render_component(&LiveLift.View.island/1,
+        id: "score",
+        module: Score,
+        state: %{count: 9_007_199_254_740_992}
+      )
+    end
+  end
 end

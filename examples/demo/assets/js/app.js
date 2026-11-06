@@ -24,14 +24,14 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/live_lift_demo"
 import {createClientHook} from "../../../../assets/js/live_lift/client_hook.js"
-import * as scoreView from "./generated_actions.js"
+import {views} from "./generated_views.js"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, LiveLift: createClientHook({"LiveLiftDemo.ScoreView": scoreView})},
+  hooks: {...colocatedHooks, LiveLift: createClientHook(views)},
 })
 
 // Show progress bar on live navigation and form submits

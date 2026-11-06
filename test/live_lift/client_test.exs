@@ -19,6 +19,12 @@ defmodule LiveLift.ClientTest do
     defclient(increment(state), do: %{count: state.count + 1})
   end
 
+  defmodule MissingAction do
+    use LiveLift.Client
+
+    client_template("<button $click=\"missing\">Go</button>")
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -54,5 +60,20 @@ defmodule LiveLift.ClientTest do
     assert javascript =~ "export const template = "
     assert javascript =~ "data-live-lift-text=\\\"count\\\""
     assert javascript =~ "increment: (state) => ({count: (state.count + 1)})"
+  end
+
+  test "rejects a template event without a matching action" do
+    assert_raise ArgumentError, ~r/unknown client template action: missing/, fn ->
+      Compiler.compile_module(MissingAction)
+    end
+  end
+
+  test "builds a registry without manual JavaScript module mapping" do
+    javascript = Compiler.compile_registry([TemplatedActions])
+
+    assert javascript =~ "export const views = {"
+    assert javascript =~ "\"LiveLift.ClientTest.TemplatedActions\""
+    assert javascript =~ "actions: {increment: (state) => ({count: (state.count + 1)})}"
+    assert javascript =~ "template: "
   end
 end
