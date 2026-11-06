@@ -78,6 +78,7 @@ test("keeps server-rendered DOM when mounting", () => {
   const el = element({count: 10, step: 2});
   el.innerHTML = '<output><span data-live-lift-text="count">10</span></output>';
   el.hasChildNodes = () => true;
+  el.countNode.textContent = "10";
   const initialMarkup = el.innerHTML;
   const hook = {
     ...createClientHook({"App.Score": {actions: {}, template: "<output></output>"}}),

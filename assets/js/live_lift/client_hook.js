@@ -1,5 +1,6 @@
 const SAFE_KEY = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const decodedText = new Map();
 
 function validateValue(value, path, depth = 0) {
   if (typeof value === "string" || typeof value === "boolean" || value === null ||
@@ -71,9 +72,12 @@ function renderNodes(nodes, scope, views, stack = []) {
 
 function renderNode(node, scope, views, stack) {
   if (node.type === "text") {
-    const decoder = document.createElement("textarea");
-    decoder.innerHTML = node.value;
-    return [document.createTextNode(decoder.value)];
+    if (!decodedText.has(node.value)) {
+      const decoder = document.createElement("textarea");
+      decoder.innerHTML = node.value;
+      decodedText.set(node.value, decoder.value);
+    }
+    return [document.createTextNode(decodedText.get(node.value))];
   }
   if (node.type === "binding") {
     const span = document.createElement("span");
@@ -134,14 +138,25 @@ function renderElement(node, scope, key, views, stack) {
 function reconcile(parent, desired) {
   const previous = [...parent.childNodes];
   const used = new Set();
+  const keyed = new Map();
+  const identified = new Map();
+  const unmarked = [];
+  for (const node of previous) {
+    if (node.nodeType !== 1) { unmarked.push(node); continue; }
+    const key = node.getAttribute("data-live-lift-key");
+    const id = node.getAttribute("data-live-lift-node-id");
+    if (key !== null) keyed.set(`${node.tagName}:${key}`, node);
+    else if (id !== null) identified.set(`${node.tagName}:${id}`, node);
+    else unmarked.push(node);
+  }
   desired.forEach((next, index) => {
     const key = next.nodeType === 1 ? next.getAttribute("data-live-lift-key") : null;
     const nodeId = next.nodeType === 1 ? next.getAttribute("data-live-lift-node-id") : null;
     const current = key !== null
-      ? previous.find((node) => !used.has(node) && node.nodeType === 1 && node.getAttribute("data-live-lift-key") === key && node.tagName === next.tagName)
+      ? keyed.get(`${next.tagName}:${key}`)
       : nodeId !== null
-        ? previous.find((node) => !used.has(node) && node.nodeType === 1 && node.getAttribute("data-live-lift-node-id") === nodeId && node.tagName === next.tagName)
-        : previous.find((node) => !used.has(node) && (node.nodeType !== 1 || (!node.hasAttribute("data-live-lift-key") && !node.hasAttribute("data-live-lift-node-id"))) && node.nodeType === next.nodeType && (node.nodeType !== 1 || node.tagName === next.tagName));
+        ? identified.get(`${next.tagName}:${nodeId}`)
+        : unmarked.find((node) => !used.has(node) && node.nodeType === next.nodeType && (node.nodeType !== 1 || node.tagName === next.tagName));
     const chosen = current || next;
     if (current) patchNode(current, next);
     used.add(chosen);
@@ -182,6 +197,7 @@ export function createClientHook(views) {
 
       this.state = JSON.parse(this.el.dataset.liveLiftState);
       validateState(this.state);
+      const serverRendered = this.el.hasChildNodes();
       this.serverFields = new Set(JSON.parse(this.el.dataset.liveLiftServerFields || "[]"));
       for (const field of this.serverFields) {
         if (!Object.hasOwn(this.state, field)) throw new Error(`Missing server-owned field: ${field}`);
@@ -267,7 +283,7 @@ export function createClientHook(views) {
       this.el.addEventListener("input", this.onInput);
       this.el.addEventListener("change", this.onChange);
       this.el.addEventListener("submit", this.onSubmit);
-      this.render();
+      if (!serverRendered) this.render();
     },
 
     destroyed() {

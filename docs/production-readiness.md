@@ -50,3 +50,6 @@ that one architecture is faster in a real application. Use LiveLift for small,
 pure interactions that benefit from immediate client response while LiveView
 continues to own server workflows. Benchmark the complete app before making a
 production performance claim.
+
+The [performance and adoption check](performance-and-adoption.md) measures the
+bundle cost, a parent LiveView event, and keyed DOM work separately.

@@ -7,3 +7,4 @@
 *.beam
 erl_crash.dump
 /doc/
+/bench/node_modules/
