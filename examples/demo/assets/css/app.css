@@ -70,7 +70,7 @@ h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; }
 .chart-scale { display: flex; justify-content: space-between; color: #738e7e; font-size: 10px; margin-top: 6px; }
 .milestone-note { margin: 12px 0 0; font-size: 11px; color: #b8f7d5; }
 .client-actions { justify-content: start; gap: 8px; margin-top: 25px; }
-.client-actions button, .button-server, .button-sync { border-radius: 9px; border: 1px solid transparent; font-size: 12px; font-weight: 700; transition: transform .16s, background .16s, border-color .16s; }
+.client-actions button, .button-server, .button-sync { border-radius: 9px; border: 1px solid transparent; font-size: 12px; font-weight: 700; white-space: nowrap; transition: transform .16s, background .16s, border-color .16s; }
 .client-actions button:hover, .button-server:hover, .button-sync:hover { transform: translateY(-2px); }
 .button-quiet { padding: 12px 15px; color: #d2e7d9; background: #2b4236; border-color: #3a5848 !important; }
 .button-primary { padding: 12px 17px; color: #10241c; background: #b8f7d5; }
