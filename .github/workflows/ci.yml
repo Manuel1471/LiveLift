@@ -26,6 +26,8 @@ jobs:
           node-version: '22'
       - run: mix deps.get
       - run: mix format --check-formatted
+      - run: npm ci
+        working-directory: bench
       - run: mix test
       - run: npm test
         working-directory: assets
@@ -78,4 +80,6 @@ jobs:
         with:
           node-version: '22'
       - run: mix deps.get
+      - run: npm ci
+        working-directory: bench
       - run: mix test
