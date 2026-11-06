@@ -158,7 +158,8 @@ mismo estado.
 - [ ] Diff de listas con clave, omitir renders si el estado no cambió, agrupar con
   `requestAnimationFrame`.
 - [ ] Carga diferida de vistas por isla.
-- [ ] Benchmarks en navegador real, no solo en linkedom.
+- [x] Benchmarks en navegador real, no solo en linkedom (contador nativo en
+  Chromium, con latencia simulada y comandos reproducibles).
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.

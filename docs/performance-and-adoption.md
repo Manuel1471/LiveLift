@@ -38,6 +38,16 @@ without a server round trip. A server-backed action still needs LiveView.
 LiveLift does not make Phoenix generally faster, and it adds bundle and render
 costs to pages where an island is mounted.
 
+The native LiveComponent path also has a Chromium benchmark:
+`cd bench && LIVE_LIFT_BENCH=1 npx playwright test -g "benchmark native"`.
+It compares the same counter handler with and without the two-line opt-in,
+injecting 150 ms of LiveSocket latency. On the same machine, 20 samples after
+three warmups gave median Playwright-observed times of 17.5 ms to show the
+client prediction, 806.3 ms to receive its server confirmation, and 813.6 ms
+to show the server-only result. The local figure includes Playwright command
+overhead; these numbers demonstrate the round-trip avoided for immediate
+feedback, not a universal production latency claim.
+
 ## Learning and integration
 
 A standard Phoenix 1.8 app adds one dependency and runs `mix live_lift.install`.
