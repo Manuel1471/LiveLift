@@ -16,6 +16,8 @@ Unsupported syntax raises an error during compilation with a source location.
 | `:for={item <- @items} :key={item.id}` | Repeats an element for a list. Keys must be unique strings or safe integers. |
 | `$click="action"` | Runs a client action on click. |
 | `$input="action"`, `$change="action"`, `$submit="action"` | Runs a client action for the named DOM event. Submit prevents the browser default. |
+| `checked={@enabled}`, `selected={@selected}` | Boolean attributes on inputs and options. Values must be `true`, `false`, or `nil`. |
+| `<textarea>{@draft}</textarea>` | Uses the browser's native textarea value; bindings are escaped on the server. |
 | `:params={%{id: @item.id}}` | Passes typed parameters to the action in `event.params`. |
 | `$server="event"` | Sends the current local state to the enclosing LiveView's `handle_event/3`. |
 

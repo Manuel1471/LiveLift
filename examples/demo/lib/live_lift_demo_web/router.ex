@@ -18,6 +18,7 @@ defmodule LiveLiftDemoWeb.Router do
     pipe_through :browser
 
     live "/", CounterLive
+    live "/form-parity", FormParityLive
   end
 
   # Other scopes may use custom stacks.

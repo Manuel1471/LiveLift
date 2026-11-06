@@ -1,6 +1,16 @@
 const SAFE_KEY = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-const decodedText = new Map();
+const decodedEntities = new Map();
+
+function decodeEntities(value) {
+  if (!decodedEntities.has(value)) {
+    const decoder = document.createElement("span");
+    // Input is a compile-time literal template; dynamic values never use innerHTML.
+    decoder.innerHTML = value;
+    decodedEntities.set(value, decoder.textContent);
+  }
+  return decodedEntities.get(value);
+}
 
 function validateValue(value, path, depth = 0) {
   if (typeof value === "string" || typeof value === "boolean" || value === null ||
@@ -66,25 +76,19 @@ function pathLabel(expr) {
   return (expr.root === "state" ? expr.fields : [expr.root, ...expr.fields]).join(".");
 }
 
-function renderNodes(nodes, scope, views, stack = []) {
-  return nodes.flatMap((node) => renderNode(node, scope, views, stack));
+function renderNodes(nodes, scope, views, stack = [], textOnly = false) {
+  return nodes.flatMap((node) => renderNode(node, scope, views, stack, textOnly));
 }
 
-function renderNode(node, scope, views, stack) {
+function renderNode(node, scope, views, stack, textOnly) {
   if (node.type === "text") {
-    if (!decodedText.has(node.value)) {
-      const decoder = document.createElement("textarea");
-      // Text comes from a compile-time literal template; dynamic values use textContent.
-      decoder.innerHTML = node.value;
-      decodedText.set(node.value, decoder.value);
-    }
-    return [document.createTextNode(decodedText.get(node.value))];
+    return [document.createTextNode(decodeEntities(node.value))];
   }
   if (node.type === "binding") {
-    const span = document.createElement("span");
-    span.dataset.liveLiftText = pathLabel(node.expr);
-    span.textContent = display(evaluate(node.expr, scope));
-    return [span];
+    if (textOnly) return [document.createTextNode(display(evaluate(node.expr, scope)))];
+    return [document.createComment("live-lift:text"),
+      document.createTextNode(display(evaluate(node.expr, scope))),
+      document.createComment("live-lift:end")];
   }
   if (node.type === "component") {
     if (stack.includes(node.module)) throw new Error(`Recursive LiveLift client component: ${node.module}`);
@@ -126,13 +130,18 @@ function renderElement(node, scope, key, views, stack) {
       element.setAttribute(`data-live-lift-bind-${attr.name}`, pathLabel(attr.value));
     } else if (attr.type === "params") {
       element.setAttribute("data-live-lift-params", JSON.stringify(evaluate(attr.value, scope)));
+    } else if (attr.type === "boolean") {
+      const value = evaluate(attr.value, scope);
+      if (value !== true && value !== false && value !== null) throw new Error(`${attr.name} requires a boolean or null`);
+      element.toggleAttribute(attr.name, value === true);
+      element[attr.name] = value === true;
     } else {
-      element.setAttribute(attr.name, attr.value);
+      element.setAttribute(attr.name, decodeEntities(attr.value));
     }
   }
   if (key !== null) element.setAttribute("data-live-lift-key", String(key));
   if (node.node_id !== null) element.setAttribute("data-live-lift-node-id", node.node_id);
-  element.append(...renderNodes(node.children, scope, views, stack));
+  element.append(...renderNodes(node.children, scope, views, stack, node.tag === "textarea"));
   return [element];
 }
 
@@ -171,8 +180,8 @@ function reconcile(parent, desired) {
 }
 
 function patchNode(current, next) {
-  if (current.nodeType === 3) {
-    if (current.textContent !== next.textContent) current.textContent = next.textContent;
+  if (current.nodeType === 3 || current.nodeType === 8) {
+    if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
     return;
   }
   for (const attr of [...current.attributes]) {
@@ -184,8 +193,13 @@ function patchNode(current, next) {
   if (current.tagName === "INPUT" && next.hasAttribute("value") && current.value !== next.value) {
     current.value = next.value;
   }
+  if (current.tagName === "INPUT" && current.checked !== next.checked) current.checked = next.checked;
+  if (current.tagName === "OPTION" && current.selected !== next.selected) current.selected = next.selected;
   if (current.hidden !== next.hidden) current.hidden = next.hidden;
   reconcile(current, [...next.childNodes]);
+  if ((current.tagName === "SELECT" || current.tagName === "TEXTAREA") && current.value !== next.value) {
+    current.value = next.value;
+  }
 }
 
 /**

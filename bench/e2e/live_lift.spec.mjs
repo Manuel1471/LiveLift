@@ -44,6 +44,9 @@ test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
 
 test("server HTML and client render produce the same island DOM", async ({page}) => {
   await page.goto("/");
+  await expect(page.locator("#local-counter [data-live-lift-text]")).toHaveCount(0);
+  await expect(page.locator("#local-counter .client-panel")).toHaveAttribute("title", "Score & activity");
+  await expect(page.locator("#local-counter progress")).toHaveAttribute("title", 'A & B "<demo>"');
   const snapshot = () => page.locator("#local-counter").evaluate((root) => {
     const project = (node) => {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -61,4 +64,29 @@ test("server HTML and client render produce the same island DOM", async ({page})
   const before = await snapshot();
   await page.getByRole("button", {name: "Reset"}).click();
   expect(await snapshot()).toEqual(before);
+});
+
+test("checkbox, select and textarea retain native form behavior", async ({page}) => {
+  await page.goto("/form-parity");
+  const root = page.locator("#form-parity");
+  const checkbox = root.getByRole("checkbox", {name: "Enabled"});
+  const select = root.getByRole("combobox", {name: "Choice"});
+  const textarea = root.getByRole("textbox", {name: "Note"});
+  await expect(root.locator("section")).toHaveAttribute("title", "Forms & entities");
+  await expect(checkbox).toBeChecked();
+  await expect(select).toHaveValue("a");
+  await expect(textarea).toHaveValue("A & <B>");
+
+  await checkbox.uncheck();
+  await expect(checkbox).not.toBeChecked();
+  await select.selectOption("b");
+  await expect(select).toHaveValue("b");
+  await textarea.fill("x & <y>");
+  await expect(textarea).toBeFocused();
+  await expect(root.locator("output")).toHaveText("x & <y>");
+
+  await root.getByRole("button", {name: "Reset form"}).click();
+  await expect(checkbox).toBeChecked();
+  await expect(select).toHaveValue("a");
+  await expect(textarea).toHaveValue("A & <B>");
 });

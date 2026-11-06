@@ -20,7 +20,7 @@ defmodule LiveLift.TemplateTest do
 
     assert compiled |> Template.render_server(%{score: 12}) |> Phoenix.HTML.safe_to_string() ==
              "<button data-live-lift-action=\"advance\">Add</button>" <>
-               "<output><span data-live-lift-text=\"score\">12</span></output>"
+               "<output><!--live-lift:text-->12<!--live-lift:end--></output>"
   end
 
   test "escapes state in the server render" do
@@ -29,7 +29,7 @@ defmodule LiveLift.TemplateTest do
     html =
       compiled |> Template.render_server(%{name: "<script>"}) |> Phoenix.HTML.safe_to_string()
 
-    assert html == "<p><span data-live-lift-text=\"name\">&lt;script&gt;</span></p>"
+    assert html == "<p><!--live-lift:text-->&lt;script&gt;<!--live-lift:end--></p>"
   end
 
   test "renders supported dynamic attributes and escapes their initial values" do
@@ -41,7 +41,7 @@ defmodule LiveLift.TemplateTest do
     assert compiled
            |> Template.render_server(%{style: "hot", title: ~s(<"), name: nil})
            |> Phoenix.HTML.safe_to_string() ==
-             ~s(<p class="hot" data-live-lift-bind-class="style" title="&lt;&quot;" data-live-lift-bind-title="title"><span data-live-lift-text="name"></span></p>)
+             ~s(<p class="hot" data-live-lift-bind-class="style" title="&lt;&quot;" data-live-lift-bind-title="title"><!--live-lift:text--><!--live-lift:end--></p>)
   end
 
   test "rejects unsupported attribute interpolation" do
@@ -130,7 +130,7 @@ defmodule LiveLift.TemplateTest do
       |> Phoenix.HTML.safe_to_string()
 
     assert html =~ ~s(data-live-lift-key="a")
-    assert html =~ ~s(data-live-lift-text="item.name">A</span>)
+    assert html =~ ~s(<!--live-lift:text-->A<!--live-lift:end-->)
     refute html =~ ~s(data-live-lift-key="b")
   end
 
@@ -163,6 +163,26 @@ defmodule LiveLift.TemplateTest do
     assert ids |> Enum.map(&hd/1) |> Enum.uniq() |> length() == 2
   end
 
+  test "renders checkbox, option, and textarea values with HTML semantics" do
+    tree =
+      Template.compile(
+        ~s(<div><input type="checkbox" checked={@enabled} /><select><option value="a" selected={@selected}>A</option><option value="b">B</option></select><textarea>{@draft}</textarea></div>)
+      )
+
+    html =
+      tree
+      |> Template.render_server(%{enabled: true, selected: false, draft: ~s(A & "B")})
+      |> Phoenix.HTML.safe_to_string()
+
+    assert html =~ ~s(<input type="checkbox" checked>)
+    refute html =~ " selected"
+    assert html =~ ~s(<textarea>A &amp; &quot;B&quot;</textarea>)
+
+    assert_raise ArgumentError, ~r/checked requires a boolean or nil/, fn ->
+      Template.render_server(tree, %{enabled: "true", selected: false, draft: "x"})
+    end
+  end
+
   test "requires native keyboard-accessible controls for events" do
     assert_raise ArgumentError, ~r/click events require a native button/, fn ->
       Template.compile(~s(<div $click="add">Add</div>), "controls.ex")
@@ -189,6 +209,6 @@ defmodule LiveLift.TemplateTest do
       |> Phoenix.HTML.safe_to_string()
 
     assert html =~ ~s(data-live-lift-key="1")
-    assert html =~ ~s(<strong><span data-live-lift-text="item.name">&lt;A&gt;</span></strong>)
+    assert html =~ ~s(<strong><!--live-lift:text-->&lt;A&gt;<!--live-lift:end--></strong>)
   end
 end

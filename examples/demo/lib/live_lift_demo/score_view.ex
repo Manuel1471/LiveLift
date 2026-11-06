@@ -2,7 +2,7 @@ defmodule LiveLiftDemo.ScoreView do
   use LiveLift.Client
 
   client_template("""
-  <section class="client-panel" aria-label="Client-side score">
+  <section class="client-panel" aria-label="Client-side score" title="Score &amp; activity">
     <div class="panel-topline">
       <span class="eyebrow"><span class="status-dot"></span> CLIENT / ELIXIR</span>
       <span class="runtime-pill">Instant interaction</span>
@@ -19,7 +19,7 @@ defmodule LiveLiftDemo.ScoreView do
       <div class="score-meta"><span>points</span><span>+{@step} per click</span></div>
     </div>
     <div class="chart-head"><span>Progress to 20</span><strong>{@count} / 20</strong></div>
-    <progress value="{@count}" max="20" aria-label="Local score progress"></progress>
+    <progress value="{@count}" max="20" title="{@title}" aria-label="Local score progress"></progress>
     <div class="chart-scale"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
     <p class="milestone-note" $show="milestone">✦ Milestone reached at 12</p>
     <div class="client-actions">

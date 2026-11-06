@@ -23,7 +23,7 @@ defmodule LiveLift.ViewTest do
     assert html =~ ~s(phx-update="ignore")
     assert html =~ ~s(data-live-lift-server-revision="0")
     assert html =~ ~s(data-live-lift-action="add")
-    assert html =~ ~s(data-live-lift-text="count">4</span>)
+    assert html =~ ~s(<!--live-lift:text-->4<!--live-lift:end-->)
   end
 
   test "includes a validated server snapshot revision" do
@@ -77,7 +77,7 @@ defmodule LiveLift.ViewTest do
         state: %{count: nil, label: "ready", active: true}
       )
 
-    assert html =~ ~s(data-live-lift-text="count"></span>)
+    assert html =~ ~s(<!--live-lift:text--><!--live-lift:end-->)
     assert html =~ ~s(&quot;label&quot;:&quot;ready&quot;)
   end
 end

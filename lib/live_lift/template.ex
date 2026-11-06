@@ -94,6 +94,21 @@ defmodule LiveLift.Template do
 
     names = Enum.map(parsed_attrs, & &1.name)
 
+    if "checked" in names and tag != "input" do
+      raise ArgumentError, "#{file}:#{meta.line}: checked is only supported on input"
+    end
+
+    if "selected" in names and tag != "option" do
+      raise ArgumentError, "#{file}:#{meta.line}: selected is only supported on option"
+    end
+
+    if tag == "textarea" and
+         Enum.any?(children, fn child ->
+           not match?({:text, _, _}, child) and not match?({:body_expr, _, _}, child)
+         end) do
+      raise ArgumentError, "#{file}:#{meta.line}: textarea supports only text and bindings"
+    end
+
     if length(names) != length(Enum.uniq(names)) do
       raise ArgumentError, "#{file}:#{meta.line}: duplicate client attribute on <#{tag}>"
     end
@@ -177,20 +192,23 @@ defmodule LiveLift.Template do
     end
   end
 
-  defp convert_attr({name, {:expr, source, meta}, _attr_meta}, file),
-    do:
-      if(name == ":params",
-        do: %{
+  defp convert_attr({name, {:expr, source, meta}, _attr_meta}, file) do
+    cond do
+      name == ":params" ->
+        %{
           name: "data-live-lift-params",
           value: Expression.parse(source, file, meta.line),
           type: "params"
-        },
-        else:
-          raise(
-            ArgumentError,
-            "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
-          )
-      )
+        }
+
+      name in ~w(checked selected) ->
+        %{name: name, value: Expression.parse(source, file, meta.line), type: "boolean"}
+
+      true ->
+        raise ArgumentError,
+              "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
+    end
+  end
 
   defp render_nodes(nodes, scope, stack),
     do: Enum.map_join(nodes, "", &render_node(&1, scope, stack))
@@ -220,7 +238,7 @@ defmodule LiveLift.Template do
 
   defp render_node(%{type: "binding", expr: expr}, scope, _stack) do
     value = expr |> Expression.eval(scope) |> display_value() |> escape()
-    "<span data-live-lift-text=\"#{path_label(expr)}\">#{value}</span>"
+    "<!--live-lift:text-->#{value}<!--live-lift:end-->"
   end
 
   defp render_node(%{type: "element", for: %{var: var, source: source}} = node, scope, stack) do
@@ -272,10 +290,22 @@ defmodule LiveLift.Template do
 
     opening = "<#{node.tag}#{attrs}>"
 
-    if node.void,
-      do: opening,
-      else: opening <> render_nodes(node.children, scope, stack) <> "</#{node.tag}>"
+    if node.void do
+      opening
+    else
+      children =
+        if node.tag == "textarea",
+          do: Enum.map_join(node.children, "", &render_textarea_child(&1, scope)),
+          else: render_nodes(node.children, scope, stack)
+
+      opening <> children <> "</#{node.tag}>"
+    end
   end
+
+  defp render_textarea_child(%{type: "text", value: value}, _scope), do: value
+
+  defp render_textarea_child(%{type: "binding", expr: expr}, scope),
+    do: expr |> Expression.eval(scope) |> display_value() |> escape()
 
   defp render_attr(%{name: "data-live-lift-show", value: value}, _scope),
     do: " data-live-lift-show=\"#{value}\""
@@ -286,6 +316,15 @@ defmodule LiveLift.Template do
   defp render_attr(%{name: name, type: "dynamic", value: expr}, scope) do
     value = expr |> Expression.eval(scope) |> display_value() |> escape()
     " #{name}=\"#{value}\" data-live-lift-bind-#{name}=\"#{path_label(expr)}\""
+  end
+
+  defp render_attr(%{name: name, type: "boolean", value: expr}, scope) do
+    case Expression.eval(expr, scope) do
+      true -> " #{name}"
+      false -> ""
+      nil -> ""
+      _ -> raise ArgumentError, "#{name} requires a boolean or nil"
+    end
   end
 
   defp render_attr(%{name: "data-live-lift-params", type: "params", value: expr}, scope) do

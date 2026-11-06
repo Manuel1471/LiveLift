@@ -53,6 +53,7 @@ defmodule LiveLiftDemoWeb.CounterLive do
                 count: 10,
                 step: 2,
                 tone: "regular",
+                title: ~s(A & B "<demo>"),
                 milestone: false,
                 saved_score: @saved_score,
                 server_total: @server_count
