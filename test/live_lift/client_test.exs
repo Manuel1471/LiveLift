@@ -87,6 +87,23 @@ defmodule LiveLift.ClientTest do
     defclient(go(state), do: state)
   end
 
+  defmodule ExtendedParity do
+    use LiveLift.Client
+
+    defclient(transform(state),
+      do: %{
+        doubled: Enum.map(state.items, fn item -> Map.put(item, :n, item.n * 2) end),
+        reversed: Enum.reverse(state.items),
+        size: length(state.items),
+        minus: state.count - 2,
+        negative: -state.count,
+        positive: +state.count,
+        toggled: !state.flag,
+        different: state.count != 0
+      }
+    )
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -200,5 +217,17 @@ defmodule LiveLift.ClientTest do
 
     javascript = Compiler.compile_registry([ValidParent])
     assert javascript =~ "LiveLift.ClientTest.ValidComponent"
+  end
+
+  test "extended list, map, unary, arithmetic, and comparison expressions keep parity" do
+    state = %{items: [%{n: 2}, %{n: 3}], count: 5, flag: false}
+    expected = ExtendedParity.transform(state)
+    javascript = Compiler.compile_module(ExtendedParity)
+
+    source =
+      javascript <> "\nconsole.log(JSON.stringify(actions.transform(#{Jason.encode!(state)})));"
+
+    {output, 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+    assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
   end
 end
