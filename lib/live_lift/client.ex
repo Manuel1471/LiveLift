@@ -39,10 +39,10 @@ defmodule LiveLift.Client do
   end
 
   defmacro client_template(source) when is_binary(source) do
-    compiled_html = LiveLift.Template.compile(source)
+    compiled_template = LiveLift.Template.compile(source, __CALLER__.file)
 
     quote do
-      @live_lift_client_template unquote(compiled_html)
+      @live_lift_client_template unquote(Macro.escape(compiled_template))
     end
   end
 
@@ -59,7 +59,7 @@ defmodule LiveLift.Client do
       def __live_lift_client_actions__, do: unquote(Macro.escape(actions))
 
       @doc false
-      def __live_lift_client_template__, do: unquote(template)
+      def __live_lift_client_template__, do: unquote(Macro.escape(template))
     end
   end
 end

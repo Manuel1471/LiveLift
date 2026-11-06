@@ -7,9 +7,11 @@ defmodule LiveLift.TemplateTest do
     compiled =
       Template.compile("<button $click=\"advance\">Add</button><output>{@score}</output>")
 
-    assert compiled ==
-             "<button data-live-lift-action=\"advance\">Add</button>" <>
-               "<output><span data-live-lift-text=\"score\"></span></output>"
+    assert hd(compiled).tag == "button"
+
+    assert hd(compiled).attrs == [
+             %{name: "data-live-lift-action", type: "static", value: "advance"}
+           ]
 
     assert compiled |> Template.render_server(%{score: 12}) |> Phoenix.HTML.safe_to_string() ==
              "<button data-live-lift-action=\"advance\">Add</button>" <>
@@ -28,8 +30,8 @@ defmodule LiveLift.TemplateTest do
   test "renders supported dynamic attributes and escapes their initial values" do
     compiled = Template.compile(~s(<p class="{@style}" title="{@title}">{@name}</p>))
 
-    assert compiled ==
-             ~s(<p class="" data-live-lift-bind-class="style" title="" data-live-lift-bind-title="title"><span data-live-lift-text="name"></span></p>)
+    assert hd(compiled).tag == "p"
+    assert Enum.map(hd(compiled).attrs, & &1.name) == ["class", "title"]
 
     assert compiled
            |> Template.render_server(%{style: "hot", title: ~s(<"), name: nil})
@@ -48,13 +50,18 @@ defmodule LiveLift.TemplateTest do
   end
 
   test "compiles an explicit server event binding" do
-    assert Template.compile("<button $server=\"save_score\">Save</button>") ==
+    assert Template.compile("<button $server=\"save_score\">Save</button>")
+           |> Template.render_server(%{})
+           |> Phoenix.HTML.safe_to_string() ==
              "<button data-live-lift-server=\"save_score\">Save</button>"
   end
 
   test "renders conditional visibility with Elixir truthiness" do
     compiled = Template.compile(~s(<p $show="visible">Hello</p>))
-    assert compiled == ~s(<p data-live-lift-show="visible">Hello</p>)
+
+    assert hd(compiled).attrs == [
+             %{name: "data-live-lift-show", type: "static", value: "visible"}
+           ]
 
     assert compiled |> Template.render_server(%{visible: false}) |> Phoenix.HTML.safe_to_string() ==
              ~s(<p data-live-lift-show="visible" hidden>Hello</p>)
@@ -66,10 +73,27 @@ defmodule LiveLift.TemplateTest do
   test "binds a progress value for visualizations" do
     compiled = Template.compile(~s(<progress value="{@score}" max="20"></progress>))
 
-    assert compiled ==
-             ~s(<progress value="" data-live-lift-bind-value="score" max="20"></progress>)
+    assert hd(compiled).tag == "progress"
+    assert hd(compiled).attrs |> hd() |> Map.fetch!(:type) == "dynamic"
 
     assert compiled |> Template.render_server(%{score: 12}) |> Phoenix.HTML.safe_to_string() ==
              ~s(<progress value="12" data-live-lift-bind-value="score" max="20"></progress>)
+  end
+
+  test "reports malformed markup and unsupported syntax with source location" do
+    assert_raise ArgumentError, ~r/view.ex:1/, fn ->
+      Template.compile("<div><p></div>", "view.ex")
+    end
+
+    assert_raise ArgumentError, ~r/view.ex:1: unsupported client directive: \$hover/, fn ->
+      Template.compile(~s(<button $hover="go">Go</button>), "view.ex")
+    end
+  end
+
+  test "keeps directive-like text and existing HTML entities literal" do
+    tree = Template.compile(~s(<p title="A &amp; B">$click="go"</p>))
+
+    assert tree |> Template.render_server(%{}) |> Phoenix.HTML.safe_to_string() ==
+             ~s(<p title="A &amp; B">$click="go"</p>)
   end
 end

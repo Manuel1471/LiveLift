@@ -78,8 +78,21 @@ test("rejects unsafe action results", () => {
   };
 
   hook.mounted();
-  assert.throws(() => el.click("advance"), /safe integers/);
+  assert.throws(() => el.click("advance"), /Unsupported LiveLift state value/);
   assert.equal(el.countNode.textContent, "1");
+});
+
+test("accepts nested state and rejects dangerous keys", () => {
+  const el = element({count: 1, step: 1, items: [{id: "a", done: false}]});
+  const hook = {
+    ...createClientHook({"App.Score": {actions: {}, template: []}}),
+    el,
+  };
+  hook.mounted();
+
+  const unsafe = element(JSON.parse('{"count":1,"step":1,"__proto__":1}'));
+  const unsafeHook = {...createClientHook({"App.Score": {actions: {}, template: []}}), el: unsafe};
+  assert.throws(() => unsafeHook.mounted(), /Unsafe LiveLift state key/);
 });
 
 test("renders browser-safe primitives and dynamic attributes", () => {

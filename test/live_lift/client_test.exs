@@ -83,7 +83,7 @@ defmodule LiveLift.ClientTest do
     javascript = Compiler.compile_module(TemplatedActions)
 
     assert javascript =~ "export const template = "
-    assert javascript =~ "data-live-lift-text=\\\"count\\\""
+    assert javascript =~ ~s("type":"binding")
     assert javascript =~ "increment: (state) => ({count: (state.count + 1)})"
   end
 

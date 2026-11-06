@@ -26,12 +26,21 @@ defmodule LiveLift.ViewTest do
   end
 
   test "rejects state that the browser cannot represent safely" do
-    assert_raise ArgumentError, ~r/safe integer/, fn ->
+    assert_raise ArgumentError, ~r/unsupported LiveLift state value/, fn ->
       render_component(&LiveLift.View.island/1,
         id: "score",
         module: Score,
         state: %{count: 9_007_199_254_740_992}
       )
+    end
+  end
+
+  test "accepts nested browser-safe state and rejects unsafe keys" do
+    assert LiveLift.State.validate!(%{items: [%{id: "a", done: false}]}) ==
+             %{items: [%{id: "a", done: false}]}
+
+    assert_raise ArgumentError, ~r/unsafe LiveLift state key/, fn ->
+      LiveLift.State.validate!(%{__proto__: 1})
     end
   end
 

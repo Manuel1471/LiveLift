@@ -1,15 +1,31 @@
-function validateState(state) {
-  if (
-    state === null ||
-    typeof state !== "object" ||
-    Array.isArray(state) ||
-    !Object.values(state).every(
-      (value) => Number.isSafeInteger(value) || typeof value === "string" ||
-        typeof value === "boolean" || value === null,
-    )
-  ) {
-    throw new Error("LiveLift state values must be safe integers, strings, booleans, or null");
+const SAFE_KEY = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function validateValue(value, path, depth = 0) {
+  if (typeof value === "string" || typeof value === "boolean" || value === null ||
+      Number.isSafeInteger(value)) return;
+  if (depth >= 16) throw new Error(`Unsupported LiveLift state value at ${path}`);
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => validateValue(item, `${path}[${index}]`, depth + 1));
+    return;
   }
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    for (const [key, item] of Object.entries(value)) {
+      if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key)) {
+        throw new Error(`Unsafe LiveLift state key at ${path}: ${key}`);
+      }
+      validateValue(item, `${path}.${key}`, depth + 1);
+    }
+    return;
+  }
+  throw new Error(`Unsupported LiveLift state value at ${path}`);
+}
+
+function validateState(state) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) {
+    throw new Error("LiveLift state must be a map");
+  }
+  validateValue(state, "state");
 }
 
 /**

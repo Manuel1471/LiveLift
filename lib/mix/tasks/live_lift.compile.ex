@@ -29,7 +29,7 @@ defmodule Mix.Tasks.LiveLift.Compile do
       |> Enum.filter(fn module ->
         Code.ensure_loaded?(module) and
           function_exported?(module, :__live_lift_client_template__, 0) and
-          is_binary(module.__live_lift_client_template__())
+          is_list(module.__live_lift_client_template__())
       end)
 
     output = Path.expand(opts[:output])
