@@ -12,6 +12,13 @@ defmodule LiveLift.ClientTest do
     defclient(advance(state), do: %{count: state.count + state.step, step: state.step})
   end
 
+  defmodule TemplatedActions do
+    use LiveLift.Client
+
+    client_template("<output>{@count}</output>")
+    defclient(increment(state), do: %{count: state.count + 1})
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -39,5 +46,13 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+  end
+
+  test "includes the app template in generated JavaScript" do
+    javascript = Compiler.compile_module(TemplatedActions)
+
+    assert javascript =~ "export const template = "
+    assert javascript =~ "data-live-lift-text=\\\"count\\\""
+    assert javascript =~ "increment: (state) => ({count: (state.count + 1)})"
   end
 end

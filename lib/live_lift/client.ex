@@ -15,8 +15,9 @@ defmodule LiveLift.Client do
 
   defmacro __using__(_opts) do
     quote do
-      import LiveLift.Client, only: [defclient: 2]
+      import LiveLift.Client, only: [defclient: 2, client_template: 1]
       Module.register_attribute(__MODULE__, :live_lift_client_actions, accumulate: true)
+      Module.register_attribute(__MODULE__, :live_lift_client_template, accumulate: false)
       @before_compile LiveLift.Client
     end
   end
@@ -35,12 +36,28 @@ defmodule LiveLift.Client do
     raise ArgumentError, "defclient requires a named function with one variable argument"
   end
 
+  defmacro client_template(source) when is_binary(source) do
+    compiled_html = LiveLift.Template.compile(source)
+
+    quote do
+      @live_lift_client_template unquote(compiled_html)
+    end
+  end
+
+  defmacro client_template(_source) do
+    raise ArgumentError, "client_template requires a literal string"
+  end
+
   defmacro __before_compile__(env) do
     actions = env.module |> Module.get_attribute(:live_lift_client_actions) |> Enum.reverse()
+    template = Module.get_attribute(env.module, :live_lift_client_template)
 
     quote do
       @doc false
       def __live_lift_client_actions__, do: unquote(Macro.escape(actions))
+
+      @doc false
+      def __live_lift_client_template__, do: unquote(template)
     end
   end
 end
