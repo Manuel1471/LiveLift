@@ -13,17 +13,24 @@ function validateState(state) {
  * Runs user-defined client actions in a LiveView-owned page.
  * The app supplies its own HEEx and marks only the locally owned DOM subtree.
  */
-export function createClientHook(actions) {
+export function createClientHook(views) {
   return {
     mounted() {
+      this.view = views[this.el.dataset.liveLiftModule];
+      if (!this.view) {
+        throw new Error(`Unknown LiveLift view: ${this.el.dataset.liveLiftModule}`);
+      }
+
       this.state = JSON.parse(this.el.dataset.liveLiftState);
       validateState(this.state);
+      this.el.innerHTML = this.view.template;
 
       this.onClick = (event) => {
         const control = event.target.closest("[data-live-lift-action]");
         if (!control || !this.el.contains(control)) return;
 
         const actionName = control.dataset.liveLiftAction;
+        const actions = this.view.actions;
         const action = Object.hasOwn(actions, actionName) ? actions[actionName] : undefined;
         if (typeof action !== "function") {
           throw new Error(`Unknown LiveLift action: ${actionName}`);

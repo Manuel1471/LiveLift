@@ -12,7 +12,8 @@ function element(initialState) {
   const listeners = new Map();
 
   return {
-    dataset: {liveLiftState: JSON.stringify(initialState)},
+    dataset: {liveLiftState: JSON.stringify(initialState), liveLiftModule: "App.Score"},
+    innerHTML: "",
     countNode,
     stepNode,
     listeners,
@@ -32,9 +33,11 @@ test("runs app actions and renders app-selected fields", () => {
     advance: (state) => ({count: state.count + state.step, step: state.step}),
     retreat: (state) => ({count: state.count - state.step, step: state.step}),
   };
-  const hook = {...createClientHook(actions), el};
+  const template = "<button data-live-lift-action=\"advance\">Add</button>";
+  const hook = {...createClientHook({"App.Score": {actions, template}}), el};
 
   hook.mounted();
+  assert.equal(el.innerHTML, template);
   assert.equal(el.countNode.textContent, "10");
   assert.equal(el.stepNode.textContent, "3");
   el.click("advance");
@@ -48,7 +51,12 @@ test("runs app actions and renders app-selected fields", () => {
 test("rejects unsafe action results", () => {
   const el = element({count: 1, step: 1});
   const hook = {
-    ...createClientHook({advance: () => ({count: Number.MAX_SAFE_INTEGER + 1, step: 1})}),
+    ...createClientHook({
+      "App.Score": {
+        actions: {advance: () => ({count: Number.MAX_SAFE_INTEGER + 1, step: 1})},
+        template: "<output></output>",
+      },
+    }),
     el,
   };
 
