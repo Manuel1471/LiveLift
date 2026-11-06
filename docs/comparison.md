@@ -28,10 +28,11 @@ local state to `handle_event/3`.
 
 ## Tradeoffs and current limits
 
-- The compiler covers only a small, explicit subset of Elixir. It does not
-  compile arbitrary functions, dependencies, processes, or full HEEx. It has
-  no repeated markup or nested components yet.
-- State is a flat map of browser-safe primitives. The client and server do not
+- The compiler covers only a small, explicit subset of Elixir. It supports
+  keyed lists, conditional nodes, and presentation components, but does not
+  compile arbitrary functions, dependencies, processes, or full HEEx. The
+  exact subset is in the [language reference](language.md).
+- State can contain JSON-safe nested maps and lists. The client and server do not
   share one automatically synchronized state store. A server event is a
   deliberate transfer, and the server must validate its payload.
 - `phx-update="ignore"` assigns DOM ownership to the client island. LiveView

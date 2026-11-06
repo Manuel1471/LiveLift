@@ -2,10 +2,10 @@ defmodule LiveLift.Client do
   @moduledoc """
   Defines a client view in Elixir and compiles it for the browser.
 
-  `client_template` holds static HTML with text bindings and click actions.
-  `defclient` defines normal Elixir functions as well as browser actions.
-  Currently the expression compiler supports one argument, safe integer
-  literals, `+`, `-`, `*`, atom-keyed map literals, and field reads.
+  `client_template` holds validated HTML with bindings, keyed lists,
+  conditions, and app-owned components. `defclient` defines normal Elixir
+  functions as well as browser actions. Actions take state and optionally
+  event data.
 
       defmodule ScoreView do
         use LiveLift.Client

@@ -94,14 +94,10 @@ sends the current local state to the enclosing LiveView's `handle_event/3`.
 Your handler must validate that payload before using it. The demo shows the
 round trip.
 
-The current template syntax supports text interpolation (`{@field}`), dynamic
-`class`, `title`, `aria-label`, and `value` attributes (`class="{@field}"`), conditional
-visibility (`$show="field"`), client actions (`$click="action"`), and explicit
-server events (`$server="event"`). `defclient` supports one argument, safe
-integer, string, boolean, and nil literals, `+`, `-`, `*`, `==`, `!=`, `if` with
-both branches, atom-keyed map literals, and map field reads. State and action
-results must be flat maps with atom keys and safe integer, string, boolean, or
-nil values. Unsupported syntax fails during compilation. Elixir modules and
+The current language includes text and attribute bindings, keyed lists,
+conditional nodes, events with typed parameters, and presentation components
+defined by the app. See the [supported client language](docs/language.md) for
+exact syntax, action expressions, and validation rules. Elixir modules and
 templates outside this subset are not automatically compiled for the browser.
 
 For architecture, differences from Hologram, and limitations, see
@@ -117,7 +113,7 @@ cd assets && npm test
 
 ## Direction
 
-1. Add repeated markup, nested state, forms, and more Elixir expressions.
-2. Define a synchronization contract before allowing server and browser to
+1. Define a synchronization contract before allowing server and browser to
    modify the same state.
-3. Add source maps and stronger compiler validation for larger client views.
+2. Add source maps and compatibility checks for newer LiveView releases.
+3. Extend the expression subset only alongside Elixir and JavaScript parity tests.

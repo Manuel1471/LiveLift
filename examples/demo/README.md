@@ -20,6 +20,11 @@ event” updates its count and event-history chart. “Sync score” sends the
 current local score through a LiveView event and displays it in the server
 panel. Updating the server leaves the local score intact.
 
+The third panel demonstrates a user-defined component inside a keyed list.
+Add, rename, remove, and reorder tasks. The list updates in the browser; task
+inputs retain focus during edits. The tasks are local demo state and reset on
+reload.
+
 The `mix setup` and `mix assets.build` aliases regenerate
 `assets/js/generated_views.js` and copy `assets/js/live_lift_runtime.js`
 before bundling. Both files are ignored by Git; edit the Elixir actions and

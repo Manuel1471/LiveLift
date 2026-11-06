@@ -1,7 +1,8 @@
 # Add LiveLift to a Phoenix LiveView app
 
 LiveLift is currently an experimental package in this repository. Use a path
-dependency while developing alongside it:
+dependency while developing alongside it. The parser currently requires
+Phoenix LiveView 1.2:
 
 ```elixir
 # mix.exs
@@ -80,3 +81,8 @@ Run `mix assets.build` and start Phoenix. The score changes in the browser;
 Save sends it to LiveView. Each island needs a unique HTML `id`. Its local
 state is reset if the island remounts. The [feature comparison](comparison.md)
 lists the current compiler subset and architectural limits.
+
+To build a user-defined list or component, use the syntax in the
+[language reference](language.md). The demo's `TaskListView` and `TaskItem`
+show an editable keyed list with typed event parameters, focus-preserving
+updates, and a component whose events are handled by its parent view.
