@@ -9,13 +9,19 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
     assert html =~ ~s(id="local-counter")
     assert html =~ ~s(phx-hook="LiveLift")
     assert html =~ ~s(data-live-lift-action="advance")
-    assert html =~ "Server count: 0"
+    assert html =~ ~s(data-live-lift-bind-value="count")
+    assert html =~ ~s(id="server-count")
+    assert html =~ "server events"
 
-    assert view |> element("#server-increment") |> render_click() =~ "Server count: 1"
+    assert view |> element("#server-increment") |> render_click() =~ ~s(id="server-count")
+    assert view |> element("#server-count") |> render() =~ ">1</strong>"
+    assert view |> element(".history-chart") |> render() =~ "current count 1"
 
     assert view
            |> element("#local-counter")
            |> render_hook("save_score", %{"state" => %{"count" => 12, "step" => 2}}) =~
-             "Saved score: 12"
+             ~s(id="saved-score")
+
+    assert view |> element("#saved-score") |> render() =~ ">12</output>"
   end
 end

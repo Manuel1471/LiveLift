@@ -9,8 +9,8 @@ defmodule LiveLift.Template do
   @action ~r/\$click="([a-zA-Z_][a-zA-Z0-9_]*)"/
   @server ~r/\$server="([a-zA-Z_][a-zA-Z0-9_]*)"/
   @show ~r/\$show="([a-zA-Z_][a-zA-Z0-9_]*)"/
-  @dynamic_attribute ~r/(?<=\s)(class|title|aria-label)="\{@([a-zA-Z_][a-zA-Z0-9_]*)\}"/
-  @bound_attribute ~r/(?<=\s)(class|title|aria-label)="" data-live-lift-bind-\1="([a-zA-Z_][a-zA-Z0-9_]*)"/
+  @dynamic_attribute ~r/(?<=\s)(class|title|aria-label|value)="\{@([a-zA-Z_][a-zA-Z0-9_]*)\}"/
+  @bound_attribute ~r/(?<=\s)(class|title|aria-label|value)="" data-live-lift-bind-\1="([a-zA-Z_][a-zA-Z0-9_]*)"/
 
   @spec compile(String.t()) :: String.t()
   def compile(source) when is_binary(source) do

@@ -13,11 +13,12 @@ mix setup
 mix phx.server
 ```
 
-Open <http://localhost:4000>. Click “Add step” in the app-owned UI, then click
-the server counter. The local score should stay where you left it while the
-server count changes. At score 12, the marker changes class and a conditional
-message appears. “Save score on server” sends the local state through a
-LiveView event and displays the saved value outside the client island.
+Open <http://localhost:4000>. The green panel is the browser-owned Elixir
+view: its score, progress chart, and milestone change immediately when you
+click “+ 2 points”. The violet panel belongs to LiveView: “Trigger server
+event” updates its count and event-history chart. “Sync score” sends the
+current local score through a LiveView event and displays it in the server
+panel. Updating the server leaves the local score intact.
 
 The `mix setup` and `mix assets.build` aliases regenerate
 `assets/js/generated_views.js` before bundling. The file is ignored by Git;

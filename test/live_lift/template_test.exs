@@ -39,7 +39,7 @@ defmodule LiveLift.TemplateTest do
 
   test "rejects unsupported attribute interpolation" do
     assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
-      Template.compile("<input value=\"{@score}\">")
+      Template.compile("<a href=\"{@score}\">Open</a>")
     end
 
     assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
@@ -61,5 +61,15 @@ defmodule LiveLift.TemplateTest do
 
     assert compiled |> Template.render_server(%{visible: 0}) |> Phoenix.HTML.safe_to_string() ==
              ~s(<p data-live-lift-show="visible">Hello</p>)
+  end
+
+  test "binds a progress value for visualizations" do
+    compiled = Template.compile(~s(<progress value="{@score}" max="20"></progress>))
+
+    assert compiled ==
+             ~s(<progress value="" data-live-lift-bind-value="score" max="20"></progress>)
+
+    assert compiled |> Template.render_server(%{score: 12}) |> Phoenix.HTML.safe_to_string() ==
+             ~s(<progress value="12" data-live-lift-bind-value="score" max="20"></progress>)
   end
 end

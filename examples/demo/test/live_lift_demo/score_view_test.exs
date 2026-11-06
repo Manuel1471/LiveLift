@@ -17,5 +17,12 @@ defmodule LiveLiftDemo.ScoreViewTest do
              tone: "regular",
              milestone: false
            }
+
+    assert ScoreView.reset(%{count: 14, step: 2, tone: "regular", milestone: false}) == %{
+             count: 10,
+             step: 2,
+             tone: "regular",
+             milestone: false
+           }
   end
 end

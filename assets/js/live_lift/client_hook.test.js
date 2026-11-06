@@ -83,15 +83,21 @@ test("rejects unsafe action results", () => {
 });
 
 test("renders browser-safe primitives and dynamic attributes", () => {
-  const el = element({count: null, step: true, style: "active", title: "<ready>"});
+  const el = element({count: null, step: true, style: "active", title: "<ready>", score: 12});
   const attributes = new Map();
   const node = {
-    getAttribute: (name) => name === "data-live-lift-bind-class" ? "style" : "title",
+    getAttribute: (name) => ({
+      "data-live-lift-bind-class": "style",
+      "data-live-lift-bind-title": "title",
+      "data-live-lift-bind-value": "score",
+    })[name],
     setAttribute: (name, value) => attributes.set(name, value),
   };
   const originalQuery = el.querySelectorAll;
-  el.querySelectorAll = (selector) => selector === "[data-live-lift-bind-class]" ||
-    selector === "[data-live-lift-bind-title]" ? [node] : originalQuery(selector);
+  el.querySelectorAll = (selector) => [
+    "[data-live-lift-bind-class]", "[data-live-lift-bind-title]",
+    "[data-live-lift-bind-value]",
+  ].includes(selector) ? [node] : originalQuery(selector);
   const hook = {
     ...createClientHook({"App.Score": {actions: {}, template: "<p></p>"}}),
     el,
@@ -102,6 +108,7 @@ test("renders browser-safe primitives and dynamic attributes", () => {
   assert.equal(el.stepNode.textContent, "true");
   assert.equal(attributes.get("class"), "active");
   assert.equal(attributes.get("title"), "<ready>");
+  assert.equal(attributes.get("value"), "12");
 });
 
 test("updates conditional visibility using Elixir truthiness", () => {

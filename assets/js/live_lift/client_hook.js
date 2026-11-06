@@ -72,7 +72,7 @@ export function createClientHook(views) {
         node.textContent = this.state[field] === null ? "" : String(this.state[field]);
       }
 
-      for (const attribute of ["class", "title", "aria-label"]) {
+      for (const attribute of ["class", "title", "aria-label", "value"]) {
         for (const node of this.el.querySelectorAll(`[data-live-lift-bind-${attribute}]`)) {
           const field = node.getAttribute(`data-live-lift-bind-${attribute}`);
           if (!Object.hasOwn(this.state, field)) {
