@@ -63,7 +63,7 @@ cada resultado en `docs/`.
   parche autoritativo sin depender de internos de LiveView.
 - [x] **S4.** Un componente con el mismo `~H` y `handle_event/3` compila y renderiza
   con solo cambiar el `use` y añadir `@client true`. El spike corre en CI.
-- [ ] **S5 (puerta de migración).** El mismo componente funciona en Chromium en
+- [x] **S5 (puerta de migración).** El mismo componente funciona en Chromium en
   ambos modos: el clic optimista y la respuesta autoritativa convergen sin
   reescribir `~H`, `phx-*` ni `handle_event/3`. Bloquea el lanzamiento de la API
   nueva aunque S1–S4 pasen.
@@ -88,9 +88,11 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 
 ## Fase 1: Superficie LiveView (3 a 4 semanas, v0.3)
 
-- [ ] `use LiveLift` y `@client true` sobre `Phoenix.LiveComponent`.
-- [ ] El servidor renderiza con el `~H` real (se elimina el renderizador de strings).
-- [ ] Frontera `phx-update="ignore"` generada automáticamente.
+- [x] `use LiveLift` y `@client true` sobre `Phoenix.LiveComponent` para el
+  subconjunto inicial de `phx-click` y un `assign/update`.
+- [x] El servidor renderiza con el `~H` real en la API nueva (el renderizador de
+  strings permanece para compatibilidad con la API anterior).
+- [x] Frontera `phx-update="ignore"` generada automáticamente.
 - [ ] `phx-click`, `phx-change`, `phx-submit`, `phx-value-*` en lugar de `$click`.
 - [ ] Deprecar `client_template`, `defclient`, `$click` y `island` con avisos.
 - [ ] `mix live_lift.migrate` para convertir la API anterior.
@@ -101,6 +103,8 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 **Listo cuando:** el mismo módulo corre en modo servidor y en modo cliente con HTML
 equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.
 La API no se anuncia como lista hasta pasar S5 en el navegador.
+S5 pasó para el contador inicial; formularios, componentes anidados y handlers
+más amplios siguen pendientes antes de cerrar toda la fase 1.
 
 ## Fase 2: Compilador v2 (4 a 6 semanas, v0.4)
 

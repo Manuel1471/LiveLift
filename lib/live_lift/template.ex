@@ -14,6 +14,46 @@ defmodule LiveLift.Template do
     source |> Parser.parse!(file) |> Enum.map(&convert_node(&1, file))
   end
 
+  @doc false
+  def compile_liveview(source, file, client_events) when is_binary(source) do
+    source
+    |> Parser.parse!(file)
+    |> Enum.map(&adapt_liveview_node(&1, file, client_events))
+    |> Enum.map(&convert_node(&1, file))
+  end
+
+  defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
+    {:block, type, tag, adapt_liveview_attrs(attrs, file, events),
+     Enum.map(children, &adapt_liveview_node(&1, file, events)), meta, close}
+  end
+
+  defp adapt_liveview_node({:self_close, type, tag, attrs, meta}, file, events) do
+    {:self_close, type, tag, adapt_liveview_attrs(attrs, file, events), meta}
+  end
+
+  defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp adapt_liveview_attrs(attrs, file, events) do
+    Enum.flat_map(attrs, fn
+      {"phx-target", {:expr, "@myself", _}, _} ->
+        []
+
+      {"phx-target", _, meta} ->
+        raise ArgumentError,
+              "#{file}:#{meta.line}: @client supports phx-target={@myself}; move other targets to a server handler"
+
+      {"phx-click", {:string, event, _} = value, meta} = attr ->
+        if event in events do
+          [attr, {"$click", value, meta}]
+        else
+          [attr]
+        end
+
+      attr ->
+        [attr]
+    end)
+  end
+
   @spec render_server(list(map()), map()) :: Phoenix.HTML.safe()
   def render_server(tree, state) when is_list(tree) and is_map(state) do
     tree |> render_nodes(%{"state" => state}, []) |> Phoenix.HTML.raw()

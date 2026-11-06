@@ -90,3 +90,58 @@ test("checkbox, select and textarea retain native form behavior", async ({page})
   await expect(select).toHaveValue("a");
   await expect(textarea).toHaveValue("A & <B>");
 });
+
+test("a normal LiveComponent runs a marked handler locally and converges with the server", async ({page}) => {
+  await page.goto("/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("output");
+  await expect(count).toHaveText("0");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(450));
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(count).toHaveText("1", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(count).toHaveText("1");
+  await expect(root.getByRole("button", {name: "Add one"})).toHaveAttribute("phx-target", /\d+/);
+});
+
+test("pending native component clicks converge after server replies", async ({page}) => {
+  await page.goto("/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("output");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(300));
+  const button = root.getByRole("button", {name: "Add one"});
+  await button.click();
+  await button.click();
+  await expect(count).toHaveText("2", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(count).toHaveText("2");
+  await root.getByRole("button", {name: "Reset on server"}).click();
+  await expect(count).toHaveText("0");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+});
+
+test("native component reconnects from the server snapshot", async ({page}) => {
+  await page.goto("/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("output");
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await page.evaluate(() => { window.liveSocket.disconnect(); window.liveSocket.connect(); });
+  await page.waitForFunction(() => window.liveSocket.isConnected());
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
+  await expect(count).toHaveText("0");
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(count).toHaveText("1");
+});
+
+test("the same LiveComponent without opt-in keeps normal server behavior", async ({page}) => {
+  await page.goto("/native-counter-server");
+  const root = page.locator('section[aria-label="Native LiveComponent counter"]');
+  const count = root.locator("output");
+  await expect(root).not.toHaveAttribute("phx-hook", "LiveLift");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(450));
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(count).toHaveText("0", {timeout: 200});
+  await expect(count).toHaveText("1");
+});

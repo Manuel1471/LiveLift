@@ -185,6 +185,8 @@ function patchNode(current, next) {
     return;
   }
   for (const attr of [...current.attributes]) {
+    // The component CID belongs to LiveView and is supplied by its original ~H render.
+    if (attr.name === "phx-target") continue;
     if (!next.hasAttribute(attr.name)) current.removeAttribute(attr.name);
   }
   for (const attr of [...next.attributes]) {
@@ -224,6 +226,49 @@ export function createClientHook(views) {
       this.serverRevision = Number(this.el.dataset.liveLiftServerRevision || "0");
       if (!Number.isSafeInteger(this.serverRevision) || this.serverRevision < 0) {
         throw new Error("Invalid LiveLift server revision");
+      }
+      this.optimistic = this.el.dataset.liveLiftMode === "component";
+      if (this.optimistic) {
+        this.authoritativeState = this.state;
+        this.pending = [];
+        this.nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
+        this.connectionEpoch = 0;
+        this.reconnectPending = false;
+        this.resetOptimisticSnapshot = () => {
+          const snapshot = JSON.parse(this.el.dataset.liveLiftState);
+          const revision = Number(this.el.dataset.liveLiftServerRevision || "0");
+          if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("Invalid LiveLift server revision");
+          validateState(snapshot);
+          this.pending = [];
+          this.authoritativeState = snapshot;
+          this.serverRevision = revision;
+          this.nextSequence = Math.max(this.nextSequence, Number(this.el.dataset.liveLiftAckSeq || "0") + 1);
+          this.render(snapshot);
+          this.state = snapshot;
+          this.reconnectPending = false;
+        };
+        this.applyAuthoritative = (revision, state, ackSequence = 0) => {
+          if (this.reconnectPending) {
+            this.authoritativeState = state;
+            this.serverRevision = -1;
+            this.pending = [];
+            this.reconnectPending = false;
+          }
+          if (!Number.isSafeInteger(revision) || revision < this.serverRevision) return;
+          validateState(state);
+          if (revision > this.serverRevision) {
+            this.authoritativeState = state;
+            this.serverRevision = revision;
+          }
+          if (ackSequence > 0) this.pending = this.pending.filter(({sequence}) => sequence > ackSequence);
+          let nextState = this.authoritativeState;
+          for (const {action, eventData} of this.pending) {
+            nextState = this.view.actions[action](nextState, eventData);
+            validateState(nextState);
+          }
+          this.render(nextState);
+          this.state = nextState;
+        };
       }
       this.applyServerPatch = (revision, patch) => {
         if (!Number.isSafeInteger(revision) || revision <= this.serverRevision) return;
@@ -286,6 +331,30 @@ export function createClientHook(views) {
         for (const field of this.serverFields) nextState[field] = this.state[field];
         this.render(nextState);
         this.state = nextState;
+        return eventData;
+      };
+
+      this.onOptimisticClick = (event) => {
+        if (!this.optimistic) return;
+        const control = event.target.closest("[phx-click]");
+        if (!control || !this.el.contains(control)) return;
+        const eventName = control.getAttribute("phx-click");
+        if (!Object.hasOwn(this.view.actions, eventName)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const action = eventName;
+        const sequence = this.nextSequence++;
+        const eventData = this.runAction(action, control);
+        this.pending.push({sequence, action, eventData});
+        const params = {_live_lift_seq: sequence};
+        for (const attr of control.attributes) {
+          if (attr.name.startsWith("phx-value-")) params[attr.name.slice(10)] = attr.value;
+        }
+        const epoch = this.connectionEpoch;
+        this.pushEventTo(control, eventName, params, (reply) => {
+          if (epoch !== this.connectionEpoch) return;
+          this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq);
+        });
       };
 
       this.onInput = (event) => {
@@ -305,7 +374,8 @@ export function createClientHook(views) {
         this.runAction(control.dataset.liveLiftSubmit, control);
       };
 
-      this.el.addEventListener("click", this.onClick);
+      if (this.optimistic) this.el.addEventListener("click", this.onOptimisticClick, true);
+      else this.el.addEventListener("click", this.onClick);
       this.el.addEventListener("input", this.onInput);
       this.el.addEventListener("change", this.onChange);
       this.el.addEventListener("submit", this.onSubmit);
@@ -314,13 +384,36 @@ export function createClientHook(views) {
 
     destroyed() {
       if (this.syncRef && typeof this.removeHandleEvent === "function") this.removeHandleEvent(this.syncRef);
+      if (this.optimistic) this.el.removeEventListener("click", this.onOptimisticClick, true);
       this.el.removeEventListener("click", this.onClick);
       this.el.removeEventListener("input", this.onInput);
       this.el.removeEventListener("change", this.onChange);
       this.el.removeEventListener("submit", this.onSubmit);
     },
 
+    disconnected() {
+      if (this.optimistic) {
+        this.connectionEpoch += 1;
+        this.reconnectPending = true;
+      }
+    },
+
     updated() {
+      if (this.optimistic) {
+        if (this.reconnectPending) {
+          this.resetOptimisticSnapshot();
+          return;
+        }
+        const revision = Number(this.el.dataset.liveLiftServerRevision);
+        if (Number.isSafeInteger(revision) && revision >= this.serverRevision) {
+          this.applyAuthoritative(
+            revision,
+            JSON.parse(this.el.dataset.liveLiftState),
+            Number(this.el.dataset.liveLiftAckSeq || "0"),
+          );
+        }
+        return;
+      }
       if (!this.serverFields.size) return;
       const revision = Number(this.el.dataset.liveLiftServerRevision);
       if (!Number.isSafeInteger(revision) || revision <= this.serverRevision) return;

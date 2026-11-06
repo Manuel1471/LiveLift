@@ -12,6 +12,8 @@ view inside a regular LiveView. From `examples/demo`, run `mix setup` and
 `mix phx.server`, then visit <http://localhost:4000>.
 
 For an existing Phoenix app, follow the [integration guide](docs/phoenix-integration.md).
+For the experimental two-line migration of a normal LiveComponent, see
+[Opt in a LiveComponent](docs/native-livecomponent.md).
 
 ## Use it in a Phoenix app
 
