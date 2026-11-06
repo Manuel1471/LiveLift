@@ -4,7 +4,7 @@ defmodule LiveLift.MixProject do
   def project do
     [
       app: :live_lift,
-      version: "0.1.0-dev",
+      version: "0.1.0-rc.1",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -27,6 +27,10 @@ defmodule LiveLift.MixProject do
   def application, do: [extra_applications: [:logger]]
 
   defp deps do
-    [{:phoenix_live_view, "~> 1.2.0"}, {:jason, "~> 1.4"}]
+    [
+      {:phoenix_live_view, "~> 1.2.0"},
+      {:jason, "~> 1.4"},
+      {:ex_doc, "~> 0.38", only: :dev, runtime: false}
+    ]
   end
 end

@@ -15,10 +15,10 @@ For an existing Phoenix app, follow the [integration guide](docs/phoenix-integra
 
 ## Use it in a Phoenix app
 
-Add the local package to your app's `mix.exs`:
+Add the experimental Hex package to your app's `mix.exs`:
 
 ```elixir
-{:live_lift, path: "../LiveLift"}
+{:live_lift, "~> 0.1.0-rc.1"}
 ```
 
 Define your view in Elixir:
@@ -51,18 +51,21 @@ defmodule MyApp.ScoreView do
 end
 ```
 
-Generate the browser module before bundling your assets:
+Run the installer once, then build assets:
 
 ```sh
-mix live_lift.compile --output assets/js/generated_views.js
+mix deps.get
+mix live_lift.install
+mix assets.build
 ```
 
-This also copies `live_lift_runtime.js` beside the generated registry. Both
-files are local to your app's assets; the build does not need a relative import
-into the dependency's source tree. You can choose another runtime path with
-`--runtime-output`.
+The installer wires the asset aliases and LiveSocket hook in a standard
+Phoenix 1.8 app. The build generates `generated_views.js` and copies
+`live_lift_runtime.js` into the app's `assets/js`. There is no import into a
+LiveLift source checkout. For custom asset layouts, integrate manually as in
+the [integration guide](docs/phoenix-integration.md).
 
-Register the hook in `assets/js/app.js`:
+The generated hook configuration in `assets/js/app.js` is equivalent to:
 
 ```javascript
 import {createClientHook} from "./live_lift_runtime.js"
@@ -75,9 +78,8 @@ let liveSocket = new LiveSocket("/live", Socket, {
 ```
 
 The compile task discovers client views in your app and generates one registry.
-If you already have hooks, merge them into the `hooks` object. Run the compile
-task as part of your asset build, as the demo's `mix.exs` does. Ignore the two
-generated JavaScript files in Git. Mount the view inside a LiveView template:
+Ignore the two generated JavaScript files in Git. Mount the view inside a
+LiveView template:
 
 ```heex
 <LiveLift.View.island
@@ -93,6 +95,8 @@ LiveView keeps ownership of the surrounding page. `$server="event_name"`
 sends the current local state to the enclosing LiveView's `handle_event/3`.
 Your handler must validate that payload before using it. The demo shows the
 round trip.
+
+For server-owned fields and versioned responses, see the [sync contract](docs/sync.md).
 
 The current language includes text and attribute bindings, keyed lists,
 conditional nodes, events with typed parameters, and presentation components
@@ -111,9 +115,4 @@ mix test
 cd assets && npm test
 ```
 
-## Direction
-
-1. Define a synchronization contract before allowing server and browser to
-   modify the same state.
-2. Add source maps and compatibility checks for newer LiveView releases.
-3. Extend the expression subset only alongside Elixir and JavaScript parity tests.
+This release is experimental and currently supports Phoenix LiveView 1.2.x.

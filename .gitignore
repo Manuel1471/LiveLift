@@ -6,3 +6,4 @@
 /.fetch
 *.beam
 erl_crash.dump
+/doc/

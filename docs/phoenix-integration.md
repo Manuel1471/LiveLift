@@ -1,12 +1,11 @@
 # Add LiveLift to a Phoenix LiveView app
 
-LiveLift is currently an experimental package in this repository. Use a path
-dependency while developing alongside it. The parser currently requires
-Phoenix LiveView 1.2:
+LiveLift 0.1.0-rc.1 is an experimental package. The parser currently requires
+Phoenix LiveView 1.2.x:
 
 ```elixir
 # mix.exs
-{:live_lift, path: "../LiveLift"}
+{:live_lift, "~> 0.1.0-rc.1"}
 ```
 
 Run `mix deps.get`. Define a view in your own app:
@@ -28,8 +27,10 @@ defmodule MyAppWeb.ScoreClient do
 end
 ```
 
-Add generation before your asset bundler in the `assets.build` and
-`assets.deploy` aliases in `mix.exs`:
+In a standard Phoenix 1.8 app, run `mix live_lift.install`. It adds generation
+before the asset bundler in `assets.build` and `assets.deploy` and merges the
+hook with Phoenix's colocated hooks. The command is safe to rerun. For a
+custom app, make these changes manually:
 
 ```elixir
 "assets.build": [
