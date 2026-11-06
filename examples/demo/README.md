@@ -15,7 +15,9 @@ mix phx.server
 
 Open <http://localhost:4000>. Click “Add step” in the app-owned UI, then click
 the server counter. The local score should stay where you left it while the
-server count changes.
+server count changes. At score 12, the marker changes class and a conditional
+message appears. “Save score on server” sends the local state through a
+LiveView event and displays the saved value outside the client island.
 
 The `mix setup` and `mix assets.build` aliases regenerate
 `assets/js/generated_views.js` before bundling. The file is ignored by Git;

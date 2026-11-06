@@ -29,13 +29,23 @@ defmodule MyApp.ScoreView do
   <section>
     <h2>Score</h2>
     <button type="button" $click="retreat">−</button>
-    <output>{@score}</output>
+    <output class="{@tone}">{@score}</output>
     <button type="button" $click="advance">+</button>
+    <p $show="milestone">Milestone reached</p>
+    <button type="button" $server="save_score">Save</button>
   </section>
   """
 
-  defclient advance(state), do: %{score: state.score + state.step, step: state.step}
-  defclient retreat(state), do: %{score: state.score - state.step, step: state.step}
+  defclient advance(state), do: %{
+    score: state.score + state.step,
+    step: state.step,
+    tone: if(state.score + state.step == 12, do: "milestone", else: "regular"),
+    milestone: state.score + state.step == 12
+  }
+  defclient retreat(state), do: %{
+    score: state.score - state.step, step: state.step,
+    tone: "regular", milestone: false
+  }
 end
 ```
 
@@ -67,21 +77,29 @@ as the demo's `mix.exs` does. Mount the view inside a LiveView template:
 <LiveLift.View.island
   id="score"
   module={MyApp.ScoreView}
-  state={%{score: 10, step: 2}}
+  state={%{score: 10, step: 2, tone: "regular", milestone: false}}
 />
 ```
 
-The island needs a unique `id`. Its state is local after mount: it is not a
-LiveView assign, is not persisted, and resets if the island remounts. LiveLift
-creates a `phx-update="ignore"` boundary so LiveView keeps ownership of the
-surrounding page.
+The island needs a unique `id`. Its state is local after mount and resets if
+the island remounts. LiveLift creates a `phx-update="ignore"` boundary so
+LiveView keeps ownership of the surrounding page. `$server="event_name"`
+sends the current local state to the enclosing LiveView's `handle_event/3`.
+Your handler must validate that payload before using it. The demo shows the
+round trip.
 
-The current template syntax supports text interpolation (`{@field}`) and
-`$click="action"`; it does not yet support dynamic attributes, components,
-control flow, or general Elixir expressions. `defclient` supports one argument,
-safe integer literals, `+`, `-`, `*`, atom-keyed map literals, and map field
-reads. State and action results must be maps of safe integers. Unsupported
-syntax fails during compilation.
+The current template syntax supports text interpolation (`{@field}`), dynamic
+`class`, `title`, and `aria-label` attributes (`class="{@field}"`), conditional
+visibility (`$show="field"`), client actions (`$click="action"`), and explicit
+server events (`$server="event"`). `defclient` supports one argument, safe
+integer, string, boolean, and nil literals, `+`, `-`, `*`, `==`, `!=`, `if` with
+both branches, atom-keyed map literals, and map field reads. State and action
+results must be flat maps with atom keys and safe integer, string, boolean, or
+nil values. Unsupported syntax fails during compilation. Elixir modules and
+templates outside this subset are not automatically compiled for the browser.
+
+For architecture, differences from Hologram, and limitations, see
+[the comparison](docs/comparison.md).
 
 ## Development
 
@@ -93,10 +111,7 @@ cd assets && npm test
 
 ## Direction
 
-1. Add dynamic attributes, conditional and repeated markup, and more Elixir
-   expressions to the compiler.
-2. Add an explicit path for sending local results to `handle_event/3`.
-3. Define a synchronization contract before allowing server and browser to
-   modify the same state. Hologram's compiler and runtime are useful research,
-   but LiveLift does not currently depend on them or claim general Elixir
-   compatibility.
+1. Add repeated markup, nested state, forms, and more Elixir expressions.
+2. Define a synchronization contract before allowing server and browser to
+   modify the same state.
+3. Add source maps and stronger compiler validation for larger client views.

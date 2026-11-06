@@ -41,6 +41,10 @@ defmodule LiveLift.TemplateTest do
     assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
       Template.compile("<input value=\"{@score}\">")
     end
+
+    assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
+      Template.compile("<p data-class=\"{@style}\"></p>")
+    end
   end
 
   test "compiles an explicit server event binding" do
