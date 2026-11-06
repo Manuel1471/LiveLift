@@ -19,7 +19,8 @@ local state to `handle_event/3`.
 - The app authors its own markup and actions in Elixir. LiveLift does not ship
   prefabricated UI components for those interactions.
 - The server renders the first HTML with escaped state values. The browser
-  handles later local actions without a round trip.
+  keeps those nodes on mount and handles later local actions without a round
+  trip.
 - The app can deliberately send local state to a LiveView event. The demo
   verifies that a server update does not reset the local island.
 - Unsupported client expressions fail at compile time instead of silently

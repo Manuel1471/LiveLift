@@ -26,7 +26,9 @@ export function createClientHook(views) {
 
       this.state = JSON.parse(this.el.dataset.liveLiftState);
       validateState(this.state);
-      this.el.innerHTML = this.view.template;
+      if (!this.el.hasChildNodes()) {
+        this.el.innerHTML = this.view.template;
+      }
 
       this.onClick = (event) => {
         const control = event.target.closest(

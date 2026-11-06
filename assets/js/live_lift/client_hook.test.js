@@ -15,6 +15,7 @@ function element(initialState) {
   return {
     dataset: {liveLiftState: JSON.stringify(initialState), liveLiftModule: "App.Score"},
     innerHTML: "",
+    hasChildNodes: () => false,
     countNode,
     stepNode,
     listeners,
@@ -47,6 +48,21 @@ test("runs app actions and renders app-selected fields", () => {
   assert.equal(el.countNode.textContent, "10");
   hook.destroyed();
   assert.equal(el.listeners.size, 0);
+});
+
+test("keeps server-rendered DOM when mounting", () => {
+  const el = element({count: 10, step: 2});
+  el.innerHTML = '<output><span data-live-lift-text="count">10</span></output>';
+  el.hasChildNodes = () => true;
+  const initialMarkup = el.innerHTML;
+  const hook = {
+    ...createClientHook({"App.Score": {actions: {}, template: "<output></output>"}}),
+    el,
+  };
+
+  hook.mounted();
+  assert.equal(el.innerHTML, initialMarkup);
+  assert.equal(el.countNode.textContent, "10");
 });
 
 test("rejects unsafe action results", () => {
