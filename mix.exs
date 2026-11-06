@@ -27,6 +27,6 @@ defmodule LiveLift.MixProject do
   def application, do: [extra_applications: [:logger]]
 
   defp deps do
-    [{:phoenix_live_view, "~> 1.2"}, {:jason, "~> 1.4"}]
+    [{:phoenix_live_view, "~> 1.2.0"}, {:jason, "~> 1.4"}]
   end
 end
