@@ -8,3 +8,5 @@
 erl_crash.dump
 /doc/
 /bench/node_modules/
+/bench/test-results/
+/bench/playwright-report/

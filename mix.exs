@@ -16,6 +16,7 @@ defmodule LiveLift.MixProject do
           "docs",
           "mix.exs",
           "README.md",
+          "CHANGELOG.md",
           "LICENSE"
         ],
         licenses: ["MIT"],

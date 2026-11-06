@@ -23,8 +23,8 @@ defmodule LiveLiftDemo.ScoreView do
     <div class="chart-scale"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
     <p class="milestone-note" $show="milestone">✦ Milestone reached at 12</p>
     <div class="client-actions">
-      <button type="button" class="button-quiet" $click="retreat" aria-label="Subtract two points">− 2</button>
-      <button type="button" class="button-primary" $click="advance" aria-label="Add two points">+ 2 points <span aria-hidden="true">↗</span></button>
+      <button type="button" class="button-quiet" $click="retreat" aria-label="− 2 points">− 2</button>
+      <button type="button" class="button-primary" $click="advance" aria-label="+ 2 points">+ 2 points <span aria-hidden="true">↗</span></button>
       <button type="button" class="button-quiet" $click="reset">Reset</button>
     </div>
     <div class="panel-divider"></div>

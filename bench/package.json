@@ -2,9 +2,12 @@
   "private": true,
   "type": "module",
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.0",
     "linkedom": "^0.18.0"
   },
   "scripts": {
-    "dom": "node dom.mjs"
+    "dom": "node dom.mjs",
+    "e2e": "playwright test"
   }
 }

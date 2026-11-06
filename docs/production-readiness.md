@@ -15,7 +15,14 @@ support keyboard activation without a custom key handler. The demo labels its
 inputs, exposes changing counts with `aria-live`, and retains the active input
 when keyed rows move. App authors must still give controls accessible names,
 test their own components with assistive technology, and avoid using color
-alone to communicate state. No automated screen-reader audit is claimed.
+alone to communicate state. Chromium integration tests run axe WCAG A/AA
+checks on the demo. No automated screen-reader audit is claimed.
+
+Run the real-browser suite with `cd bench && npm ci && npx playwright install
+chromium && npm run e2e`. It checks client/server updates, editing and focus,
+server/client DOM equivalence after a render, and the demo's axe results.
+Firefox, WebKit, assistive technology and production deployment are not yet
+covered.
 
 ## Source maps
 

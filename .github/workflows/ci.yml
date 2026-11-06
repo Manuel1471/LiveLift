@@ -31,3 +31,26 @@ jobs:
         working-directory: examples/demo
       - run: mix assets.build
         working-directory: examples/demo
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '27'
+          elixir-version: '1.18'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: mix deps.get
+      - run: mix deps.get
+        working-directory: examples/demo
+      - run: mix assets.setup
+        working-directory: examples/demo
+      - run: npm ci
+        working-directory: bench
+      - run: npx playwright install chromium --with-deps
+        working-directory: bench
+      - run: npm run e2e
+        working-directory: bench
