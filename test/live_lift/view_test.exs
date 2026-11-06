@@ -26,12 +26,24 @@ defmodule LiveLift.ViewTest do
   end
 
   test "rejects state that the browser cannot represent safely" do
-    assert_raise ArgumentError, ~r/safe integers/, fn ->
+    assert_raise ArgumentError, ~r/safe integer/, fn ->
       render_component(&LiveLift.View.island/1,
         id: "score",
         module: Score,
         state: %{count: 9_007_199_254_740_992}
       )
     end
+  end
+
+  test "accepts browser-safe primitive state" do
+    html =
+      render_component(&LiveLift.View.island/1,
+        id: "score",
+        module: Score,
+        state: %{count: nil, label: "ready", active: true}
+      )
+
+    assert html =~ ~s(data-live-lift-text="count"></span>)
+    assert html =~ ~s(&quot;label&quot;:&quot;ready&quot;)
   end
 end

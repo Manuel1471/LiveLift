@@ -31,6 +31,13 @@ defmodule LiveLift.ClientTest do
     client_template("<p>{@value}</p>")
   end
 
+  defmodule ConditionalView do
+    use LiveLift.Client
+
+    defclient(label(state), do: if(state.enabled == true, do: "on", else: "off"))
+    defclient(optional(state), do: if(state.name, do: state.name, else: "anonymous"))
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -58,6 +65,18 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+  end
+
+  test "compiles primitive values and Elixir conditional truthiness" do
+    assert ConditionalView.label(%{enabled: true}) == "on"
+    assert ConditionalView.label(%{enabled: false}) == "off"
+    assert ConditionalView.optional(%{name: nil}) == "anonymous"
+
+    javascript = Compiler.compile_module(ConditionalView)
+    assert javascript =~ "state.enabled === true"
+    assert javascript =~ "!== false"
+    assert javascript =~ "!== null"
+    assert javascript =~ ~s(? "on" : "off")
   end
 
   test "includes the app template in generated JavaScript" do

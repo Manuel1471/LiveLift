@@ -16,9 +16,12 @@ defmodule LiveLift.View do
 
   def island(assigns) do
     unless Enum.all?(assigns.state, fn {key, value} ->
-             is_atom(key) and is_integer(value) and abs(value) <= @max_safe_integer
+             is_atom(key) and
+               ((is_integer(value) and abs(value) <= @max_safe_integer) or
+                  is_binary(value) or is_boolean(value) or is_nil(value))
            end) do
-      raise ArgumentError, "LiveLift state must be a map of atom keys and safe integers"
+      raise ArgumentError,
+            "LiveLift state must have atom keys and safe integer, string, boolean, or nil values"
     end
 
     template = assigns.module.__live_lift_client_template__()

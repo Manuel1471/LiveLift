@@ -19,7 +19,7 @@ function element(initialState) {
     stepNode,
     listeners,
     contains: (node) => Object.values(controls).includes(node),
-    querySelectorAll: () => [countNode, stepNode],
+    querySelectorAll: (selector) => selector === "[data-live-lift-text]" ? [countNode, stepNode] : [],
     addEventListener: (name, callback) => listeners.set(name, callback),
     removeEventListener: (name) => listeners.delete(name),
     click(actionName) {
@@ -62,8 +62,30 @@ test("rejects unsafe action results", () => {
   };
 
   hook.mounted();
-  assert.throws(() => el.click("advance"), /map of safe integers/);
+  assert.throws(() => el.click("advance"), /safe integers/);
   assert.equal(el.countNode.textContent, "1");
+});
+
+test("renders browser-safe primitives and dynamic attributes", () => {
+  const el = element({count: null, step: true, style: "active", title: "<ready>"});
+  const attributes = new Map();
+  const node = {
+    getAttribute: (name) => name === "data-live-lift-bind-class" ? "style" : "title",
+    setAttribute: (name, value) => attributes.set(name, value),
+  };
+  const originalQuery = el.querySelectorAll;
+  el.querySelectorAll = (selector) => selector === "[data-live-lift-bind-class]" ||
+    selector === "[data-live-lift-bind-title]" ? [node] : originalQuery(selector);
+  const hook = {
+    ...createClientHook({"App.Score": {actions: {}, template: "<p></p>"}}),
+    el,
+  };
+
+  hook.mounted();
+  assert.equal(el.countNode.textContent, "");
+  assert.equal(el.stepNode.textContent, "true");
+  assert.equal(attributes.get("class"), "active");
+  assert.equal(attributes.get("title"), "<ready>");
 });
 
 test("sends a deliberate server event with the current local state", () => {

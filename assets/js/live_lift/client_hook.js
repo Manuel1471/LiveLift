@@ -3,9 +3,12 @@ function validateState(state) {
     state === null ||
     typeof state !== "object" ||
     Array.isArray(state) ||
-    !Object.values(state).every(Number.isSafeInteger)
+    !Object.values(state).every(
+      (value) => Number.isSafeInteger(value) || typeof value === "string" ||
+        typeof value === "boolean" || value === null,
+    )
   ) {
-    throw new Error("LiveLift state must be a map of safe integers");
+    throw new Error("LiveLift state values must be safe integers, strings, booleans, or null");
   }
 }
 
@@ -64,7 +67,18 @@ export function createClientHook(views) {
         if (!Object.hasOwn(this.state, field)) {
           throw new Error(`Unknown LiveLift state field: ${field}`);
         }
-        node.textContent = String(this.state[field]);
+        node.textContent = this.state[field] === null ? "" : String(this.state[field]);
+      }
+
+      for (const attribute of ["class", "title", "aria-label"]) {
+        for (const node of this.el.querySelectorAll(`[data-live-lift-bind-${attribute}]`)) {
+          const field = node.getAttribute(`data-live-lift-bind-${attribute}`);
+          if (!Object.hasOwn(this.state, field)) {
+            throw new Error(`Unknown LiveLift state field: ${field}`);
+          }
+          const value = this.state[field];
+          node.setAttribute(attribute, value === null ? "" : String(value));
+        }
       }
     },
   };

@@ -55,6 +55,9 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr(value, _arg) when is_integer(value) and abs(value) <= @max_safe_integer,
     do: Integer.to_string(value)
 
+  defp compile_expr(value, _arg) when is_binary(value) or is_boolean(value) or is_nil(value),
+    do: Jason.encode!(value)
+
   defp compile_expr({name, _, context}, arg)
        when name == arg and (is_atom(context) or is_nil(context)),
        do: Atom.to_string(arg)
@@ -82,6 +85,19 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr({op, _, [value]}, arg) when op in [:+, :-] do
     "(#{op}#{compile_expr(value, arg)})"
+  end
+
+  defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do
+    then_expr = Keyword.fetch!(branches, :do)
+    else_expr = Keyword.fetch!(branches, :else)
+    test = compile_expr(condition, arg)
+
+    "((#{test}) !== false && (#{test}) !== null ? #{compile_expr(then_expr, arg)} : #{compile_expr(else_expr, arg)})"
+  end
+
+  defp compile_expr({op, _, [left, right]}, arg) when op in [:==, :!=] do
+    js_op = if op == :==, do: "===", else: "!=="
+    "(#{compile_expr(left, arg)} #{js_op} #{compile_expr(right, arg)})"
   end
 
   defp compile_expr(other, _arg) do

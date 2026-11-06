@@ -5,13 +5,22 @@ defmodule LiveLiftDemo.ScoreView do
   <section>
     <h2>Custom score</h2>
     <button type="button" $click="retreat">Subtract step</button>
-    <output aria-live="polite">{@count}</output>
+    <output aria-live="polite" class="{@tone}">{@count}</output>
     <button type="button" $click="advance">Add step</button>
     <p>Step: {@step}</p>
     <button type="button" $server="save_score">Save score on server</button>
   </section>
   """)
 
-  defclient(advance(state), do: %{count: state.count + state.step, step: state.step})
-  defclient(retreat(state), do: %{count: state.count - state.step, step: state.step})
+  defclient(advance(state),
+    do: %{
+      count: state.count + state.step,
+      step: state.step,
+      tone: if(state.count + state.step == 12, do: "milestone", else: "regular")
+    }
+  )
+
+  defclient(retreat(state),
+    do: %{count: state.count - state.step, step: state.step, tone: "regular"}
+  )
 end

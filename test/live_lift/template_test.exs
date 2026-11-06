@@ -25,8 +25,20 @@ defmodule LiveLift.TemplateTest do
     assert html == "<p><span data-live-lift-text=\"name\">&lt;script&gt;</span></p>"
   end
 
-  test "rejects interpolation in attributes" do
-    assert_raise ArgumentError, ~r/only in text nodes/, fn ->
+  test "renders supported dynamic attributes and escapes their initial values" do
+    compiled = Template.compile(~s(<p class="{@style}" title="{@title}">{@name}</p>))
+
+    assert compiled ==
+             ~s(<p class="" data-live-lift-bind-class="style" title="" data-live-lift-bind-title="title"><span data-live-lift-text="name"></span></p>)
+
+    assert compiled
+           |> Template.render_server(%{style: "hot", title: ~s(<"), name: nil})
+           |> Phoenix.HTML.safe_to_string() ==
+             ~s(<p class="hot" data-live-lift-bind-class="style" title="&lt;&quot;" data-live-lift-bind-title="title"><span data-live-lift-text="name"></span></p>)
+  end
+
+  test "rejects unsupported attribute interpolation" do
+    assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
       Template.compile("<input value=\"{@score}\">")
     end
   end
