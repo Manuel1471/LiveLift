@@ -19,6 +19,7 @@ defmodule LiveLift.MixProject do
           "CHANGELOG.md",
           "LICENSE"
         ],
+        exclude_patterns: ["docs/release.md"],
         licenses: ["MIT"],
         links: %{"GitHub" => "https://github.com/Manuel1471/LiveLift"}
       ]

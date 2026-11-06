@@ -7,12 +7,20 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - otp: '27'
+            elixir: '1.18'
+          - otp: '29'
+            elixir: '1.20'
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: '27'
-          elixir-version: '1.18'
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -38,8 +46,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: '27'
-          elixir-version: '1.18'
+          otp-version: '29'
+          elixir-version: '1.20'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
