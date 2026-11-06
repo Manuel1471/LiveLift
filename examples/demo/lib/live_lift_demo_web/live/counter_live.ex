@@ -88,6 +88,19 @@ defmodule LiveLiftDemoWeb.CounterLive do
             </div>
           </section>
         </div>
+        <LiveLift.View.island
+          id="task-list"
+          module={LiveLiftDemo.TaskListView}
+          state={
+            %{
+              items: [%{id: 1, name: "Write Elixir"}, %{id: 2, name: "Ship a component"}],
+              next_id: 3,
+              draft: "",
+              has_items: true,
+              empty: false
+            }
+          }
+        />
       </section>
 
       <section class="flow-section" aria-label="How LiveLift works">

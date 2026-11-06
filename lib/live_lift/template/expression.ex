@@ -14,7 +14,16 @@ defmodule LiveLift.Template.Expression do
   def eval(%{type: "literal", value: value}, _scope), do: value
 
   def eval(%{type: "path", root: root, fields: fields}, scope) do
-    value = Map.fetch!(scope, root)
+    {value, fields} =
+      case {root, fields} do
+        {"state", [first | rest]} ->
+          if Map.has_key?(scope, first),
+            do: {Map.fetch!(scope, first), rest},
+            else: {Map.fetch!(scope, root), fields}
+
+        _ ->
+          {Map.fetch!(scope, root), fields}
+      end
 
     Enum.reduce(fields, value, fn field, current ->
       unless is_map(current),
@@ -31,7 +40,7 @@ defmodule LiveLift.Template.Expression do
   end
 
   def eval(%{type: "map", entries: entries}, scope) do
-    Map.new(entries, fn {key, expr} -> {String.to_atom(key), eval(expr, scope)} end)
+    Map.new(entries, fn %{key: key, expr: expr} -> {String.to_atom(key), eval(expr, scope)} end)
   end
 
   defp convert(value, _file, _line)
@@ -60,8 +69,11 @@ defmodule LiveLift.Template.Expression do
       type: "map",
       entries:
         Enum.map(entries, fn
-          {key, value} when is_atom(key) -> {Atom.to_string(key), convert(value, file, line)}
-          other -> unsupported!(file, line, other)
+          {key, value} when is_atom(key) ->
+            %{key: Atom.to_string(key), expr: convert(value, file, line)}
+
+          other ->
+            unsupported!(file, line, other)
         end)
     }
   end

@@ -46,6 +46,26 @@ defmodule LiveLift.ClientTest do
     defclient(choose(state), do: %{value: if(state.flag, do: "yes", else: "no")})
   end
 
+  defmodule ListActions do
+    use LiveLift.Client
+
+    defclient(add(state),
+      do: %{
+        items: state.items ++ [%{id: state.next_id, name: state.draft}],
+        next_id: state.next_id + 1,
+        draft: ""
+      }
+    )
+
+    defclient(remove(state, event),
+      do: %{
+        items: Enum.reject(state.items, fn item -> item.id == event.params.id end),
+        next_id: state.next_id,
+        draft: state.draft
+      }
+    )
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -136,5 +156,19 @@ defmodule LiveLift.ClientTest do
       System.cmd("node", ["--input-type=module", "--eval", source], stderr_to_stdout: true)
 
     assert status != 0
+  end
+
+  test "compiled list actions agree with Elixir and receive typed event parameters" do
+    state = %{items: [%{id: 1, name: "A"}], next_id: 2, draft: "B"}
+    event = %{params: %{id: 1}, value: nil, checked: false}
+    expected = state |> ListActions.add() |> ListActions.remove(event)
+    javascript = Compiler.compile_module(ListActions)
+
+    source =
+      javascript <>
+        "\nconst state = actions.add(#{Jason.encode!(state)}); console.log(JSON.stringify(actions.remove(state, #{Jason.encode!(event)})));"
+
+    {output, 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+    assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
   end
 end

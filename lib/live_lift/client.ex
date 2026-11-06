@@ -34,8 +34,25 @@ defmodule LiveLift.Client do
     end
   end
 
+  defmacro defclient(
+             {name, _,
+              [{state, _, state_context} = state_arg, {event, _, event_context} = event_arg]},
+             do: body
+           )
+           when is_atom(name) and is_atom(state) and is_atom(event) and
+                  (is_atom(state_context) or is_nil(state_context)) and
+                  (is_atom(event_context) or is_nil(event_context)) do
+    LiveLift.Client.Compiler.compile_action(name, [state, event], body)
+
+    quote do
+      @live_lift_client_actions {unquote(name), [unquote(state), unquote(event)],
+                                 unquote(Macro.escape(body))}
+      def unquote(name)(unquote(state_arg), unquote(event_arg)), do: unquote(body)
+    end
+  end
+
   defmacro defclient(_head, do: _body) do
-    raise ArgumentError, "defclient requires a named function with one variable argument"
+    raise ArgumentError, "defclient requires one state argument and an optional event argument"
   end
 
   defmacro client_template(source) when is_binary(source) do

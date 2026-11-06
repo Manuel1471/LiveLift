@@ -10,6 +10,8 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
     assert html =~ ~s(phx-hook="LiveLift")
     assert html =~ ~s(data-live-lift-action="advance")
     assert html =~ ~s(data-live-lift-bind-value="count")
+    assert html =~ ~s(id="task-list")
+    assert html =~ ~s(data-live-lift-key="1")
     assert html =~ ~s(id="server-count")
     assert html =~ "server events"
 

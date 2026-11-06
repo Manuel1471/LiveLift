@@ -3,6 +3,11 @@ defmodule LiveLift.TemplateTest do
 
   alias LiveLift.Template
 
+  defmodule Item do
+    use LiveLift.Client.Component
+    client_template("<strong>{@item.name}</strong>")
+  end
+
   test "compiles app markup to client bindings and renders initial state" do
     compiled =
       Template.compile("<button $click=\"advance\">Add</button><output>{@score}</output>")
@@ -90,10 +95,69 @@ defmodule LiveLift.TemplateTest do
     end
   end
 
+  test "rejects executable HTML in client templates" do
+    assert_raise ArgumentError, ~r/unsafe client template tag/, fn ->
+      Template.compile("<script>alert(1)</script>", "view.ex")
+    end
+
+    assert_raise ArgumentError, ~r/unsafe client attribute/, fn ->
+      Template.compile("<button onclick=\"alert(1)\">Go</button>", "view.ex")
+    end
+
+    assert_raise ArgumentError, ~r/unsafe client attribute/, fn ->
+      Template.compile("<a href=\"javascript:alert(1)\">Go</a>", "view.ex")
+    end
+  end
+
   test "keeps directive-like text and existing HTML entities literal" do
     tree = Template.compile(~s(<p title="A &amp; B">$click="go"</p>))
 
     assert tree |> Template.render_server(%{}) |> Phoenix.HTML.safe_to_string() ==
              ~s(<p title="A &amp; B">$click="go"</p>)
+  end
+
+  test "renders keyed lists and conditional nodes from nested state" do
+    tree =
+      Template.compile(
+        ~s(<ul><li :for={item <- @items} :key={item.id} :if={item.visible}>{@item.name}</li></ul>)
+      )
+
+    html =
+      tree
+      |> Template.render_server(%{
+        items: [%{id: "a", name: "A", visible: true}, %{id: "b", name: "B", visible: false}]
+      })
+      |> Phoenix.HTML.safe_to_string()
+
+    assert html =~ ~s(data-live-lift-key="a")
+    assert html =~ ~s(data-live-lift-text="item.name">A</span>)
+    refute html =~ ~s(data-live-lift-key="b")
+  end
+
+  test "requires keys on repeated nodes and rejects duplicate keys" do
+    assert_raise ArgumentError, ~r/:for requires :key/, fn ->
+      Template.compile(~s(<li :for={item <- @items}>{@item}</li>), "list.ex")
+    end
+
+    tree = Template.compile(~s(<li :for={item <- @items} :key={item.id}>{@item.name}</li>))
+
+    assert_raise ArgumentError, ~r/duplicate client list key/, fn ->
+      Template.render_server(tree, %{items: [%{id: "a", name: "A"}, %{id: "a", name: "B"}]})
+    end
+  end
+
+  test "renders app-defined components with props inside keyed lists" do
+    tree =
+      Template.compile(
+        ~s(<ul><li :for={item <- @items} :key={item.id}><LiveLift.TemplateTest.Item item={item} /></li></ul>)
+      )
+
+    html =
+      tree
+      |> Template.render_server(%{items: [%{id: 1, name: "<A>"}]})
+      |> Phoenix.HTML.safe_to_string()
+
+    assert html =~ ~s(data-live-lift-key="1")
+    assert html =~ ~s(<strong><span data-live-lift-text="item.name">&lt;A&gt;</span></strong>)
   end
 end

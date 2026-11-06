@@ -15,6 +15,7 @@ function element(initialState) {
   return {
     dataset: {liveLiftState: JSON.stringify(initialState), liveLiftModule: "App.Score"},
     innerHTML: "",
+    controls,
     hasChildNodes: () => false,
     countNode,
     stepNode,
@@ -48,6 +49,29 @@ test("runs app actions and renders app-selected fields", () => {
   assert.equal(el.countNode.textContent, "10");
   hook.destroyed();
   assert.equal(el.listeners.size, 0);
+});
+
+test("passes input values and typed element parameters to two-argument actions", () => {
+  const el = element({count: 0, step: 1, items: [{id: 1, name: "Old"}]});
+  el.controls.edit = {
+    dataset: {liveLiftInput: "edit", liveLiftParams: '{"id":1}'},
+    value: "New",
+    checked: false,
+  };
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {edit: (state, event) => ({
+        ...state,
+        items: state.items.map((item) => item.id === event.params.id ? {...item, name: event.value} : item),
+      })},
+      template: "<input>",
+    }}),
+    el,
+  };
+
+  hook.mounted();
+  el.listeners.get("input")({target: {closest: () => el.controls.edit}});
+  assert.deepEqual(hook.state.items, [{id: 1, name: "New"}]);
 });
 
 test("keeps server-rendered DOM when mounting", () => {

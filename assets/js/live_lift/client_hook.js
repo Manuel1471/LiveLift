@@ -28,6 +28,146 @@ function validateState(state) {
   validateValue(state, "state");
 }
 
+function evaluate(expr, scope) {
+  if (expr.type === "literal") return expr.value;
+  if (expr.type === "map") {
+    return Object.fromEntries(expr.entries.map(({key, expr: value}) => [key, evaluate(value, scope)]));
+  }
+  if (expr.type === "path") {
+    let value;
+    let fields = expr.fields;
+    if (expr.root === "state" && fields.length && Object.hasOwn(scope, fields[0])) {
+      value = scope[fields[0]];
+      fields = fields.slice(1);
+    } else {
+      if (!Object.hasOwn(scope, expr.root)) throw new Error(`Missing client scope: ${expr.root}`);
+      value = scope[expr.root];
+    }
+    for (const field of fields) {
+      if (!value || typeof value !== "object" || !Object.hasOwn(value, field)) {
+        throw new Error(`Missing client field: ${field}`);
+      }
+      value = value[field];
+    }
+    return value;
+  }
+  throw new Error(`Unsupported client expression: ${expr.type}`);
+}
+
+function display(value) {
+  if (value === null) return "";
+  if (["string", "number", "boolean"].includes(typeof value)) return String(value);
+  throw new Error("Cannot display a client collection directly");
+}
+
+function pathLabel(expr) {
+  if (expr.type !== "path") return "expression";
+  return (expr.root === "state" ? expr.fields : [expr.root, ...expr.fields]).join(".");
+}
+
+function renderNodes(nodes, scope, views, stack = []) {
+  return nodes.flatMap((node) => renderNode(node, scope, views, stack));
+}
+
+function renderNode(node, scope, views, stack) {
+  if (node.type === "text") {
+    const decoder = document.createElement("textarea");
+    decoder.innerHTML = node.value;
+    return [document.createTextNode(decoder.value)];
+  }
+  if (node.type === "binding") {
+    const span = document.createElement("span");
+    span.dataset.liveLiftText = pathLabel(node.expr);
+    span.textContent = display(evaluate(node.expr, scope));
+    return [span];
+  }
+  if (node.type === "component") {
+    if (stack.includes(node.module)) throw new Error(`Recursive LiveLift client component: ${node.module}`);
+    const component = views[node.module];
+    if (!component || component.component !== true) throw new Error(`Unknown LiveLift client component: ${node.module}`);
+    const props = Object.fromEntries(node.props.map((prop) => [prop.name, evaluate(prop.expr, scope)]));
+    validateState(props);
+    return renderNodes(component.template, {state: props}, views, [...stack, node.module]);
+  }
+  if (node.type !== "element") throw new Error(`Unsupported client node: ${node.type}`);
+
+  if (node.for) {
+    const items = evaluate(node.for.source, scope);
+    if (!Array.isArray(items)) throw new Error(":for expects a list");
+    const keys = new Set();
+    return items.flatMap((item) => {
+      const itemScope = {...scope, [node.for.var]: item};
+      const key = evaluate(node.key, itemScope);
+      if (typeof key !== "string" && !Number.isSafeInteger(key)) throw new Error(":key must be a string or safe integer");
+      const keyString = String(key);
+      if (keys.has(keyString)) throw new Error(`Duplicate client list key: ${key}`);
+      keys.add(keyString);
+      return renderElement(node, itemScope, key, views, stack);
+    });
+  }
+  return renderElement(node, scope, null, views, stack);
+}
+
+function renderElement(node, scope, key, views, stack) {
+  if (node.if && [false, null].includes(evaluate(node.if, scope))) return [];
+  const element = document.createElement(node.tag);
+  for (const attr of node.attrs) {
+    if (attr.name === "data-live-lift-show") {
+      element.setAttribute(attr.name, attr.value);
+      const value = evaluate({type: "path", root: "state", fields: [attr.value]}, scope);
+      element.hidden = value === false || value === null;
+    } else if (attr.type === "dynamic") {
+      element.setAttribute(attr.name, display(evaluate(attr.value, scope)));
+      element.setAttribute(`data-live-lift-bind-${attr.name}`, pathLabel(attr.value));
+    } else if (attr.type === "params") {
+      element.setAttribute("data-live-lift-params", JSON.stringify(evaluate(attr.value, scope)));
+    } else {
+      element.setAttribute(attr.name, attr.value);
+    }
+  }
+  if (key !== null) element.setAttribute("data-live-lift-key", String(key));
+  if (node.node_id !== null) element.setAttribute("data-live-lift-node-id", node.node_id);
+  element.append(...renderNodes(node.children, scope, views, stack));
+  return [element];
+}
+
+function reconcile(parent, desired) {
+  const previous = [...parent.childNodes];
+  const used = new Set();
+  desired.forEach((next, index) => {
+    const key = next.nodeType === 1 ? next.getAttribute("data-live-lift-key") : null;
+    const nodeId = next.nodeType === 1 ? next.getAttribute("data-live-lift-node-id") : null;
+    const current = key !== null
+      ? previous.find((node) => !used.has(node) && node.nodeType === 1 && node.getAttribute("data-live-lift-key") === key && node.tagName === next.tagName)
+      : nodeId !== null
+        ? previous.find((node) => !used.has(node) && node.nodeType === 1 && node.getAttribute("data-live-lift-node-id") === nodeId && node.tagName === next.tagName)
+        : previous.find((node) => !used.has(node) && (node.nodeType !== 1 || (!node.hasAttribute("data-live-lift-key") && !node.hasAttribute("data-live-lift-node-id"))) && node.nodeType === next.nodeType && (node.nodeType !== 1 || node.tagName === next.tagName));
+    const chosen = current || next;
+    if (current) patchNode(current, next);
+    used.add(chosen);
+    if (parent.childNodes[index] !== chosen) parent.insertBefore(chosen, parent.childNodes[index] || null);
+  });
+  previous.forEach((node) => { if (!used.has(node)) node.remove(); });
+}
+
+function patchNode(current, next) {
+  if (current.nodeType === 3) {
+    if (current.textContent !== next.textContent) current.textContent = next.textContent;
+    return;
+  }
+  for (const attr of [...current.attributes]) {
+    if (!next.hasAttribute(attr.name)) current.removeAttribute(attr.name);
+  }
+  for (const attr of [...next.attributes]) {
+    if (current.getAttribute(attr.name) !== attr.value) current.setAttribute(attr.name, attr.value);
+  }
+  if (current.tagName === "INPUT" && next.hasAttribute("value") && current.value !== next.value) {
+    current.value = next.value;
+  }
+  if (current.hidden !== next.hidden) current.hidden = next.hidden;
+  reconcile(current, [...next.childNodes]);
+}
+
 /**
  * Runs user-defined client actions in a LiveView-owned page.
  * The app supplies its own HEEx and marks only the locally owned DOM subtree.
@@ -42,7 +182,7 @@ export function createClientHook(views) {
 
       this.state = JSON.parse(this.el.dataset.liveLiftState);
       validateState(this.state);
-      if (!this.el.hasChildNodes()) {
+      if (!this.el.hasChildNodes() && typeof this.view.template === "string") {
         this.el.innerHTML = this.view.template;
       }
 
@@ -58,28 +198,64 @@ export function createClientHook(views) {
           return;
         }
 
-        const actionName = control.dataset.liveLiftAction;
+        this.runAction(control.dataset.liveLiftAction, control);
+      };
+
+      this.runAction = (actionName, control) => {
         const actions = this.view.actions;
         const action = Object.hasOwn(actions, actionName) ? actions[actionName] : undefined;
         if (typeof action !== "function") {
           throw new Error(`Unknown LiveLift action: ${actionName}`);
         }
 
-        const nextState = action(this.state);
+        const eventData = {
+          value: "value" in control ? control.value : null,
+          checked: "checked" in control ? control.checked : false,
+          params: control.dataset.liveLiftParams ? JSON.parse(control.dataset.liveLiftParams) : {},
+        };
+        const nextState = action(this.state, eventData);
         validateState(nextState);
         this.state = nextState;
         this.render();
       };
 
+      this.onInput = (event) => {
+        const control = event.target.closest("[data-live-lift-input]");
+        if (control && this.el.contains(control)) this.runAction(control.dataset.liveLiftInput, control);
+      };
+
+      this.onChange = (event) => {
+        const control = event.target.closest("[data-live-lift-change]");
+        if (control && this.el.contains(control)) this.runAction(control.dataset.liveLiftChange, control);
+      };
+
+      this.onSubmit = (event) => {
+        const control = event.target.closest("[data-live-lift-submit]");
+        if (!control || !this.el.contains(control)) return;
+        event.preventDefault();
+        this.runAction(control.dataset.liveLiftSubmit, control);
+      };
+
       this.el.addEventListener("click", this.onClick);
+      this.el.addEventListener("input", this.onInput);
+      this.el.addEventListener("change", this.onChange);
+      this.el.addEventListener("submit", this.onSubmit);
       this.render();
     },
 
     destroyed() {
       this.el.removeEventListener("click", this.onClick);
+      this.el.removeEventListener("input", this.onInput);
+      this.el.removeEventListener("change", this.onChange);
+      this.el.removeEventListener("submit", this.onSubmit);
     },
 
     render() {
+      if (Array.isArray(this.view.template) && typeof document !== "undefined") {
+        reconcile(this.el, renderNodes(this.view.template, {state: this.state}, views));
+        return;
+      }
+
       for (const node of this.el.querySelectorAll("[data-live-lift-text]")) {
         const field = node.dataset.liveLiftText;
         if (!Object.hasOwn(this.state, field)) {

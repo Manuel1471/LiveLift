@@ -7,6 +7,7 @@ defmodule LiveLift.Template do
   @dynamic_attributes ~w(class title aria-label value)
   @events ~w($click $server $input $change $submit)
   @void_tags ~w(area base br col embed hr img input link meta param source track wbr)
+  @forbidden_tags ~w(script iframe object embed)
 
   @spec compile(String.t(), String.t()) :: list(map())
   def compile(source, file \\ "nofile") when is_binary(source) do
@@ -21,7 +22,7 @@ defmodule LiveLift.Template do
 
   @spec render_server(list(map()), map()) :: Phoenix.HTML.safe()
   def render_server(tree, state) when is_list(tree) and is_map(state) do
-    tree |> render_nodes(%{"state" => state}) |> Phoenix.HTML.raw()
+    tree |> render_nodes(%{"state" => state}, []) |> Phoenix.HTML.raw()
   end
 
   defp convert_node({:text, text, _meta}, _file), do: %{type: "text", value: text}
@@ -38,12 +39,47 @@ defmodule LiveLift.Template do
   defp convert_node(other, file),
     do: raise(ArgumentError, "#{file}: unsupported client template node: #{inspect(other)}")
 
+  defp convert_element(:remote_component, tag, attrs, children, meta, file) do
+    unless children == [] do
+      raise ArgumentError, "#{file}:#{meta.line}: client components do not accept children"
+    end
+
+    props =
+      Enum.map(attrs, fn
+        {name, {:expr, source, expression_meta}, _} when is_binary(name) ->
+          %{name: name, expr: Expression.parse(source, file, expression_meta.line)}
+
+        {name, _, _} ->
+          raise ArgumentError,
+                "#{file}:#{meta.line}: client component prop #{name} requires an Elixir expression"
+      end)
+
+    %{type: "component", module: tag, props: props, line: meta.line}
+  end
+
   defp convert_element(type, tag, attrs, children, meta, file) do
     unless type == :tag do
       raise ArgumentError, "#{file}:#{meta.line}: client components are not supported yet: #{tag}"
     end
 
-    parsed_attrs = Enum.map(attrs, &convert_attr(&1, file))
+    if tag in @forbidden_tags do
+      raise ArgumentError, "#{file}:#{meta.line}: unsafe client template tag: #{tag}"
+    end
+
+    directive = fn name -> Enum.find(attrs, fn {attr_name, _, _} -> attr_name == name end) end
+    loop = parse_loop(directive.(":for"), file)
+    key = parse_directive(directive.(":key"), file)
+    condition = parse_directive(directive.(":if"), file)
+
+    if loop == nil != (key == nil) do
+      raise ArgumentError, "#{file}:#{meta.line}: :for requires :key and :key requires :for"
+    end
+
+    parsed_attrs =
+      attrs
+      |> Enum.reject(fn {name, _, _} -> name in ~w(:for :key :if) end)
+      |> Enum.map(&convert_attr(&1, file))
+
     names = Enum.map(parsed_attrs, & &1.name)
 
     if length(names) != length(Enum.uniq(names)) do
@@ -56,11 +92,48 @@ defmodule LiveLift.Template do
       attrs: parsed_attrs,
       children: Enum.map(children, &convert_node(&1, file)),
       void: tag in @void_tags,
-      line: meta.line
+      line: meta.line,
+      for: loop,
+      key: key,
+      if: condition,
+      node_id: if(condition, do: "#{meta.line}:#{meta.column}", else: nil)
     }
   end
 
+  defp parse_directive(nil, _file), do: nil
+
+  defp parse_directive({_, {:expr, source, meta}, _}, file),
+    do: Expression.parse(source, file, meta.line)
+
+  defp parse_directive({name, _, meta}, file),
+    do: raise(ArgumentError, "#{file}:#{meta.line}: #{name} requires an Elixir expression")
+
+  defp parse_loop(nil, _file), do: nil
+
+  defp parse_loop({":for", {:expr, source, meta}, _}, file) do
+    case Code.string_to_quoted(source, file: file, line: meta.line) do
+      {:ok, {:<-, _, [{var, _, context}, collection]}}
+      when is_atom(var) and (is_atom(context) or is_nil(context)) ->
+        %{
+          var: Atom.to_string(var),
+          source: Expression.parse(Macro.to_string(collection), file, meta.line)
+        }
+
+      _ ->
+        raise ArgumentError, "#{file}:#{meta.line}: :for must be a single variable <- collection"
+    end
+  end
+
+  defp parse_loop({_, _, meta}, file),
+    do: raise(ArgumentError, "#{file}:#{meta.line}: :for requires an Elixir expression")
+
   defp convert_attr({name, {:string, value, _}, meta}, file) do
+    if Regex.match?(~r/^on[a-z]/i, name) or
+         (name in ~w(href src action formaction) and
+            Regex.match?(~r/^\s*javascript:/i, value)) do
+      raise ArgumentError, "#{file}:#{meta.line}: unsafe client attribute: #{name}"
+    end
+
     cond do
       name in @events and Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, value) ->
         target =
@@ -94,27 +167,102 @@ defmodule LiveLift.Template do
 
   defp convert_attr({name, {:expr, source, meta}, _attr_meta}, file),
     do:
-      raise(
-        ArgumentError,
-        "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
+      if(name == ":params",
+        do: %{
+          name: "data-live-lift-params",
+          value: Expression.parse(source, file, meta.line),
+          type: "params"
+        },
+        else:
+          raise(
+            ArgumentError,
+            "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
+          )
       )
 
-  defp render_nodes(nodes, scope), do: Enum.map_join(nodes, "", &render_node(&1, scope))
-  defp render_node(%{type: "text", value: value}, _scope), do: value
+  defp render_nodes(nodes, scope, stack),
+    do: Enum.map_join(nodes, "", &render_node(&1, scope, stack))
 
-  defp render_node(%{type: "binding", expr: expr}, scope) do
+  defp render_node(%{type: "text", value: value}, _scope, _stack), do: value
+
+  defp render_node(%{type: "component", module: name, props: props}, scope, stack) do
+    module = Module.concat(String.split(name, "."))
+
+    if module in stack, do: raise(ArgumentError, "recursive LiveLift client component: #{name}")
+
+    unless Code.ensure_loaded?(module) and
+             function_exported?(module, :__live_lift_client_template__, 0) and
+             function_exported?(module, :__live_lift_component__, 0) do
+      raise ArgumentError, "unknown LiveLift client component: #{name}"
+    end
+
+    state =
+      Map.new(props, fn %{name: key, expr: expr} ->
+        {String.to_atom(key), Expression.eval(expr, scope)}
+      end)
+
+    LiveLift.State.validate!(state)
+
+    render_nodes(module.__live_lift_client_template__(), %{"state" => state}, [module | stack])
+  end
+
+  defp render_node(%{type: "binding", expr: expr}, scope, _stack) do
     value = expr |> Expression.eval(scope) |> display_value() |> escape()
     "<span data-live-lift-text=\"#{path_label(expr)}\">#{value}</span>"
   end
 
-  defp render_node(%{type: "element"} = node, scope) do
+  defp render_node(%{type: "element", for: %{var: var, source: source}} = node, scope, stack) do
+    values = Expression.eval(source, scope)
+    unless is_list(values), do: raise(ArgumentError, ":for expects a list")
+
+    {markup, _keys} =
+      Enum.map_reduce(values, MapSet.new(), fn value, keys ->
+        item_scope = Map.put(scope, var, value)
+        key = Expression.eval(node.key, item_scope)
+
+        unless is_binary(key) or (is_integer(key) and abs(key) <= 9_007_199_254_740_991),
+          do: raise(ArgumentError, ":key must be a string or safe integer")
+
+        key_string = to_string(key)
+
+        if MapSet.member?(keys, key_string),
+          do: raise(ArgumentError, "duplicate client list key: #{key}")
+
+        {render_element_node(%{node | for: nil}, item_scope, key, stack),
+         MapSet.put(keys, key_string)}
+      end)
+
+    Enum.join(markup)
+  end
+
+  defp render_node(%{type: "element"} = node, scope, stack),
+    do: render_element_node(node, scope, nil, stack)
+
+  defp render_element_node(node, scope, key, stack) do
+    if node.if && Expression.eval(node.if, scope) in [false, nil] do
+      ""
+    else
+      render_element(node, scope, key, stack)
+    end
+  end
+
+  defp render_element(node, scope, key, stack) do
     attrs = Enum.map_join(node.attrs, "", &render_attr(&1, scope))
     attrs = if hidden?(node.attrs, scope), do: attrs <> " hidden", else: attrs
+
+    attrs =
+      if key == nil, do: attrs, else: attrs <> " data-live-lift-key=\"#{escape(to_string(key))}\""
+
+    attrs =
+      if node.node_id == nil,
+        do: attrs,
+        else: attrs <> " data-live-lift-node-id=\"#{node.node_id}\""
+
     opening = "<#{node.tag}#{attrs}>"
 
     if node.void,
       do: opening,
-      else: opening <> render_nodes(node.children, scope) <> "</#{node.tag}>"
+      else: opening <> render_nodes(node.children, scope, stack) <> "</#{node.tag}>"
   end
 
   defp render_attr(%{name: "data-live-lift-show", value: value}, _scope),
@@ -126,6 +274,11 @@ defmodule LiveLift.Template do
   defp render_attr(%{name: name, type: "dynamic", value: expr}, scope) do
     value = expr |> Expression.eval(scope) |> display_value() |> escape()
     " #{name}=\"#{value}\" data-live-lift-bind-#{name}=\"#{path_label(expr)}\""
+  end
+
+  defp render_attr(%{name: "data-live-lift-params", type: "params", value: expr}, scope) do
+    payload = expr |> Expression.eval(scope) |> Jason.encode!() |> escape()
+    " data-live-lift-params=\"#{payload}\""
   end
 
   defp hidden?(attrs, scope) do
