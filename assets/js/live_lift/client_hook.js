@@ -26,8 +26,16 @@ export function createClientHook(views) {
       this.el.innerHTML = this.view.template;
 
       this.onClick = (event) => {
-        const control = event.target.closest("[data-live-lift-action]");
+        const control = event.target.closest(
+          "[data-live-lift-action], [data-live-lift-server]",
+        );
         if (!control || !this.el.contains(control)) return;
+
+        const serverEvent = control.dataset.liveLiftServer;
+        if (serverEvent) {
+          this.pushEvent(serverEvent, {state: this.state});
+          return;
+        }
 
         const actionName = control.dataset.liveLiftAction;
         const actions = this.view.actions;

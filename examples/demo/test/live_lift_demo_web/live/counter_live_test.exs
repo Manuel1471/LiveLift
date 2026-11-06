@@ -12,5 +12,10 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
     assert html =~ "Server count: 0"
 
     assert view |> element("#server-increment") |> render_click() =~ "Server count: 1"
+
+    assert view
+           |> element("#local-counter")
+           |> render_hook("save_score", %{"state" => %{"count" => 12, "step" => 2}}) =~
+             "Saved score: 12"
   end
 end

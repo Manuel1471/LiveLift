@@ -8,6 +8,7 @@ function element(initialState) {
   const controls = {
     advance: {dataset: {liveLiftAction: "advance"}},
     retreat: {dataset: {liveLiftAction: "retreat"}},
+    save: {dataset: {liveLiftServer: "save_score"}},
   };
   const listeners = new Map();
 
@@ -63,4 +64,25 @@ test("rejects unsafe action results", () => {
   hook.mounted();
   assert.throws(() => el.click("advance"), /map of safe integers/);
   assert.equal(el.countNode.textContent, "1");
+});
+
+test("sends a deliberate server event with the current local state", () => {
+  const el = element({count: 10, step: 3});
+  const sent = [];
+  const hook = {
+    ...createClientHook({
+      "App.Score": {
+        actions: {advance: (state) => ({...state, count: state.count + state.step})},
+        template: "<button data-live-lift-server=\"save_score\">Save</button>",
+      },
+    }),
+    el,
+    pushEvent: (name, payload) => sent.push({name, payload}),
+  };
+
+  hook.mounted();
+  el.click("advance");
+  el.click("save");
+
+  assert.deepEqual(sent, [{name: "save_score", payload: {state: {count: 13, step: 3}}}]);
 });

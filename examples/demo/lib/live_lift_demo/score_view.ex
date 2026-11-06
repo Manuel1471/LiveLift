@@ -8,6 +8,7 @@ defmodule LiveLiftDemo.ScoreView do
     <output aria-live="polite">{@count}</output>
     <button type="button" $click="advance">Add step</button>
     <p>Step: {@step}</p>
+    <button type="button" $server="save_score">Save score on server</button>
   </section>
   """)
 

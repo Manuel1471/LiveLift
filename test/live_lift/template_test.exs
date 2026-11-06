@@ -30,4 +30,9 @@ defmodule LiveLift.TemplateTest do
       Template.compile("<input value=\"{@score}\">")
     end
   end
+
+  test "compiles an explicit server event binding" do
+    assert Template.compile("<button $server=\"save_score\">Save</button>") ==
+             "<button data-live-lift-server=\"save_score\">Save</button>"
+  end
 end

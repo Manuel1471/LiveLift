@@ -9,6 +9,7 @@ defmodule LiveLift.Template do
 
   @field ~r/\{@([a-zA-Z_][a-zA-Z0-9_]*)\}/
   @action ~r/\$click="([a-zA-Z_][a-zA-Z0-9_]*)"/
+  @server ~r/\$server="([a-zA-Z_][a-zA-Z0-9_]*)"/
 
   @spec compile(String.t()) :: String.t()
   def compile(source) when is_binary(source) do
@@ -19,9 +20,10 @@ defmodule LiveLift.Template do
     html =
       source
       |> then(&Regex.replace(@action, &1, "data-live-lift-action=\"\\1\""))
+      |> then(&Regex.replace(@server, &1, "data-live-lift-server=\"\\1\""))
       |> then(&Regex.replace(@field, &1, "<span data-live-lift-text=\"\\1\"></span>"))
 
-    if String.contains?(html, ["$click", "{@"]) do
+    if String.contains?(html, ["$click", "$server", "{@"]) do
       raise ArgumentError, "unsupported client template syntax"
     end
 
