@@ -30,10 +30,21 @@ defmodule LiveLift.MixProject do
 
   defp deps do
     [
-      {:phoenix_live_view, System.get_env("LIVE_LIFT_LIVE_VIEW_VERSION") || "~> 1.2.0"},
+      live_view_dependency(),
       {:jason, "~> 1.4"},
       {:stream_data, "~> 1.4", only: :test},
       {:ex_doc, "~> 0.38", only: :dev, runtime: false}
     ]
+  end
+
+  defp live_view_dependency do
+    case System.get_env("LIVE_LIFT_LIVE_VIEW_VERSION") do
+      "main" ->
+        {:phoenix_live_view,
+         git: "https://github.com/phoenixframework/phoenix_live_view.git", branch: "main"}
+
+      version ->
+        {:phoenix_live_view, version || "~> 1.2.0"}
+    end
   end
 end

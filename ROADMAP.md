@@ -89,7 +89,8 @@ Resultados y límites de los tres spikes: `docs/liveview-api-spikes.md`.
 - [ ] Deprecar `client_template`, `defclient`, `$click` y `island` con avisos.
 - [ ] `mix live_lift.migrate` para convertir la API anterior.
 - [ ] Aislar el parser interno de Phoenix tras un módulo adaptador; CI contra LiveView
-  `main` (fallo permitido); plan B de tokenizador propio.
+  `main` (fallo permitido); plan B de tokenizador propio. (Adaptador y CI listos;
+  tokenizador de respaldo pendiente.)
 
 **Listo cuando:** el mismo módulo corre en modo servidor y en modo cliente con HTML
 equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.

@@ -4,6 +4,7 @@
 
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
+- Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.
 - Match HTML attribute entities and native checkbox, select and textarea values across server and browser rendering.
 - Document LiveView-shaped API feasibility spikes and formal client semantics.
 - Exclude the release guide from Hex and run CI on Elixir 1.18/OTP 27 and Elixir 1.20/OTP 29.

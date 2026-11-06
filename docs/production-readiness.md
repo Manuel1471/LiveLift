@@ -6,6 +6,8 @@ The CI matrix runs the library tests with Phoenix LiveView 1.2.0 and 1.2.13.
 Both passed locally on Elixir 1.20.2 / OTP 29 on 2026-11-06. The parser uses
 `Phoenix.LiveView.TagEngine.Parser`, an internal API, so the dependency is
 restricted to 1.2.x. LiveView 1.3 and later are not claimed compatible.
+An optional CI lane tests LiveView `main` without blocking releases; it is an
+early compatibility signal, not a supported version claim.
 
 ## Accessibility
 

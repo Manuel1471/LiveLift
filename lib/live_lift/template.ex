@@ -2,7 +2,7 @@ defmodule LiveLift.Template do
   @moduledoc "Parses client templates into a validated tree shared by both runtimes."
 
   alias LiveLift.Template.Expression
-  alias Phoenix.LiveView.TagEngine.Parser
+  alias LiveLift.Template.Parser
 
   @dynamic_attributes ~w(class title aria-label value)
   @events ~w($click $server $input $change $submit)
@@ -11,13 +11,7 @@ defmodule LiveLift.Template do
 
   @spec compile(String.t(), String.t()) :: list(map())
   def compile(source, file \\ "nofile") when is_binary(source) do
-    source
-    |> Parser.parse!(tag_handler: Phoenix.LiveView.HTMLEngine, file: file)
-    |> Map.fetch!(:nodes)
-    |> Enum.map(&convert_node(&1, file))
-  rescue
-    error in Phoenix.LiveView.TagEngine.Tokenizer.ParseError ->
-      raise ArgumentError, Exception.message(error)
+    source |> Parser.parse!(file) |> Enum.map(&convert_node(&1, file))
   end
 
   @spec render_server(list(map()), map()) :: Phoenix.HTML.safe()
