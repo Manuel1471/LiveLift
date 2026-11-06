@@ -2,6 +2,6 @@
   "name": "live-lift-assets",
   "private": true,
   "type": "module",
-  "exports": {"./counter": "./js/live_lift/counter.js"},
+  "exports": {"./client_hook": "./js/live_lift/client_hook.js"},
   "scripts": {"test": "node --test js/live_lift/*.test.js"}
 }

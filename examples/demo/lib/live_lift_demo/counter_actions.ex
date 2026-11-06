@@ -1,6 +1,6 @@
 defmodule LiveLiftDemo.CounterActions do
   use LiveLift.Client
 
-  defclient(increment(count), do: count + 1)
-  defclient(decrement(count), do: count - 1)
+  defclient(advance(state), do: %{count: state.count + state.step, step: state.step})
+  defclient(retreat(state), do: %{count: state.count - state.step, step: state.step})
 end
