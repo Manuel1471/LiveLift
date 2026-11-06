@@ -24,7 +24,7 @@ import "../css/app.css"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/live_lift_demo"
-import {createClientHook} from "../../../../assets/js/live_lift/client_hook.js"
+import {createClientHook} from "./live_lift_runtime.js"
 import {views} from "./generated_views.js"
 import topbar from "../vendor/topbar"
 

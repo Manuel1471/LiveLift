@@ -21,7 +21,8 @@ current local score through a LiveView event and displays it in the server
 panel. Updating the server leaves the local score intact.
 
 The `mix setup` and `mix assets.build` aliases regenerate
-`assets/js/generated_views.js` before bundling. The file is ignored by Git;
-edit the Elixir actions and rebuild assets to change browser behavior.
+`assets/js/generated_views.js` and copy `assets/js/live_lift_runtime.js`
+before bundling. Both files are ignored by Git; edit the Elixir actions and
+rebuild assets to change browser behavior.
 
 The demo has no database. To run its tests: `mix test`.

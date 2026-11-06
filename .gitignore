@@ -1,6 +1,7 @@
 /_build/
 /deps/
 /cover/
+/live_lift-*.tar
 /.elixir_ls/
 /.fetch
 *.beam

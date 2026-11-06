@@ -35,3 +35,4 @@ live_lift_demo-*.tar
 npm-debug.log
 /assets/node_modules/
 /assets/js/generated_views.js
+/assets/js/live_lift_runtime.js

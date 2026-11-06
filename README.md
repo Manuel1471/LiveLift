@@ -55,10 +55,15 @@ Generate the browser module before bundling your assets:
 mix live_lift.compile --output assets/js/generated_views.js
 ```
 
+This also copies `live_lift_runtime.js` beside the generated registry. Both
+files are local to your app's assets; the build does not need a relative import
+into the dependency's source tree. You can choose another runtime path with
+`--runtime-output`.
+
 Register the hook in `assets/js/app.js`:
 
 ```javascript
-import {createClientHook} from "../../../../assets/js/live_lift/client_hook.js"
+import {createClientHook} from "./live_lift_runtime.js"
 import {views} from "./generated_views.js"
 
 let liveSocket = new LiveSocket("/live", Socket, {
@@ -68,10 +73,9 @@ let liveSocket = new LiveSocket("/live", Socket, {
 ```
 
 The compile task discovers client views in your app and generates one registry.
-The hook import path shown is for the included demo. In your own app, adjust it
-to the location of your LiveLift checkout. If you already have hooks, merge
-them into the `hooks` object. Run the compile task as part of your asset build,
-as the demo's `mix.exs` does. Mount the view inside a LiveView template:
+If you already have hooks, merge them into the `hooks` object. Run the compile
+task as part of your asset build, as the demo's `mix.exs` does. Ignore the two
+generated JavaScript files in Git. Mount the view inside a LiveView template:
 
 ```heex
 <LiveLift.View.island
@@ -89,7 +93,7 @@ Your handler must validate that payload before using it. The demo shows the
 round trip.
 
 The current template syntax supports text interpolation (`{@field}`), dynamic
-`class`, `title`, and `aria-label` attributes (`class="{@field}"`), conditional
+`class`, `title`, `aria-label`, and `value` attributes (`class="{@field}"`), conditional
 visibility (`$show="field"`), client actions (`$click="action"`), and explicit
 server events (`$server="event"`). `defclient` supports one argument, safe
 integer, string, boolean, and nil literals, `+`, `-`, `*`, `==`, `!=`, `if` with
