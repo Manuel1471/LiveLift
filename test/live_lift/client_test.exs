@@ -164,6 +164,24 @@ defmodule LiveLift.ClientTest do
     assert javascript =~ "template: "
   end
 
+  test "generated registry has a source map with original Elixir sources" do
+    {javascript, source_map} =
+      Compiler.compile_registry_with_map([TemplatedActions], "generated_views.js")
+
+    decoded = Jason.decode!(source_map)
+    assert decoded["version"] == 3
+    assert decoded["file"] == "generated_views.js"
+    assert Enum.any?(decoded["sources"], &String.ends_with?(&1, "client_test.exs"))
+
+    assert Enum.any?(
+             decoded["sourcesContent"],
+             &String.contains?(&1, "defmodule LiveLift.ClientTest")
+           )
+
+    assert decoded["mappings"] != ""
+    assert javascript =~ "LiveLift.ClientTest.TemplatedActions"
+  end
+
   test "generated JavaScript agrees with Elixir on supported values" do
     cases = [
       {"sum", %{value: 10, step: 2}, ParityActions.sum(%{value: 10, step: 2})},

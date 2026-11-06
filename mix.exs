@@ -28,7 +28,7 @@ defmodule LiveLift.MixProject do
 
   defp deps do
     [
-      {:phoenix_live_view, "~> 1.2.0"},
+      {:phoenix_live_view, System.get_env("LIVE_LIFT_LIVE_VIEW_VERSION") || "~> 1.2.0"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.38", only: :dev, runtime: false}
     ]

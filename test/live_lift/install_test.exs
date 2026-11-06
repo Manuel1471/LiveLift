@@ -15,14 +15,20 @@ defmodule LiveLift.InstallTest do
     "assets.deploy": ["esbuild my_app --minify"]
     """)
 
+    File.write!(Path.join(root, ".gitignore"), "/_build/\n")
+
     try do
       File.cd!(root, fn ->
         Mix.Tasks.LiveLift.Install.run([])
-        first = {File.read!("assets/js/app.js"), File.read!("mix.exs")}
+        first = {File.read!("assets/js/app.js"), File.read!("mix.exs"), File.read!(".gitignore")}
         Mix.Tasks.LiveLift.Install.run([])
-        assert first == {File.read!("assets/js/app.js"), File.read!("mix.exs")}
+
+        assert first ==
+                 {File.read!("assets/js/app.js"), File.read!("mix.exs"), File.read!(".gitignore")}
+
         assert elem(first, 0) =~ "LiveLift: createClientHook(liveLiftViews)"
         assert elem(first, 1) =~ "live_lift.compile --output assets/js/generated_views.js"
+        assert elem(first, 2) =~ "/assets/js/generated_views.js.map"
       end)
     after
       File.rm_rf!(root)

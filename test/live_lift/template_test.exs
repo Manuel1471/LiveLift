@@ -146,6 +146,20 @@ defmodule LiveLift.TemplateTest do
     end
   end
 
+  test "requires native keyboard-accessible controls for events" do
+    assert_raise ArgumentError, ~r/click events require a native button/, fn ->
+      Template.compile(~s(<div $click="add">Add</div>), "controls.ex")
+    end
+
+    assert_raise ArgumentError, ~r/input events require a native form control/, fn ->
+      Template.compile(~s(<span $input="edit">Edit</span>), "controls.ex")
+    end
+
+    assert_raise ArgumentError, ~r/submit events require a form/, fn ->
+      Template.compile(~s(<div $submit="save">Save</div>), "controls.ex")
+    end
+  end
+
   test "renders app-defined components with props inside keyed lists" do
     tree =
       Template.compile(

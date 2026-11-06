@@ -82,6 +82,72 @@ defmodule LiveLift.Client.Compiler do
       Enum.join(entries, ",\n") <> "\n};\n"
   end
 
+  @doc "Returns the registry and a source map pointing each view entry to its Elixir template."
+  def compile_registry_with_map(modules, output_name) do
+    expanded = modules |> expand_components() |> Enum.sort()
+    javascript = compile_registry(expanded)
+
+    sources =
+      Enum.map(expanded, fn module ->
+        {file, line} = module.__live_lift_template_source__()
+        {Path.relative_to_cwd(file), line, File.read!(file)}
+      end)
+
+    mappings =
+      javascript
+      |> String.split("\n")
+      |> Enum.map_reduce({0, 0}, fn generated_line, {previous_source, previous_line} ->
+        index =
+          Enum.find_index(expanded, fn module ->
+            name = module |> Atom.to_string() |> String.replace_prefix("Elixir.", "")
+            String.contains?(generated_line, "#{Jason.encode!(name)}: {actions:")
+          end)
+
+        if index == nil do
+          {"", {previous_source, previous_line}}
+        else
+          {_file, line, _content} = Enum.at(sources, index)
+          original_line = line - 1
+
+          segment =
+            [2, index - previous_source, original_line - previous_line, 0]
+            |> Enum.map_join(&vlq/1)
+
+          {segment, {index, original_line}}
+        end
+      end)
+      |> elem(0)
+      |> Enum.join(";")
+
+    map = %{
+      version: 3,
+      file: Path.basename(output_name),
+      sources: Enum.map(sources, &elem(&1, 0)),
+      sourcesContent: Enum.map(sources, &elem(&1, 2)),
+      names: [],
+      mappings: mappings
+    }
+
+    {javascript, Jason.encode!(map)}
+  end
+
+  defp vlq(value) do
+    encoded = if value < 0, do: -value * 2 + 1, else: value * 2
+    vlq_digits(encoded, "")
+  end
+
+  defp vlq_digits(value, output) do
+    digit = Bitwise.band(value, 31)
+    rest = Bitwise.bsr(value, 5)
+    digit = if rest > 0, do: Bitwise.bor(digit, 32), else: digit
+
+    output =
+      output <>
+        String.at("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", digit)
+
+    if rest > 0, do: vlq_digits(rest, output), else: output
+  end
+
   @spec compile_action(atom(), atom(), Macro.t()) :: String.t()
   def compile_action(name, arg, body) when is_atom(name) and is_atom(arg) do
     name_string = identifier!(name)

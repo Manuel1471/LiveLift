@@ -34,7 +34,9 @@ defmodule Mix.Tasks.LiveLift.Install do
           js
           |> String.replace(
             "import {hooks as colocatedHooks}",
-            @imports <> "import {hooks as colocatedHooks}", global: false)
+            @imports <> "import {hooks as colocatedHooks}",
+            global: false
+          )
           |> String.replace(
             "hooks: {...colocatedHooks}",
             "hooks: {...colocatedHooks, LiveLift: createClientHook(liveLiftViews)}",
@@ -60,6 +62,26 @@ defmodule Mix.Tasks.LiveLift.Install do
 
     File.write!(app_js, js)
     File.write!(mix_exs, mix)
+
+    if File.regular?(".gitignore") do
+      ignore = File.read!(".gitignore")
+
+      ignore =
+        Enum.reduce(
+          [
+            "/assets/js/generated_views.js",
+            "/assets/js/generated_views.js.map",
+            "/assets/js/live_lift_runtime.js"
+          ],
+          ignore,
+          fn entry, content ->
+            if entry in String.split(content, "\n"), do: content, else: content <> "\n" <> entry
+          end
+        )
+
+      File.write!(".gitignore", String.trim_trailing(ignore) <> "\n")
+    end
+
     Mix.shell().info("LiveLift assets integrated. Run mix assets.build.")
   end
 

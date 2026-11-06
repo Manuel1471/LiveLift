@@ -116,3 +116,5 @@ cd assets && npm test
 ```
 
 This release is experimental and currently supports Phoenix LiveView 1.2.x.
+See [production limits and reproducible benchmarks](docs/production-readiness.md)
+before using it in a deployed app.

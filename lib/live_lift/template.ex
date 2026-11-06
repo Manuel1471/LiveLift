@@ -75,6 +75,18 @@ defmodule LiveLift.Template do
       raise ArgumentError, "#{file}:#{meta.line}: :for requires :key and :key requires :for"
     end
 
+    if (directive.("$click") || directive.("$server")) && tag != "button" do
+      raise ArgumentError, "#{file}:#{meta.line}: click events require a native button"
+    end
+
+    if (directive.("$input") || directive.("$change")) && tag not in ~w(input select textarea) do
+      raise ArgumentError, "#{file}:#{meta.line}: input events require a native form control"
+    end
+
+    if directive.("$submit") && tag != "form" do
+      raise ArgumentError, "#{file}:#{meta.line}: submit events require a form"
+    end
+
     parsed_attrs =
       attrs
       |> Enum.reject(fn {name, _, _} -> name in ~w(:for :key :if) end)

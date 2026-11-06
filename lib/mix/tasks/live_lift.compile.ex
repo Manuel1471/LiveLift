@@ -44,13 +44,19 @@ defmodule Mix.Tasks.LiveLift.Compile do
     end
 
     File.mkdir_p!(Path.dirname(output))
-    File.write!(output, LiveLift.Client.Compiler.compile_registry(view_modules))
+
+    {registry, source_map} =
+      LiveLift.Client.Compiler.compile_registry_with_map(view_modules, output)
+
+    File.write!(output, registry <> "//# sourceMappingURL=#{Path.basename(output)}.map\n")
+    File.write!(output <> ".map", source_map)
     File.mkdir_p!(Path.dirname(runtime_output))
 
     runtime_source = Path.expand("../../../assets/js/live_lift/client_hook.js", __DIR__)
     File.cp!(runtime_source, runtime_output)
 
     Mix.shell().info("Generated #{Path.relative_to_cwd(output)} (#{length(view_modules)} views)")
+    Mix.shell().info("Generated #{Path.relative_to_cwd(output)}.map")
     Mix.shell().info("Copied #{Path.relative_to_cwd(runtime_output)}")
   end
 end

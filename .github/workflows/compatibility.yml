@@ -1,0 +1,24 @@
+name: Compatibility
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  live-view:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        live_view: ["== 1.2.0", "== 1.2.13"]
+    env:
+      LIVE_LIFT_LIVE_VIEW_VERSION: ${{ matrix.live_view }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+          elixir-version: "1.18"
+      - run: rm mix.lock && mix deps.get
+      - run: mix test
+      - run: node --test assets/js/live_lift/client_hook.test.js

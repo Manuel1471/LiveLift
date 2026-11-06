@@ -20,6 +20,7 @@ defmodule LiveLift.Client do
       import LiveLift.Client, only: [defclient: 2, client_template: 1]
       Module.register_attribute(__MODULE__, :live_lift_client_actions, accumulate: true)
       Module.register_attribute(__MODULE__, :live_lift_client_template, accumulate: false)
+      Module.register_attribute(__MODULE__, :live_lift_template_source, accumulate: false)
       @before_compile LiveLift.Client
     end
   end
@@ -57,9 +58,11 @@ defmodule LiveLift.Client do
 
   defmacro client_template(source) when is_binary(source) do
     compiled_template = LiveLift.Template.compile(source, __CALLER__.file)
+    location = {__CALLER__.file, __CALLER__.line}
 
     quote do
       @live_lift_client_template unquote(Macro.escape(compiled_template))
+      @live_lift_template_source unquote(Macro.escape(location))
     end
   end
 
@@ -70,6 +73,7 @@ defmodule LiveLift.Client do
   defmacro __before_compile__(env) do
     actions = env.module |> Module.get_attribute(:live_lift_client_actions) |> Enum.reverse()
     template = Module.get_attribute(env.module, :live_lift_client_template)
+    source = Module.get_attribute(env.module, :live_lift_template_source)
 
     quote do
       @doc false
@@ -77,6 +81,9 @@ defmodule LiveLift.Client do
 
       @doc false
       def __live_lift_client_template__, do: unquote(Macro.escape(template))
+
+      @doc false
+      def __live_lift_template_source__, do: unquote(Macro.escape(source))
     end
   end
 end

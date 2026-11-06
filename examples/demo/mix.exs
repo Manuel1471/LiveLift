@@ -68,7 +68,7 @@ defmodule LiveLiftDemo.MixProject do
       "assets.build": [
         "compile",
         "live_lift.compile --output assets/js/generated_views.js",
-        "esbuild live_lift_demo"
+        "esbuild live_lift_demo --sourcemap=external"
       ],
       "assets.deploy": [
         "live_lift.compile --output assets/js/generated_views.js",
