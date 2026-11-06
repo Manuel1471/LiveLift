@@ -11,7 +11,15 @@ defmodule LiveLift.Component.Compiler do
       end
 
     body = update_to_state!(update, socket, file, line)
-    {body, uses_params} = rewrite_params(body, params)
+
+    {body, uses_params} =
+      try do
+        rewrite_params(body, params)
+      rescue
+        error in ArgumentError ->
+          raise ArgumentError, "#{file}:#{line}: #{Exception.message(error)}"
+      end
+
     name = String.to_atom(event)
     args = if uses_params, do: [:state, :event], else: :state
 
@@ -36,6 +44,16 @@ defmodule LiveLift.Component.Compiler do
   defp invalid_handler!(file, line) do
     raise ArgumentError,
           "#{file}:#{line}: @client handler must return {:noreply, assign/update(socket, ...)}; move other handlers to the server"
+  end
+
+  defp update_to_state!(
+         {:|>, _, [socket, {operation, meta, args}]},
+         socket_arg,
+         file,
+         line
+       )
+       when operation in [:assign, :update] and is_list(args) do
+    update_to_state!({operation, meta, [socket | args]}, socket_arg, file, line)
   end
 
   defp update_to_state!(
@@ -85,7 +103,7 @@ defmodule LiveLift.Component.Compiler do
     {:%{}, meta, [{:|, meta, [{:state, meta, nil}, [{field, expression}]]}]}
   end
 
-  defp rewrite_params(body, {name, _, _}) when is_atom(name) do
+  defp rewrite_params(body, {name, _, _}) when is_atom(name) and name != :%{} do
     Macro.prewalk(body, false, fn
       {{:., _, [Access, :get]}, _, [{^name, _, _}, key]}, _used when is_binary(key) ->
         {event_param(key), true}
@@ -93,6 +111,35 @@ defmodule LiveLift.Component.Compiler do
       {{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [{^name, _, _}, key]}, _used
       when is_binary(key) ->
         {event_param(key), true}
+
+      node, used ->
+        {node, used}
+    end)
+  end
+
+  defp rewrite_params(body, {:%{}, _, fields}) when is_list(fields) do
+    bindings =
+      Enum.map(fields, fn
+        {key, {name, _, context}}
+        when is_binary(key) and is_atom(name) and (is_atom(context) or is_nil(context)) ->
+          {name, key}
+
+        _ ->
+          raise ArgumentError,
+                "@client supports flat string-key event patterns; move nested patterns to a server handler"
+      end)
+
+    if length(bindings) != length(Enum.uniq_by(bindings, &elem(&1, 0))) do
+      raise ArgumentError, "@client event pattern binds the same variable twice"
+    end
+
+    Macro.prewalk(body, false, fn
+      {name, _, context} = node, used
+      when is_atom(name) and (is_atom(context) or is_nil(context)) ->
+        case List.keyfind(bindings, name, 0) do
+          {_, key} -> {event_param(key), true}
+          nil -> {node, used}
+        end
 
       node, used ->
         {node, used}

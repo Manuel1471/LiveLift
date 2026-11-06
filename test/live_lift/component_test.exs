@@ -46,6 +46,18 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule PatternCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@label}</output>"
+
+    @client true
+    def handle_event("set", %{"value" => value}, socket) do
+      {:noreply, socket |> assign(:label, value)}
+    end
+  end
+
   test "uses the real HEEx render and compiles the marked event" do
     html =
       render_component(&Counter.render/1,
@@ -120,6 +132,31 @@ defmodule LiveLift.ComponentTest do
 
       {output, 0} = System.cmd("node", [path])
       assert Jason.decode!(output) == %{"label" => "ready"}
+    after
+      File.rm(path)
+    end
+  end
+
+  test "a flat pattern and socket pipe keep native handler semantics" do
+    socket = %Phoenix.LiveView.Socket{assigns: %{label: "", id: "pattern", __changed__: %{}}}
+
+    assert {:reply, %{state: %{label: "pattern"}}, _} =
+             PatternCounter.handle_event("set", %{"value" => "pattern"}, socket)
+
+    javascript = LiveLift.Client.Compiler.compile_module(PatternCounter)
+
+    path =
+      Path.join(System.tmp_dir!(), "live_lift_pattern_#{System.unique_integer([:positive])}.mjs")
+
+    try do
+      File.write!(
+        path,
+        javascript <>
+          "\nconsole.log(JSON.stringify(actions.set({label: ''}, {params: {value: 'pattern'}})));\n"
+      )
+
+      {output, 0} = System.cmd("node", [path])
+      assert Jason.decode!(output) == %{"label" => "pattern"}
     after
       File.rm(path)
     end

@@ -17,8 +17,8 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
   end
 
   @client true
-  def handle_event("draft", params, socket) do
-    {:noreply, assign(socket, :draft, params["value"])}
+  def handle_event("draft", %{"value" => value}, socket) do
+    {:noreply, socket |> assign(:draft, value)}
   end
 
   @client true
