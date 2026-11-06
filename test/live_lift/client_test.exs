@@ -104,6 +104,35 @@ defmodule LiveLift.ClientTest do
     )
   end
 
+  defmodule NativeParity do
+    use LiveLift.Client
+
+    defclient(logic(state),
+      do: %{and_value: state.left && state.right, or_value: state.left || state.right}
+    )
+
+    defclient(update(state),
+      do: %{
+        state
+        | count: state.count + 1,
+          parity: rem(state.count, 2),
+          label: state.label <> "!",
+          active: state.count >= 0 && state.enabled
+      }
+    )
+
+    defclient(collections(state),
+      do: %{
+        filtered: Enum.filter(state.items, fn item -> item.keep end),
+        any: Enum.any?(state.items, fn item -> item.keep end),
+        all: Enum.all?(state.items, fn item -> item.keep end),
+        member: Enum.member?(state.items, state.target),
+        fallback: Map.get(state.optional, :missing, "none"),
+        present: Map.get(state.optional, :present)
+      }
+    )
+  end
+
   test "defines normal Elixir functions and compiles their expressions" do
     assert CounterActions.increment(10) == 11
     assert CounterActions.decrement(10) == 9
@@ -247,5 +276,35 @@ defmodule LiveLift.ClientTest do
 
     {output, 0} = System.cmd("node", ["--input-type=module", "--eval", source])
     assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
+  end
+
+  test "native map updates, collections, strings, and truthiness keep parity" do
+    cases = [
+      {"update", %{count: 2, parity: 0, label: "ok", active: false, enabled: true}},
+      {"update", %{count: -1, parity: 0, label: "", active: false, enabled: nil}},
+      {"logic", %{left: nil, right: 0}},
+      {"logic", %{left: 0, right: false}},
+      {"logic", %{left: false, right: "fallback"}},
+      {"collections",
+       %{
+         items: [%{keep: true}, %{keep: false}],
+         target: %{keep: false},
+         optional: %{present: nil}
+       }},
+      {"collections", %{items: [], target: %{keep: true}, optional: %{present: "yes"}}}
+    ]
+
+    javascript = Compiler.compile_module(NativeParity)
+
+    for {action, state} <- cases do
+      expected = apply(NativeParity, String.to_existing_atom(action), [state])
+
+      source =
+        javascript <>
+          "\nconsole.log(JSON.stringify(actions[#{Jason.encode!(action)}](#{Jason.encode!(state)})));"
+
+      {output, 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+      assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
+    end
   end
 end

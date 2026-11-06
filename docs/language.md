@@ -29,20 +29,28 @@ owns the actions and state. Components have no slots or independent state yet.
 ## Action expressions
 
 `defclient` supports safe integer, string, boolean, and `nil` literals;
-atom-keyed maps and lists; field reads; integer `+`, `-`, `*`; `==`, `!=`;
-`if` with `do` and `else`; unary `!`; list `++`; `length/1`;
-`Enum.map/2`, `Enum.reject/2` with one-argument anonymous functions;
-`Enum.reverse/1`; and `Map.put/3` with an atom key. Unsupported calls fail
-at compile time. Browser arithmetic fails if it would leave JavaScript's safe
-integer range. Map and list equality is structural.
+atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);
+integer `+`, `-`, `*`, `rem/2`, and numeric comparisons; `==`, `!=`;
+`if` with `do` and `else`; unary `!`; short-circuit `&&` and `||`;
+string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
+`Enum.reject/2`, `Enum.any?/2`, `Enum.all?/2` with one-argument anonymous
+functions; `Enum.member?/2`; `Enum.reverse/1`; `Map.put/3`; and
+`Map.get/2,3` with atom keys. Unsupported calls fail at compile time. Browser
+arithmetic fails if it would leave JavaScript's safe integer range. Map and
+list equality is structural.
 
 State and action results must be maps with safe atom keys. Values may be safe
 integers, strings, booleans, `nil`, lists, or nested maps to a maximum depth
 of 16. Keys named `__proto__`, `constructor`, or `prototype` are rejected.
 Initial state is rendered and escaped on the server. Keyed nodes are patched
 in place in the browser, preserving input focus while editing. Local state
-resets if its LiveView island remounts; `$server` does not automatically merge
-server assigns back into the island.
+resets if its LiveView island remounts. Server-owned fields can receive explicit
+versioned patches as described in the [sync contract](sync.md).
+
+LiveLift does not translate arbitrary Elixir: processes, macros, protocols,
+structs, binaries, and general pattern matching need semantics that JavaScript
+does not provide directly. Add a supported operation only with Elixir/JavaScript
+parity tests for its edge cases.
 
 Templates are HTML with this explicit syntax, not general HEEx or `~HOLO`.
 Executable HTML tags and inline JavaScript attributes are rejected. The

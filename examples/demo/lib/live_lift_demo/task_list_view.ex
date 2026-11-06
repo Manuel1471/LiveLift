@@ -20,13 +20,7 @@ defmodule LiveLiftDemo.TaskListView do
   """)
 
   defclient(set_draft(state, event),
-    do: %{
-      items: state.items,
-      next_id: state.next_id,
-      draft: event.value,
-      has_items: state.has_items,
-      empty: state.empty
-    }
+    do: %{state | draft: event.value}
   )
 
   defclient(add(state),
@@ -34,48 +28,39 @@ defmodule LiveLiftDemo.TaskListView do
       if(state.draft == "",
         do: state,
         else: %{
-          items: state.items ++ [%{id: state.next_id, name: state.draft}],
-          next_id: state.next_id + 1,
-          draft: "",
-          has_items: true,
-          empty: false
+          state
+          | items: state.items ++ [%{id: state.next_id, name: state.draft}],
+            next_id: state.next_id + 1,
+            draft: "",
+            has_items: true,
+            empty: false
         }
       )
   )
 
   defclient(remove(state, event),
     do: %{
-      items: Enum.reject(state.items, fn item -> item.id == event.params.id end),
-      next_id: state.next_id,
-      draft: state.draft,
-      has_items: Enum.reject(state.items, fn item -> item.id == event.params.id end) != [],
-      empty: Enum.reject(state.items, fn item -> item.id == event.params.id end) == []
+      state
+      | items: Enum.reject(state.items, fn item -> item.id == event.params.id end),
+        has_items: Enum.reject(state.items, fn item -> item.id == event.params.id end) != [],
+        empty: Enum.reject(state.items, fn item -> item.id == event.params.id end) == []
     }
   )
 
   defclient(edit(state, event),
     do: %{
-      items:
-        Enum.map(state.items, fn item ->
-          if(item.id == event.params.id,
-            do: Map.put(item, :name, event.value),
-            else: item
-          )
-        end),
-      next_id: state.next_id,
-      draft: state.draft,
-      has_items: state.has_items,
-      empty: state.empty
+      state
+      | items:
+          Enum.map(state.items, fn item ->
+            if(item.id == event.params.id,
+              do: Map.put(item, :name, event.value),
+              else: item
+            )
+          end)
     }
   )
 
   defclient(reverse(state),
-    do: %{
-      items: Enum.reverse(state.items),
-      next_id: state.next_id,
-      draft: state.draft,
-      has_items: state.has_items,
-      empty: state.empty
-    }
+    do: %{state | items: Enum.reverse(state.items)}
   )
 end

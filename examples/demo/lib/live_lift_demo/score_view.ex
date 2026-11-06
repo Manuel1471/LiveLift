@@ -38,18 +38,18 @@ defmodule LiveLiftDemo.ScoreView do
 
   defclient(advance(state),
     do: %{
-      count: state.count + state.step,
-      step: state.step,
-      tone: if(state.count + state.step == 12, do: "milestone", else: "regular"),
-      milestone: state.count + state.step == 12
+      state
+      | count: state.count + state.step,
+        tone: if(state.count + state.step == 12, do: "milestone", else: "regular"),
+        milestone: state.count + state.step == 12
     }
   )
 
   defclient(retreat(state),
-    do: %{count: state.count - state.step, step: state.step, tone: "regular", milestone: false}
+    do: %{state | count: state.count - state.step, tone: "regular", milestone: false}
   )
 
   defclient(reset(state),
-    do: %{count: 10, step: state.step, tone: "regular", milestone: false}
+    do: %{state | count: 10, tone: "regular", milestone: false}
   )
 end

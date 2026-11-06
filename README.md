@@ -39,13 +39,14 @@ defmodule MyApp.ScoreView do
   """
 
   defclient advance(state), do: %{
+    state |
     score: state.score + state.step,
-    step: state.step,
     tone: if(state.score + state.step == 12, do: "milestone", else: "regular"),
     milestone: state.score + state.step == 12
   }
   defclient retreat(state), do: %{
-    score: state.score - state.step, step: state.step,
+    state |
+    score: state.score - state.step,
     tone: "regular", milestone: false
   }
 end
@@ -118,3 +119,5 @@ cd assets && npm test
 This release is experimental and currently supports Phoenix LiveView 1.2.x.
 See [production limits and reproducible benchmarks](docs/production-readiness.md)
 before using it in a deployed app.
+For bundle overhead, server event measurements and the shortest setup, see
+[performance and adoption](docs/performance-and-adoption.md).

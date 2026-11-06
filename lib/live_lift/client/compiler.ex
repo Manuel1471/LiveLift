@@ -40,6 +40,32 @@ defmodule LiveLift.Client.Compiler do
     if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
     return {...map, [key]: value};
   }
+  function __liveLiftMapUpdate(map, updates) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    for (const key of Object.keys(updates)) {
+      if (!Object.hasOwn(map, key)) throw new Error(`Missing LiveLift map key: ${key}`);
+    }
+    return {...map, ...updates};
+  }
+  function __liveLiftMapGet(map, key, fallback) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    return Object.hasOwn(map, key) ? map[key] : fallback;
+  }
+  function __liveLiftRem(left, right) {
+    left = __liveLiftInt(left);
+    right = __liveLiftInt(right);
+    if (right === 0) throw new Error("LiveLift division by zero");
+    return __liveLiftInt(left % right);
+  }
+  function __liveLiftString(value) {
+    if (typeof value !== "string") throw new Error("LiveLift expected a string");
+    return value;
+  }
+  function __liveLiftAnd(left, right) { return __liveLiftTruthy(left) ? right() : left; }
+  function __liveLiftOr(left, right) { return __liveLiftTruthy(left) ? left : right(); }
+  function __liveLiftMember(list, value) {
+    return __liveLiftList(list).some((item) => __liveLiftEqual(item, value));
+  }
   """
 
   @spec compile_module(module()) :: String.t()
@@ -187,6 +213,19 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftGet(#{compile_expr(source, arg)}, #{Jason.encode!(identifier!(key))})"
   end
 
+  defp compile_expr({:%{}, _, [{:|, _, [map, fields]}]}, arg) when is_list(fields) do
+    entries =
+      Enum.map(fields, fn
+        {key, value} when is_atom(key) ->
+          "#{identifier!(key)}: #{compile_expr(value, arg)}"
+
+        other ->
+          raise ArgumentError, "unsupported client map update: #{Macro.to_string(other)}"
+      end)
+
+    "__liveLiftMapUpdate(#{compile_expr(map, arg)}, {#{Enum.join(entries, ", ")}})"
+  end
+
   defp compile_expr({:%{}, _, fields}, arg) when is_list(fields) do
     entries =
       Enum.map(fields, fn
@@ -202,6 +241,22 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr({op, _, [left, right]}, arg) when op in [:+, :-, :*] do
     "__liveLiftInt((__liveLiftInt(#{compile_expr(left, arg)}) #{op} __liveLiftInt(#{compile_expr(right, arg)})))"
+  end
+
+  defp compile_expr({:rem, _, [left, right]}, arg),
+    do: "__liveLiftRem(#{compile_expr(left, arg)}, #{compile_expr(right, arg)})"
+
+  defp compile_expr({:<>, _, [left, right]}, arg),
+    do:
+      "(__liveLiftString(#{compile_expr(left, arg)}) + __liveLiftString(#{compile_expr(right, arg)}))"
+
+  defp compile_expr({op, _, [left, right]}, arg) when op in [:<, :<=, :>, :>=] do
+    "(__liveLiftInt(#{compile_expr(left, arg)}) #{op} __liveLiftInt(#{compile_expr(right, arg)}))"
+  end
+
+  defp compile_expr({op, _, [left, right]}, arg) when op in [:&&, :||] do
+    helper = if op == :&&, do: "__liveLiftAnd", else: "__liveLiftOr"
+    "#{helper}(#{compile_expr(left, arg)}, () => #{compile_expr(right, arg)})"
   end
 
   defp compile_expr({op, _, [value]}, arg) when op in [:+, :-] do
@@ -225,18 +280,46 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftMapPut(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(key))}, #{compile_expr(value, arg)})"
   end
 
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [map, key]}, arg)
+       when is_atom(key) do
+    "__liveLiftMapGet(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(key))}, null)"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [map, key, fallback]}, arg)
+       when is_atom(key) do
+    "__liveLiftMapGet(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(key))}, #{compile_expr(fallback, arg)})"
+  end
+
   defp compile_expr(
          {{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _,
           [list, {:fn, _, [{:->, _, [[{variable, _, context}], body]}]}]},
          args
        )
-       when operation in [:map, :reject] and is_atom(variable) and
+       when operation in [:map, :filter, :reject, :any?, :all?] and is_atom(variable) and
               (is_atom(context) or is_nil(context)) do
     variable_name = identifier!(variable)
     callback = compile_expr(body, List.wrap(args) ++ [variable])
-    method = if operation == :map, do: "map", else: "filter"
-    result = if operation == :map, do: callback, else: "!__liveLiftTruthy(#{callback})"
+
+    method =
+      case operation do
+        :map -> "map"
+        :any? -> "some"
+        :all? -> "every"
+        _ -> "filter"
+      end
+
+    result =
+      case operation do
+        :map -> callback
+        :reject -> "!__liveLiftTruthy(#{callback})"
+        _ -> "__liveLiftTruthy(#{callback})"
+      end
+
     "__liveLiftList(#{compile_expr(list, args)}).#{method}((#{variable_name}) => #{result})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :member?]}, _, [list, value]}, arg) do
+    "__liveLiftMember(#{compile_expr(list, arg)}, #{compile_expr(value, arg)})"
   end
 
   defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do
