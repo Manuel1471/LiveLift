@@ -1,5 +1,10 @@
 const SAFE_KEY = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const MAX_LIST_LENGTH = 10_000;
+const MAX_MAP_FIELDS = 1_024;
+const MAX_STATE_NODES = 50_000;
+const MAX_STATE_BYTES = 1_048_576;
+const encoder = new TextEncoder();
 const decodedEntities = new Map();
 
 function decodeEntities(value) {
@@ -12,20 +17,40 @@ function decodeEntities(value) {
   return decodedEntities.get(value);
 }
 
-function validateValue(value, path, depth = 0) {
-  if (typeof value === "string" || typeof value === "boolean" || value === null ||
-      Number.isSafeInteger(value)) return;
+function charge(budget, nodes, bytes, path) {
+  budget.nodes += nodes;
+  budget.bytes += bytes;
+  if (budget.nodes > MAX_STATE_NODES || budget.bytes > MAX_STATE_BYTES) {
+    throw new Error(`LiveLift state size limit exceeded at ${path}`);
+  }
+}
+
+function validateValue(value, path, depth, budget) {
+  if (typeof value === "string") {
+    charge(budget, 1, encoder.encode(value).length, path);
+    return;
+  }
+  if (typeof value === "boolean" || value === null || Number.isSafeInteger(value)) {
+    charge(budget, 1, 0, path);
+    return;
+  }
   if (depth >= 16) throw new Error(`Unsupported LiveLift state value at ${path}`);
   if (Array.isArray(value)) {
-    value.forEach((item, index) => validateValue(item, `${path}[${index}]`, depth + 1));
+    if (value.length > MAX_LIST_LENGTH) throw new Error(`LiveLift list length limit exceeded at ${path}`);
+    charge(budget, 1, 0, path);
+    value.forEach((item, index) => validateValue(item, `${path}[${index}]`, depth + 1, budget));
     return;
   }
   if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
-    for (const [key, item] of Object.entries(value)) {
+    const entries = Object.entries(value);
+    if (entries.length > MAX_MAP_FIELDS) throw new Error(`LiveLift map field limit exceeded at ${path}`);
+    charge(budget, 1, 0, path);
+    for (const [key, item] of entries) {
       if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key)) {
         throw new Error(`Unsafe LiveLift state key at ${path}: ${key}`);
       }
-      validateValue(item, `${path}.${key}`, depth + 1);
+      charge(budget, 0, encoder.encode(key).length, path);
+      validateValue(item, `${path}.${key}`, depth + 1, budget);
     }
     return;
   }
@@ -36,7 +61,7 @@ function validateState(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) {
     throw new Error("LiveLift state must be a map");
   }
-  validateValue(state, "state");
+  validateValue(state, "state", 0, {nodes: 0, bytes: 0});
 }
 
 function evaluate(expr, scope) {

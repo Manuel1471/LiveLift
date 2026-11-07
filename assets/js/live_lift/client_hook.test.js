@@ -134,6 +134,22 @@ test("accepts nested state and rejects dangerous keys", () => {
   assert.throws(() => unsafeHook.mounted(), /Unsafe LiveLift state key/);
 });
 
+test("enforces list and total state size limits before mounting", () => {
+  const view = {"App.Score": {actions: {}, template: "<output></output>"}};
+  const mount = (state) => {
+    const el = element(state);
+    el.hasChildNodes = () => true;
+    return {...createClientHook(view), el}.mounted();
+  };
+  assert.doesNotThrow(() => mount({items: Array(10_000).fill(null)}));
+  assert.throws(() => mount({items: Array(10_001).fill(null)}), /list length limit exceeded/);
+  assert.throws(() => mount({item: Object.fromEntries(Array.from({length: 1_025}, (_, i) => [`field_${i}`, null]))}),
+    /map field limit exceeded/);
+  assert.throws(() => mount({text: "é".repeat(524_289)}), /state size limit exceeded/);
+  assert.throws(() => mount({groups: Array(50).fill({items: Array(1_000).fill(null)})}),
+    /state size limit exceeded/);
+});
+
 test("renders browser-safe primitives and dynamic attributes", () => {
   const el = element({count: null, step: true, style: "active", title: "<ready>", score: 12});
   const attributes = new Map();

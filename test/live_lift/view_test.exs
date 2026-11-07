@@ -69,6 +69,30 @@ defmodule LiveLift.ViewTest do
     end
   end
 
+  test "enforces list and total state size limits" do
+    assert LiveLift.State.validate!(%{items: List.duplicate(nil, 10_000)}) |> map_size() == 1
+
+    assert_raise ArgumentError, ~r/list length limit exceeded/, fn ->
+      LiveLift.State.validate!(%{items: List.duplicate(nil, 10_001)})
+    end
+
+    too_many_fields = Map.new(1..1_025, fn index -> {"field_#{index}", nil} end)
+
+    assert_raise ArgumentError, ~r/map field limit exceeded/, fn ->
+      LiveLift.State.validate!(%{item: too_many_fields})
+    end
+
+    assert_raise ArgumentError, ~r/state size limit exceeded/, fn ->
+      LiveLift.State.validate!(%{text: String.duplicate("é", 524_289)})
+    end
+
+    assert_raise ArgumentError, ~r/state size limit exceeded/, fn ->
+      LiveLift.State.validate!(%{
+        groups: List.duplicate(%{items: List.duplicate(nil, 1_000)}, 50)
+      })
+    end
+  end
+
   test "accepts browser-safe primitive state" do
     html =
       render_component(&LiveLift.View.island/1,

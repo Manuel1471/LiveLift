@@ -49,6 +49,10 @@ list equality is structural.
 State and action results must be maps with safe atom keys. Values may be safe
 integers, strings, booleans, `nil`, lists, or nested maps to a maximum depth
 of 16. Keys named `__proto__`, `constructor`, or `prototype` are rejected.
+Each map may have at most 1,024 fields and each list at most 10,000 elements.
+The complete state tree may contain at most 50,000 nodes and 1 MiB of UTF-8
+string content, including keys. Elixir validates before serializing; the
+browser validates both initial state and action results before rendering.
 Initial state is rendered and escaped on the server. Keyed nodes are patched
 in place in the browser, preserving input focus while editing. Local state
 resets if its LiveView island remounts. Server-owned fields can receive explicit
