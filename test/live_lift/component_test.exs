@@ -2,6 +2,11 @@ defmodule LiveLift.ComponentTest do
   use ExUnit.Case, async: false
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
+  @doc false
+  def telemetry_handler(name, measures, metadata, parent) do
+    send(parent, {name, measures, metadata})
+  end
+
   defmodule Counter do
     use Phoenix.LiveComponent
     use LiveLift
@@ -15,6 +20,10 @@ defmodule LiveLift.ComponentTest do
     @client true
     def handle_event("inc", _params, socket) do
       {:noreply, update(socket, :count, &(&1 + 1))}
+    end
+
+    def handle_event("reset", _params, socket) do
+      {:noreply, assign(socket, :count, 0)}
     end
   end
 
@@ -115,6 +124,40 @@ defmodule LiveLift.ComponentTest do
     assert_raise ArgumentError, ~r/invalid LiveLift event sequence/, fn ->
       Counter.handle_event("inc", %{"_live_lift_seq" => "bad"}, next)
     end
+  end
+
+  test "emits server event latency and outcome without parameter values" do
+    handler_id = "live-lift-telemetry-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:live_lift, :component, :event],
+        &__MODULE__.telemetry_handler/4,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+    socket = %Phoenix.LiveView.Socket{assigns: %{count: 1, id: "counter", __changed__: %{}}}
+
+    assert {:reply, _, next} = Counter.handle_event("inc", %{"_live_lift_seq" => 1}, socket)
+    assert_receive {[:live_lift, :component, :event], %{duration: duration}, metadata}
+    assert is_integer(duration) and duration >= 0
+
+    assert metadata ==
+             %{component: Counter, event: "inc", marked?: true, outcome: :ok}
+
+    assert {:reply, _, _} = Counter.handle_event("inc", %{"_live_lift_seq" => 1}, next)
+    assert_receive {_, _, %{outcome: :duplicate, marked?: true}}
+
+    assert {:noreply, _} = Counter.handle_event("reset", %{}, next)
+    assert_receive {_, _, %{event: "reset", marked?: false, outcome: :ok}}
+
+    assert_raise ArgumentError, ~r/invalid LiveLift event sequence/, fn ->
+      Counter.handle_event("inc", %{"_live_lift_seq" => "secret"}, socket)
+    end
+
+    assert_receive {_, _, %{event: "inc", marked?: true, outcome: :error}}
   end
 
   test "rejects oversized and unsafe optimistic event parameters" do

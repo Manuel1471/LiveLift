@@ -198,6 +198,9 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
 - [x] `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué
   (auditoría de fuente para `use Phoenix.LiveComponent` y `use AppWeb, :live_component`).
 - [ ] Telemetría de latencia y frecuencia por evento, para decidir qué migrar con datos.
+  Los componentes con `use LiveLift` ya emiten duración y resultado por evento
+  marcado o no marcado. Falta medir componentes antes de optar y el tramo del
+  navegador para comparar latencia completa.
 - [ ] `mix live_lift.test`: ejecuta los handlers del usuario en Elixir y en Node.
 - [ ] Documentación en formato diff ("versión servidor contra versión cliente"),
   entendible en una o dos lecturas.

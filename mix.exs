@@ -32,6 +32,7 @@ defmodule LiveLift.MixProject do
     [
       live_view_dependency(),
       {:jason, "~> 1.4"},
+      {:telemetry, "~> 1.4"},
       {:stream_data, "~> 1.4", only: :test},
       {:ex_doc, "~> 0.38", only: :dev, runtime: false}
     ]

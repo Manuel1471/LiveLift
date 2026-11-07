@@ -121,6 +121,7 @@ defmodule LiveLift.Component do
             event,
             params,
             socket,
+            __MODULE__,
             unquote(events),
             __live_lift_component_fields__(),
             fn -> super(event, params, socket) end
@@ -131,21 +132,42 @@ defmodule LiveLift.Component do
   end
 
   @doc false
-  def handle_marked_or_server(event, params, socket, events, fields, original) do
-    if event in events do
-      sequence = LiveLift.Component.sequence!(params)
-      previous = Map.get(socket.assigns, :__live_lift_ack_seq, 0)
+  def handle_marked_or_server(event, params, socket, component, events, fields, original) do
+    marked? = event in events
+    started = System.monotonic_time()
 
-      if sequence > 0 and sequence <= previous do
-        LiveLift.Component.acknowledge_duplicate(socket, fields)
-      else
-        result = original.()
-        LiveLift.Component.reply!(result, sequence, fields)
-      end
-    else
-      result = original.()
-      LiveLift.Component.sync_unmarked(result, socket, fields)
+    try do
+      {result, outcome} =
+        if marked? do
+          sequence = LiveLift.Component.sequence!(params)
+          previous = Map.get(socket.assigns, :__live_lift_ack_seq, 0)
+
+          if sequence > 0 and sequence <= previous do
+            {LiveLift.Component.acknowledge_duplicate(socket, fields), :duplicate}
+          else
+            result = original.()
+            {LiveLift.Component.reply!(result, sequence, fields), :ok}
+          end
+        else
+          result = original.()
+          {LiveLift.Component.sync_unmarked(result, socket, fields), :ok}
+        end
+
+      emit_event(started, component, event, marked?, outcome)
+      result
+    rescue
+      error ->
+        emit_event(started, component, event, marked?, :error)
+        reraise error, __STACKTRACE__
     end
+  end
+
+  defp emit_event(started, component, event, marked?, outcome) do
+    :telemetry.execute(
+      [:live_lift, :component, :event],
+      %{duration: System.monotonic_time() - started},
+      %{component: component, event: event, marked?: marked?, outcome: outcome}
+    )
   end
 
   @doc false

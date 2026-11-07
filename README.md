@@ -16,6 +16,8 @@ For the experimental two-line migration of a normal LiveComponent, see
 [Opt in a LiveComponent](docs/native-livecomponent.md).
 Run `mix live_lift.audit` to see which existing LiveComponent handlers fit the
 current client subset and why others are blocked.
+Use [component event telemetry](docs/telemetry.md) to measure event frequency
+and server handler time after opting in.
 
 ## Use it in a Phoenix app
 
