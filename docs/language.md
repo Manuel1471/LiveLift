@@ -38,7 +38,8 @@ owns the actions and state. Components have no slots or independent state yet.
 `defclient` supports safe integer, string, boolean, and `nil` literals;
 atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);
 integer `+`, `-`, `*`, `rem/2`, and numeric comparisons; `==`, `!=`;
-`if` with `do` and `else`; unary `!`; short-circuit `&&` and `||`;
+`if` with `do` and optional `else` (omission returns `nil`); unary `!`;
+short-circuit `&&` and `||`;
 string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
 `Enum.reject/2`, `Enum.any?/2`, `Enum.all?/2` with one-argument anonymous
 functions; `Enum.member?/2`; `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`

@@ -269,6 +269,18 @@ defmodule LiveLift.ClientTest do
     end
   end
 
+  test "if without else returns nil in both runtimes" do
+    body = quote(do: if(state, do: 7))
+    action = Compiler.compile_action(:optional, :state, body)
+
+    script =
+      "const __liveLiftTruthy = value => value !== false && value !== null; const actions = {#{action}}; console.log(JSON.stringify([false, true].map(enabled => actions.optional(enabled))));"
+
+    {output, 0} = System.cmd("node", ["--eval", script])
+    assert Jason.decode!(output) == [nil, 7]
+    assert Enum.map([false, true], &if(&1, do: 7)) == [nil, 7]
+  end
+
   test "generated JavaScript rejects unsafe arithmetic instead of changing Elixir semantics" do
     javascript = Compiler.compile_module(ParityActions)
     source = javascript <> "\nactions.sum({value: Number.MAX_SAFE_INTEGER, step: 1});"

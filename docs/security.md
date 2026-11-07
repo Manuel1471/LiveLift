@@ -51,5 +51,8 @@ accidental or malicious resource use but do not replace LiveView's request
 limits, rate limits, or application-level authorization.
 
 This is an internal review of the current subset, not an external security
-audit. The internal LiveView parser dependency, legacy event bridge, offline
+audit. A seeded corpus compiles 1,000 varied action expressions, checks that
+unsupported forms raise an explicit compiler error, and syntax-checks every
+generated action in Node. It does not cover arbitrary HEEx or all Elixir ASTs.
+The internal LiveView parser dependency, legacy event bridge, offline
 behavior, many-island load, and browser compatibility remain release gates.

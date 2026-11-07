@@ -215,7 +215,8 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
 - [x] Modelo de amenazas escrito: el estado va visible en el HTML (sin secretos), el
   estado del cliente no es de fiar, compatibilidad con CSP sin `eval`.
 - [x] Auditoría interna de XSS y de los usos de `innerHTML` en el runtime.
-- [ ] Pruebas de prototype pollution y fuzzing del compilador.
+- [x] Pruebas de prototype pollution y fuzzing del compilador para el subconjunto
+  actual (1,000 expresiones generadas con semilla y comprobación sintáctica en Node).
 - [ ] Telemetría (`:telemetry` en servidor, reporte de errores del cliente).
 - [x] **Interruptor de emergencia** por componente y global: vuelve al servidor
   en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
@@ -225,9 +226,10 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
 - [ ] Pruebas de carga con muchas islas por página.
 
 La revisión interna bloquea esquemas de URL codificados con entidades y
-`xlink:href`; las pruebas cubren las tres claves de prototype pollution y
-1,000 variantes generadas de `javascript:`. El fuzzing general del compilador
-y una revisión de seguridad externa siguen pendientes.
+`xlink:href`; las pruebas cubren las tres claves de prototype pollution,
+1,000 variantes generadas de `javascript:` y 1,000 expresiones de acción
+generadas. El fuzzing de todas las formas HEEx y una revisión de seguridad
+externa siguen pendientes.
 
 ## Criterios para 1.0
 

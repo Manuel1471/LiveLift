@@ -25,6 +25,8 @@
 - Validate the legacy demo's proposed client score and observed server revision before saving it.
 - Add `mix live_lift.audit` to report client-compatible LiveComponent handlers and source-located blockers without changing app code.
 - Emit server-side component event duration and outcome through `:telemetry`, without recording parameter or state values.
+- Match Elixir's `if` without `else` semantics and reject malformed `if` branches with a clear compiler error.
+- Fuzz 1,000 action expressions and syntax-check accepted generated JavaScript in Node.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

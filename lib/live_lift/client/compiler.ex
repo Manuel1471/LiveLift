@@ -383,8 +383,13 @@ defmodule LiveLift.Client.Compiler do
   end
 
   defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do
-    then_expr = Keyword.fetch!(branches, :do)
-    else_expr = Keyword.fetch!(branches, :else)
+    then_expr =
+      case Keyword.fetch(branches, :do) do
+        {:ok, expression} -> expression
+        :error -> raise ArgumentError, "unsupported client if: missing do branch"
+      end
+
+    else_expr = Keyword.get(branches, :else)
     test = compile_expr(condition, arg)
 
     "(__liveLiftTruthy(#{test}) ? #{compile_expr(then_expr, arg)} : #{compile_expr(else_expr, arg)})"
