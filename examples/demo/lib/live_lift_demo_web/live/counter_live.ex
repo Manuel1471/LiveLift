@@ -168,10 +168,21 @@ defmodule LiveLiftDemoWeb.CounterLive do
     {:noreply, LiveLift.Sync.push(socket, "local-counter", revision, %{server_total: next_count})}
   end
 
-  def handle_event("save_score", %{"state" => %{"count" => count}}, socket)
-      when is_integer(count) do
-    revision = socket.assigns.sync_revision + 1
-    socket = assign(socket, saved_score: count, sync_revision: revision)
-    {:noreply, LiveLift.Sync.push(socket, "local-counter", revision, %{saved_score: count})}
+  def handle_event("save_score", params, socket) do
+    # The browser submits a proposal, not an authoritative state snapshot.
+    count =
+      case params do
+        %{"state" => %{"count" => value}} -> value
+        _ -> nil
+      end
+
+    if is_integer(count) and count >= -1_000 and count <= 1_000 and
+         params["revision"] == socket.assigns.sync_revision do
+      revision = socket.assigns.sync_revision + 1
+      socket = assign(socket, saved_score: count, sync_revision: revision)
+      {:noreply, LiveLift.Sync.push(socket, "local-counter", revision, %{saved_score: count})}
+    else
+      {:noreply, socket}
+    end
   end
 end

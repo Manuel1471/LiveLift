@@ -16,14 +16,21 @@ Each island has a single owner for every top-level state field. Fields listed in
 `defclient` actions may omit server fields. LiveLift carries their latest values
 forward. An action that changes a server field fails before rendering. `$server`
 submits only client-owned fields as `%{"state" => ..., "revision" => ...}`.
-Handle the event in the parent LiveView and send a response:
+Treat them as a proposed value. Validate both the domain value and the last
+revision observed by the browser before accepting it:
 
 ```elixir
-def handle_event("save", %{"state" => %{"count" => count}}, socket) do
-  revision = socket.assigns.score_revision + 1
-  socket = assign(socket, score_revision: revision, saved_count: count)
-  {:noreply, LiveLift.Sync.push(socket, "score", revision, %{saved_count: count})}
+def handle_event("save", %{"state" => %{"count" => count}, "revision" => seen}, socket) do
+  if is_integer(count) and count in 0..1_000 and seen == socket.assigns.score_revision do
+    revision = socket.assigns.score_revision + 1
+    socket = assign(socket, score_revision: revision, saved_count: count)
+    {:noreply, LiveLift.Sync.push(socket, "score", revision, %{saved_count: count})}
+  else
+    {:noreply, socket}
+  end
 end
+
+def handle_event("save", _params, socket), do: {:noreply, socket}
 ```
 
 Keep the revision in the LiveView socket and increment it for every patch to

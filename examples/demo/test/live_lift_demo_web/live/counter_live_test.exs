@@ -31,7 +31,10 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
 
     assert view
            |> element("#local-counter")
-           |> render_hook("save_score", %{"state" => %{"count" => 12, "step" => 2}}) =~
+           |> render_hook("save_score", %{
+             "state" => %{"count" => 12, "step" => 2},
+             "revision" => 1
+           }) =~
              ~s(id="saved-score")
 
     assert view |> element("#saved-score") |> render() =~ ">12</output>"
@@ -41,5 +44,19 @@ defmodule LiveLiftDemoWeb.CounterLiveTest do
       revision: 2,
       patch: %{saved_score: 12}
     })
+
+    view
+    |> element("#local-counter")
+    |> render_hook("save_score", %{"state" => %{"count" => 999}, "revision" => 1})
+
+    view
+    |> element("#local-counter")
+    |> render_hook("save_score", %{"state" => %{"count" => 1001}, "revision" => 2})
+
+    view
+    |> element("#local-counter")
+    |> render_hook("save_score", %{"state" => "invalid", "revision" => 2})
+
+    assert view |> element("#saved-score") |> render() =~ ">12</output>"
   end
 end
