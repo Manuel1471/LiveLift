@@ -83,6 +83,11 @@ function evaluate(expr, scope) {
   if (expr.type === "map") {
     return Object.fromEntries(expr.entries.map(({key, expr: value}) => [key, evaluate(value, scope)]));
   }
+  if (expr.type === "list") return expr.items.map((item) => evaluate(item, scope));
+  if (expr.type === "and") {
+    const left = evaluate(expr.left, scope);
+    return left === false || left === null ? left : evaluate(expr.right, scope);
+  }
   if (expr.type === "path") {
     let value;
     let fields = expr.fields;
@@ -108,6 +113,29 @@ function display(value) {
   if (value === null) return "";
   if (["string", "number", "boolean"].includes(typeof value)) return String(value);
   throw new Error("Cannot display a client collection directly");
+}
+
+function classValue(value) {
+  if (Array.isArray(value)) return classTokens(value).join(" ");
+  if (value === null || value === false) return null;
+  return display(value);
+}
+
+function classTokens(value) {
+  return value.flatMap((item) => {
+    if (item === null || item === false) return [];
+    return Array.isArray(item) ? classTokens(item) : [display(item)];
+  });
+}
+
+function nativeClassValue(expr, value) {
+  if (!Array.isArray(value) || expr.type !== "list") return classValue(value);
+  const prefixCount = expr.items.findIndex((item) => item.type !== "literal" || typeof item.value !== "string");
+  if (prefixCount > 0) {
+    // HEEx inlines a literal class prefix and retains its separator even when the dynamic tail is empty.
+    return `${classValue(value.slice(0, prefixCount))} ${classValue(value.slice(prefixCount))}`;
+  }
+  return classValue(value);
 }
 
 function pathLabel(expr) {
@@ -225,6 +253,11 @@ function renderElement(node, scope, key, views, stack) {
     } else if (attr.type === "dynamic") {
       element.setAttribute(attr.name, display(evaluate(attr.value, scope)));
       element.setAttribute(`data-live-lift-bind-${attr.name}`, pathLabel(attr.value));
+    } else if (attr.type === "native_dynamic") {
+      const value = evaluate(attr.value, scope);
+      if (attr.name !== "class" && Array.isArray(value)) throw new Error(`${attr.name} requires a scalar value`);
+      const rendered = attr.name === "class" ? nativeClassValue(attr.value, value) : value === null || value === false ? null : display(value);
+      if (rendered !== null) element.setAttribute(attr.name, rendered === "true" && value === true ? "" : rendered);
     } else if (attr.type === "params") {
       element.setAttribute("data-live-lift-params", JSON.stringify(evaluate(attr.value, scope)));
     } else if (attr.type === "boolean") {
@@ -285,6 +318,7 @@ function patchNode(current, next) {
     if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
     return;
   }
+  const hadValueAttribute = current.nodeType === 1 && current.hasAttribute("value");
   for (const attr of [...current.attributes]) {
     // The component CID belongs to LiveView and is supplied by its original ~H render.
     if (attr.name === "phx-target") continue;
@@ -295,6 +329,9 @@ function patchNode(current, next) {
   }
   if (current.tagName === "INPUT" && next.hasAttribute("value") && current.value !== next.value) {
     current.value = next.value;
+  }
+  if (current.tagName === "INPUT" && !next.hasAttribute("value") && hadValueAttribute) {
+    current.value = "";
   }
   if (current.tagName === "INPUT" && current.checked !== next.checked) current.checked = next.checked;
   if (current.tagName === "OPTION" && current.selected !== next.selected) current.selected = next.selected;

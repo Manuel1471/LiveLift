@@ -44,6 +44,42 @@ defmodule LiveLift.TemplateTest do
              ~s(<p class="hot" data-live-lift-bind-class="style" title="&lt;&quot;" data-live-lift-bind-title="title"><!--live-lift:text--><!--live-lift:end--></p>)
   end
 
+  test "native HEEx class lists and expression attributes match server semantics" do
+    tree =
+      Template.compile_liveview(
+        ~s(<section class={["base", @active && "active"]} title={@title}><input value={@draft} /></section>),
+        "native.ex",
+        []
+      )
+
+    assert tree
+           |> Template.render_server(%{active: false, title: nil, draft: ""})
+           |> Phoenix.HTML.safe_to_string() ==
+             ~s(<section class="base "><input value=""></section>)
+
+    assert tree
+           |> Template.render_server(%{active: nil, title: false, draft: nil})
+           |> Phoenix.HTML.safe_to_string() ==
+             ~s(<section class="base "><input></section>)
+
+    assert tree
+           |> Template.render_server(%{active: true, title: ~s(<"), draft: "ready"})
+           |> Phoenix.HTML.safe_to_string() ==
+             ~s(<section class="base active" title="&lt;&quot;"><input value="ready"></section>)
+
+    assert_raise ArgumentError,
+                 ~r/native.ex:1: unsupported client expression attribute: href/,
+                 fn ->
+                   Template.compile_liveview(~s(<a href={@url}>Open</a>), "native.ex", [])
+                 end
+
+    nested = Template.compile_liveview(~s(<p class={[[nil], @classes]}>Hi</p>), "native.ex", [])
+
+    assert nested
+           |> Template.render_server(%{classes: [false, "ready"]})
+           |> Phoenix.HTML.safe_to_string() == ~s(<p class="ready">Hi</p>)
+  end
+
   test "rejects unsupported attribute interpolation" do
     assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
       Template.compile("<a href=\"{@score}\">Open</a>")

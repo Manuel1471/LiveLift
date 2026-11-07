@@ -183,13 +183,19 @@ test("the same LiveComponent without opt-in keeps normal server behavior", async
 test("native phx-change and phx-submit use the same params on client and server", async ({page}) => {
   await page.goto("/native-form");
   const root = page.locator("#native-form");
+  await expect(root.locator("section")).toHaveAttribute("class", "native-form ");
+  await expect(root.getByRole("textbox", {name: "Draft"})).not.toHaveAttribute("value");
   await page.evaluate(() => window.liveSocket.enableLatencySim(400));
   await root.getByRole("textbox", {name: "Draft"}).fill("Client draft");
   await expect(root.locator("output")).toHaveText("Client draft", {timeout: 200});
+  await expect(root.locator("section")).toHaveAttribute("class", "native-form Client draft");
+  await expect(root.getByRole("textbox", {name: "Draft"})).toHaveAttribute("value", "Client draft");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await root.getByRole("textbox", {name: "Note"}).fill("Saved locally");
   await root.getByRole("button", {name: "Save note"}).click();
   await expect(root.locator("p")).toHaveText("Saved: Saved locally", {timeout: 200});
+  await expect(root.locator("section")).toHaveAttribute("class", "native-form has-saved Client draft");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
   await expect(root.locator("p")).toHaveText("Saved: Saved locally");
+  await expect(root.locator("section")).toHaveAttribute("title", "Saved locally");
 });

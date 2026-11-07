@@ -27,6 +27,7 @@
 - Emit server-side component event duration and outcome through `:telemetry`, without recording parameter or state values.
 - Match Elixir's `if` without `else` semantics and reject malformed `if` branches with a clear compiler error.
 - Fuzz 1,000 action expressions and syntax-check accepted generated JavaScript in Node.
+- Render native HEEx expression attributes and conditional class lists on the client, preserving LiveView's initial class spacing and nil behavior.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

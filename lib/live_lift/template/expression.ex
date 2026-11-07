@@ -43,6 +43,13 @@ defmodule LiveLift.Template.Expression do
     Map.new(entries, fn %{key: key, expr: expr} -> {String.to_atom(key), eval(expr, scope)} end)
   end
 
+  def eval(%{type: "list", items: items}, scope), do: Enum.map(items, &eval(&1, scope))
+
+  def eval(%{type: "and", left: left, right: right}, scope) do
+    value = eval(left, scope)
+    if value in [false, nil], do: value, else: eval(right, scope)
+  end
+
   defp convert(value, _file, _line)
        when is_integer(value) or is_binary(value) or is_boolean(value) or is_nil(value),
        do: %{type: "literal", value: value}
@@ -77,6 +84,12 @@ defmodule LiveLift.Template.Expression do
         end)
     }
   end
+
+  defp convert(values, file, line) when is_list(values),
+    do: %{type: "list", items: Enum.map(values, &convert(&1, file, line))}
+
+  defp convert({:&&, _, [left, right]}, file, line),
+    do: %{type: "and", left: convert(left, file, line), right: convert(right, file, line)}
 
   defp convert(other, file, line), do: unsupported!(file, line, other)
 

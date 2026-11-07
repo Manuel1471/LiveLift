@@ -360,6 +360,9 @@ defmodule LiveLift.Template do
       name in ~w(checked selected) ->
         %{name: name, value: Expression.parse(source, file, meta.line), type: "boolean"}
 
+      name in @dynamic_attributes ->
+        %{name: name, value: Expression.parse(source, file, meta.line), type: "native_dynamic"}
+
       true ->
         raise ArgumentError,
               "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
@@ -492,6 +495,20 @@ defmodule LiveLift.Template do
     " #{name}=\"#{value}\" data-live-lift-bind-#{name}=\"#{path_label(expr)}\""
   end
 
+  defp render_attr(%{name: name, type: "native_dynamic", value: expr}, scope) do
+    value = Expression.eval(expr, scope)
+
+    if name != "class" and is_list(value) do
+      raise ArgumentError, "#{name} requires a scalar value"
+    end
+
+    value =
+      if name == "class" and is_list(value), do: native_class_value(expr, value), else: value
+
+    Phoenix.HTML.attributes_escape([{String.to_atom(name), value}])
+    |> Phoenix.HTML.safe_to_string()
+  end
+
   defp render_attr(%{name: name, type: "boolean", value: expr}, scope) do
     case Expression.eval(expr, scope) do
       true -> " #{name}"
@@ -504,6 +521,35 @@ defmodule LiveLift.Template do
   defp render_attr(%{name: "data-live-lift-params", type: "params", value: expr}, scope) do
     payload = expr |> Expression.eval(scope) |> Jason.encode!() |> escape()
     " data-live-lift-params=\"#{payload}\""
+  end
+
+  defp native_class_value(%{type: "list", items: items}, values) do
+    count =
+      Enum.take_while(items, &match?(%{type: "literal", value: value} when is_binary(value), &1))
+      |> length()
+
+    if count > 0 and count < length(items) do
+      class_list_value(Enum.take(values, count)) <>
+        " " <>
+        class_list_value(Enum.drop(values, count))
+    else
+      class_list_value(values)
+    end
+  end
+
+  defp native_class_value(_expr, values), do: class_list_value(values)
+
+  defp class_list_value(values) do
+    values |> class_tokens() |> Enum.join(" ")
+  end
+
+  defp class_tokens(values) do
+    Enum.flat_map(values, fn
+      nil -> []
+      false -> []
+      inner when is_list(inner) -> class_tokens(inner)
+      other -> [to_string(other)]
+    end)
   end
 
   defp hidden?(attrs, scope) do

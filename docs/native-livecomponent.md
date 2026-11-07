@@ -43,7 +43,11 @@ or `{:noreply, update(socket, field, &expr)}`. The expression must fit the
 [client language subset](language.md). Marked handlers can read flat string
 keys with `params["name"]` or `Map.get(params, "name")`. The template supports
 static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
-`phx-target={@myself}`. A handler may bind flat params with
+`phx-target={@myself}`. Native expression attributes `class={@tone}`,
+`title={@title}`, `aria-label={@label}`, and `value={@value}` are supported.
+`class={["base", @active && "active"]}` also works, including `false` and
+`nil` values. Dynamic URLs and other expression attributes remain server only.
+A handler may bind flat params with
 `%{"name" => name}` and chain `socket |> assign(...) |> update(...)` operations.
 Direct nested `assign/update` calls are also accepted. Nested form params and other LiveView features remain
 server only. Unsupported
