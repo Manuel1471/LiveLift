@@ -16,6 +16,7 @@
 - Test duplicate replies and a connection cut while a prediction is pending.
 - Compile chained `assign/update` operations in native marked handlers while preserving the original server body.
 - Compile `String.contains?/2` for string and list patterns with seeded Elixir/JavaScript parity coverage.
+- Match Elixir's Unicode whitespace semantics for compiled `String.trim/1`.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

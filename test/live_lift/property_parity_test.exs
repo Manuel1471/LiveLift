@@ -14,6 +14,7 @@ defmodule LiveLift.PropertyParityTest do
         member: Enum.member?(state.items, state.target),
         label: state.label <> "!",
         contains: String.contains?(state.label, state.query),
+        trimmed: String.trim(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
         absent: Map.get(state.optional, :missing, "fallback")
       }
@@ -25,7 +26,21 @@ defmodule LiveLift.PropertyParityTest do
     items = StreamData.list_of(item, max_length: 6)
 
     label =
-      StreamData.list_of(StreamData.member_of(["a", "é", "😀", "é", "&", "<", "\""]),
+      StreamData.list_of(
+        StreamData.member_of([
+          "a",
+          "é",
+          "😀",
+          "é",
+          "&",
+          "<",
+          "\"",
+          " ",
+          "\t",
+          "\u0085",
+          "\uFEFF",
+          "\u2000"
+        ]),
         max_length: 8
       )
       |> StreamData.map(&Enum.join/1)
@@ -73,6 +88,17 @@ defmodule LiveLift.PropertyParityTest do
           label: "😀&",
           query: ["", "missing"],
           flag: 0,
+          optional: %{}
+        },
+        %{
+          count: 0,
+          step: 1,
+          items: [],
+          other: [],
+          target: %{id: 0, keep: true},
+          label: "\u0085é\uFEFF",
+          query: "é",
+          flag: false,
           optional: %{}
         }
       ] ++ (state |> StreamData.seeded(20_261_106) |> Enum.take(1_000))

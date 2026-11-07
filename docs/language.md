@@ -42,9 +42,10 @@ integer `+`, `-`, `*`, `rem/2`, and numeric comparisons; `==`, `!=`;
 string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
 `Enum.reject/2`, `Enum.any?/2`, `Enum.all?/2` with one-argument anonymous
 functions; `Enum.member?/2`; `Enum.reverse/1`; `Map.put/3`; and
-`Map.get/2,3` with atom keys; and `String.contains?/2` with a string or list
+`Map.get/2,3` with atom keys; `String.trim/1`; and `String.contains?/2` with a string or list
 of strings as the pattern. An empty pattern list returns `false`; an empty
-string pattern matches. Unsupported calls fail at compile time. Browser
+string pattern matches. `String.trim/1` uses Elixir's Unicode whitespace set,
+including U+0085 and excluding U+FEFF. Unsupported calls fail at compile time. Browser
 arithmetic fails if it would leave JavaScript's safe integer range. Map and
 list equality is structural.
 

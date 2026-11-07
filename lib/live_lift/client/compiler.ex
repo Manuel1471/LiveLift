@@ -9,7 +9,7 @@ defmodule LiveLift.Client.Compiler do
   @identifier ~r/^[a-zA-Z_$][a-zA-Z0-9_$]*$/
   @reserved ~w(__proto__ prototype constructor)
 
-  @helpers """
+  @helpers ~S"""
   function __liveLiftInt(value) {
     if (!Number.isSafeInteger(value)) throw new Error("LiveLift expected a safe integer");
     return value;
@@ -66,6 +66,10 @@ defmodule LiveLift.Client.Compiler do
     if (typeof patterns === "string") return text.includes(patterns);
     if (!Array.isArray(patterns)) throw new Error("LiveLift expected a string or list of strings");
     return patterns.some((pattern) => text.includes(__liveLiftString(pattern)));
+  }
+  function __liveLiftTrim(value) {
+    // Elixir trims U+0085 but leaves U+FEFF; JavaScript trim() does the reverse.
+    return __liveLiftString(value).replace(/^[\u0009-\u000D\u0020\u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+|[\u0009-\u000D\u0020\u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+$/g, "");
   }
   function __liveLiftAnd(left, right) { return __liveLiftTruthy(left) ? right() : left; }
   function __liveLiftOr(left, right) { return __liveLiftTruthy(left) ? left : right(); }
@@ -333,6 +337,10 @@ defmodule LiveLift.Client.Compiler do
          arg
        ) do
     "__liveLiftContains(#{compile_expr(text, arg)}, #{compile_expr(patterns, arg)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:String]}, :trim]}, _, [text]}, arg) do
+    "__liveLiftTrim(#{compile_expr(text, arg)})"
   end
 
   defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do

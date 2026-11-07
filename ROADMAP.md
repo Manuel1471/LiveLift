@@ -128,8 +128,9 @@ Orden de funcionalidades:
 El subconjunto inicial ya acepta un patrón plano `%{"name" => name}` y cadenas
 de `assign/update`, tanto por pipe como por llamadas anidadas. Faltan patrones
 anidados, `assign_new` y las demás operaciones de esta fase; por eso sigue abierta.
-`String.contains?/2` ya tiene paridad sobre strings y listas de patrones; las
-demás funciones de `String` de esta fase siguen pendientes.
+`String.contains?/2` y `String.trim/1` ya tienen paridad, incluida la diferencia
+de espacios Unicode entre Elixir y JavaScript; las demás funciones de `String`
+de esta fase siguen pendientes.
 
 Trampas de paridad a probar a propósito: `String.length` por grafemas (`Intl.Segmenter`),
 orden de strings fuera del plano básico, `downcase` con Unicode, redondeo y formato de

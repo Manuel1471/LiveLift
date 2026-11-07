@@ -164,6 +164,15 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+
+    assert_raise ArgumentError, ~r/unsupported client expression.*String.trim/, fn ->
+      Code.compile_string("""
+      defmodule UnsupportedTrim do
+        use LiveLift.Client
+        defclient(clean(state), do: String.trim(state.label, "x"))
+      end
+      """)
+    end
   end
 
   test "compiles primitive values and Elixir conditional truthiness" do
