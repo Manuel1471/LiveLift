@@ -1,11 +1,29 @@
 defmodule LiveLiftDemoWeb.NativeListLive do
   use LiveLiftDemoWeb, :live_view
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
+    count =
+      case Integer.parse(Map.get(params, "rows", "2")) do
+        {value, ""} when value in 1..1_000 -> value
+        _ -> 2
+      end
+
+    items =
+      Enum.map(1..count, fn index ->
+        label =
+          case index do
+            1 -> "One"
+            2 -> "Two"
+            _ -> "Row #{index}"
+          end
+
+        %{id: "row-#{index}", label: label}
+      end)
+
     {:ok,
      assign(socket,
-       items: [%{id: "row-1", label: "One"}, %{id: "row-2", label: "Two"}],
-       next_id: 3
+       items: items,
+       next_id: count + 1
      )}
   end
 

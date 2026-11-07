@@ -69,6 +69,16 @@ identity and value. This is one app and machine, not a guarantee that every
 1,000-row view fits in a frame. Rows reading parent state still render when
 that state changes.
 
+The native list demo accepts `/native-list?rows=1000`. Run
+`cd bench && LIVE_LIFT_BENCH=1 npx playwright test --project=chromium -g
+"1,000 native"` for 25 client-side reversals while disconnected, without
+server reply timing mixed in. A local Chromium run measured 10.5 ms median
+and 15.8 ms p95; the same run preserved all 1,000 rows and the input node
+inside a moved row. The legacy list benchmark on that machine measured
+3.2 ms median and 7.4 ms p95. The native row has a form and a remove button,
+so these are different DOM workloads. The native p95 is close to a 16.7 ms
+frame budget; measure your own component before moving a large list.
+
 The gain is interaction latency when a small pure action can finish locally
 without a server round trip. A server-backed action still needs LiveView.
 LiveLift does not make Phoenix generally faster, and it adds bundle and render

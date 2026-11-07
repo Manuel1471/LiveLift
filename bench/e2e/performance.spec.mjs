@@ -55,6 +55,7 @@ test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserNam
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
   await page.goto("/?bench_rows=1000");
+  await page.waitForFunction(() => window.liveSocket?.isConnected());
   await expect(page.locator("#task-list [data-live-lift-key]")).toHaveCount(1_000);
 
   const result = await page.evaluate(() => {
@@ -83,6 +84,36 @@ test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserNam
   expect(result.preservedInput).toBe(true);
   expect(result.preservedValue).toBe("Task 1000");
   console.log(JSON.stringify({browser: "Chromium", samples: 25, keyedReverse: result}, null, 2));
+});
+
+test("benchmark 1,000 native LiveComponent row reversals in Chromium", async ({page, browserName}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
+  test.setTimeout(120_000);
+  await page.goto("/native-list?rows=1000");
+  await page.waitForFunction(() => window.liveSocket?.isConnected());
+  const root = page.locator("#native-list");
+  await expect(root.locator("li")).toHaveCount(1_000);
+  await page.evaluate(() => window.liveSocket.disconnect());
+
+  const result = await root.evaluate((component) => {
+    const button = component.querySelector('button[phx-click="reverse"]');
+    const input = component.querySelector('#row-1000 input[name="label"]');
+    const values = [];
+    for (let index = 0; index < 25; index += 1) {
+      const start = performance.now();
+      button.click();
+      values.push(performance.now() - start);
+    }
+    values.sort((a, b) => a - b);
+    return {
+      medianMs: values[12], p95Ms: values[23],
+      rows: component.querySelectorAll("li").length,
+      preservedInput: component.querySelector('#row-1000 input[name="label"]') === input,
+    };
+  });
+  expect(result.rows).toBe(1_000);
+  expect(result.preservedInput).toBe(true);
+  console.log(JSON.stringify({browser: "Chromium", samples: 25, nativeKeyedReverse: result}, null, 2));
 });
 
 test("benchmark navigation and mount with 100 islands", async ({page, browserName}) => {

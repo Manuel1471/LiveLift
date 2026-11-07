@@ -201,6 +201,9 @@ DOM al cambiar de orden; el benchmark del demo con 1,000 filas midió 3.3 ms de
 mediana y 7.5 ms p95 en Chromium. Quedan pendientes el diff de filas que
 cambian de contenido, la segmentación general por dependencias y la agrupación
 por `requestAnimationFrame`.
+La lista nativa con formularios por fila midió 10.5 ms de mediana y 15.8 ms p95
+en 25 inversiones locales de 1,000 filas en Chromium. Está cerca del presupuesto
+de un frame; el benchmark reproduce el caso con `/native-list?rows=1000`.
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.
