@@ -152,9 +152,10 @@ Playwright y una propiedad de **convergencia**: en reposo, cliente y servidor ti
 mismo estado.
 
 La reconciliación aplica la respuesta de forma atómica. Un arnés con 1,000
-órdenes de respuesta y correcciones generadas prueba convergencia; Chromium
-prueba eventos pendientes intercalados con un reset de servidor. Falta cubrir
-interrupciones y duplicados de transporte con una prueba caótica completa.
+órdenes de respuesta, respuestas duplicadas y correcciones generadas prueba
+convergencia; Chromium prueba eventos pendientes intercalados con un reset de
+servidor y un corte de conexión con predicción pendiente. Falta una cola offline
+con caducidad y una prueba caótica de entrega de eventos al servidor.
 
 ## Fase 4: Rendimiento (3 a 4 semanas, v0.6)
 

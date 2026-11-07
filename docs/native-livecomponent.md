@@ -64,6 +64,9 @@ The client applies a newer snapshot, replays unacknowledged actions and commits
 the result only after rendering succeeds. Stale replies can acknowledge
 pending actions without rolling back a newer server revision. The convergence
 suite runs 1,000 seeded reply orders with deliberate server corrections.
+Duplicate replies do not run the handler again, and a connection cut drops
+pending predictions when the fresh LiveView snapshot arrives. There is no
+offline replay queue; a disconnected click is not guaranteed to persist.
 
 To turn off prediction without editing components, configure either switch:
 

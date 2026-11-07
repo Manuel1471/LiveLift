@@ -152,6 +152,21 @@ test("native component reconnects from the server snapshot", async ({page}) => {
   await expect(count).toHaveText("1");
 });
 
+test("a pending prediction is discarded after a connection cut", async ({page}) => {
+  await page.goto("/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("output");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(500));
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(count).toHaveText("1", {timeout: 200});
+  await page.evaluate(() => { window.liveSocket.disconnect(); window.liveSocket.connect(); });
+  await page.waitForFunction(() => window.liveSocket.isConnected());
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
+  await expect(count).toHaveText("0");
+  await page.waitForTimeout(600);
+  await expect(count).toHaveText("0");
+});
+
 test("the same LiveComponent without opt-in keeps normal server behavior", async ({page}) => {
   await page.goto("/native-counter-server");
   const root = page.locator('section[aria-label="Native LiveComponent counter"]');

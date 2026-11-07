@@ -423,9 +423,40 @@ test("1,000 seeded reply orders converge to the server state", () => {
       const other = random % (index + 1);
       [replies[index], replies[other]] = [replies[other], replies[index]];
     }
-    for (const {index, payload} of replies) callbacks[index](payload);
+    for (const {index, payload} of replies) {
+      callbacks[index](payload);
+      if ((seed + index) % 2 === 0) callbacks[index](payload);
+    }
     assert.equal(hook.state.count, serverCount, `seed ${seed}`);
     assert.equal(hook.pending.length, 0, `seed ${seed}`);
     assert.equal(hook.serverRevision, count, `seed ${seed}`);
   }
+});
+
+test("a disconnected component drops pending predictions and stale replies at snapshot", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const replies = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, _payload, reply) => replies.push(reply),
+  };
+  hook.mounted();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.equal(hook.state.count, 1);
+  hook.disconnected();
+  el.dataset.liveLiftState = JSON.stringify({count: 7, step: 1});
+  el.dataset.liveLiftServerRevision = "3";
+  el.dataset.liveLiftAckSeq = "1";
+  hook.updated();
+  assert.equal(hook.state.count, 7);
+  assert.equal(hook.pending.length, 0);
+  replies[0]({revision: 1, ack_seq: 1, state: {count: 1, step: 1}});
+  assert.equal(hook.state.count, 7);
+  assert.equal(hook.serverRevision, 3);
+  assert.equal(hook.nextSequence, 2);
 });
