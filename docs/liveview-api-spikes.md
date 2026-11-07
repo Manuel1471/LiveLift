@@ -34,7 +34,10 @@ reconciliation. Before adding the API, prove that a mounted LiveComponent can
 emit the patch from a real event and define how pending predictions are
 replayed or rejected.
 
-## Decision
+The subsequent native implementation now returns versioned authoritative
+snapshots through LiveView event replies, replays pending actions, and rejects
+duplicate event sequences before invoking the original handler. This is
+covered by the runtime, component, and Chromium tests.
 
 ## S4 — migration surface
 
@@ -47,14 +50,21 @@ CI now runs the spike on the supported toolchains and in the optional LiveView
 
 ## S5 — browser acceptance gate
 
-**Pending.** S1–S4 do not execute that handler in the browser. Before shipping
-`use LiveLift`, a real mounted LiveComponent must run the marked handler
-optimistically, send the normal LiveView event, receive an authoritative
-response and converge after reconnect. Its source diff must remain only the
-`use` line and `@client true`; no template or handler rewrite is acceptable.
+**Passed for the narrow native component surface.** The Chromium acceptance
+tests mount the same `Phoenix.LiveComponent` with and without opt-in. The
+client version runs its marked `handle_event/3` optimistically, sends the
+normal LiveView event, and converges to the authoritative server reply. Tests
+also cover two pending clicks, a server reset between predictions, a
+reconnect, and a connection cut with a pending prediction. The source diff is
+the `use LiveLift` line and `@client true`; `~H`, `phx-*`, and the original
+handler body remain unchanged. See `bench/e2e/live_lift.spec.mjs`.
+
+This pass does not validate arbitrary LiveComponents. The compiler currently
+supports only the documented subset of handlers and templates; nested
+components, slots, streams, and richer forms still need separate gates.
 
 ## Decision
 
-Proceed with a narrow `use LiveLift` implementation behind this browser gate.
-Keep the current `client_template` API working. Do not claim the target API
-is production-ready from compile-time spikes alone.
+Proceed with the narrow `use LiveLift` implementation. Keep the current
+`client_template` API working. Treat the browser gate as evidence for the
+supported subset, not as a production-readiness claim for all LiveView code.
