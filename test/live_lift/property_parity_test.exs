@@ -13,6 +13,7 @@ defmodule LiveLift.PropertyParityTest do
         all: Enum.all?(state.items, fn item -> item.keep end),
         member: Enum.member?(state.items, state.target),
         label: state.label <> "!",
+        contains: String.contains?(state.label, state.query),
         choice: if(state.flag, do: "yes", else: "no"),
         absent: Map.get(state.optional, :missing, "fallback")
       }
@@ -29,6 +30,14 @@ defmodule LiveLift.PropertyParityTest do
       )
       |> StreamData.map(&Enum.join/1)
 
+    query =
+      StreamData.one_of([
+        StreamData.member_of(["", "a", "é", "😀", "é", "&", "missing"]),
+        StreamData.list_of(StreamData.member_of(["", "a", "é", "😀", "missing"]),
+          max_length: 4
+        )
+      ])
+
     state =
       StreamData.fixed_map(%{
         count: StreamData.integer(-1_000..1_000),
@@ -37,6 +46,7 @@ defmodule LiveLift.PropertyParityTest do
         other: items,
         target: item,
         label: label,
+        query: query,
         flag: StreamData.member_of([true, false, nil, 0, [], ""]),
         optional: StreamData.constant(%{present: nil})
       })
@@ -50,6 +60,7 @@ defmodule LiveLift.PropertyParityTest do
           other: [],
           target: %{id: 1, keep: false},
           label: "",
+          query: [],
           flag: nil,
           optional: %{}
         },
@@ -60,6 +71,7 @@ defmodule LiveLift.PropertyParityTest do
           other: [%{id: 1, keep: false}],
           target: %{id: 1, keep: false},
           label: "😀&",
+          query: ["", "missing"],
           flag: 0,
           optional: %{}
         }

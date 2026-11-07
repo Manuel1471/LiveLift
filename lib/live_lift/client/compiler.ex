@@ -61,6 +61,12 @@ defmodule LiveLift.Client.Compiler do
     if (typeof value !== "string") throw new Error("LiveLift expected a string");
     return value;
   }
+  function __liveLiftContains(value, patterns) {
+    const text = __liveLiftString(value);
+    if (typeof patterns === "string") return text.includes(patterns);
+    if (!Array.isArray(patterns)) throw new Error("LiveLift expected a string or list of strings");
+    return patterns.some((pattern) => text.includes(__liveLiftString(pattern)));
+  }
   function __liveLiftAnd(left, right) { return __liveLiftTruthy(left) ? right() : left; }
   function __liveLiftOr(left, right) { return __liveLiftTruthy(left) ? left : right(); }
   function __liveLiftMember(list, value) {
@@ -320,6 +326,13 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :member?]}, _, [list, value]}, arg) do
     "__liveLiftMember(#{compile_expr(list, arg)}, #{compile_expr(value, arg)})"
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:String]}, :contains?]}, _, [text, patterns]},
+         arg
+       ) do
+    "__liveLiftContains(#{compile_expr(text, arg)}, #{compile_expr(patterns, arg)})"
   end
 
   defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do

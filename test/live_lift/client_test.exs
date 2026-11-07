@@ -155,6 +155,15 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+
+    assert_raise ArgumentError, ~r/unsupported client expression.*String.contains\?/, fn ->
+      Code.compile_string("""
+      defmodule UnsupportedContains do
+        use LiveLift.Client
+        defclient(check(state), do: String.contains?(state.label, "a", "b"))
+      end
+      """)
+    end
   end
 
   test "compiles primitive values and Elixir conditional truthiness" do
