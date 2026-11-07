@@ -20,7 +20,9 @@ defmodule LiveLift.PropertyParityTest do
         trimmed: String.trim(state.label),
         graphemes: String.length(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
-        absent: Map.get(state.optional, :missing, "fallback")
+        absent: Map.get(state.optional, :missing, "fallback"),
+        merged: Map.merge(state.optional, %{present: state.flag, label: state.label}),
+        removed: Map.delete(state.optional, :present)
       }
     )
   end

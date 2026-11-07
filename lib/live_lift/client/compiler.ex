@@ -51,6 +51,19 @@ defmodule LiveLift.Client.Compiler do
     if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
     return Object.hasOwn(map, key) ? map[key] : fallback;
   }
+  function __liveLiftMapMerge(left, right) {
+    if (!left || typeof left !== "object" || Array.isArray(left) ||
+        !right || typeof right !== "object" || Array.isArray(right)) {
+      throw new Error("LiveLift expected two maps");
+    }
+    return {...left, ...right};
+  }
+  function __liveLiftMapDelete(map, key) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    const result = {...map};
+    delete result[key];
+    return result;
+  }
   function __liveLiftRem(left, right) {
     left = __liveLiftInt(left);
     right = __liveLiftInt(right);
@@ -323,6 +336,15 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [map, key, fallback]}, arg)
        when is_atom(key) do
     "__liveLiftMapGet(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(key))}, #{compile_expr(fallback, arg)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :merge]}, _, [left, right]}, arg) do
+    "__liveLiftMapMerge(#{compile_expr(left, arg)}, #{compile_expr(right, arg)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :delete]}, _, [map, key]}, arg)
+       when is_atom(key) do
+    "__liveLiftMapDelete(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(key))})"
   end
 
   defp compile_expr(

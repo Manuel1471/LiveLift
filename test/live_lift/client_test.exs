@@ -191,6 +191,24 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+
+    assert_raise ArgumentError, ~r/unsupported client expression.*Map.delete/, fn ->
+      Code.compile_string("""
+      defmodule UnsupportedMapDelete do
+        use LiveLift.Client
+        defclient(remove(state), do: Map.delete(state.map, state.key))
+      end
+      """)
+    end
+
+    assert_raise ArgumentError, ~r/unsupported client expression.*Map.merge/, fn ->
+      Code.compile_string("""
+      defmodule UnsupportedMapMerge do
+        use LiveLift.Client
+        defclient(merge(state), do: Map.merge(state.left, state.right, fn _, _, _ -> nil end))
+      end
+      """)
+    end
   end
 
   test "compiles primitive values and Elixir conditional truthiness" do

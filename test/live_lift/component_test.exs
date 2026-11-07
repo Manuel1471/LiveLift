@@ -88,6 +88,23 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule MapEditor do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@item.label}</output>"
+
+    @client true
+    def handle_event("merge", params, socket) do
+      {:noreply, update(socket, :item, &Map.merge(&1, %{label: params["label"]}))}
+    end
+
+    @client true
+    def handle_event("clear", _params, socket) do
+      {:noreply, update(socket, :item, &Map.delete(&1, :extra))}
+    end
+  end
+
   test "uses the real HEEx render and compiles the marked event" do
     html =
       render_component(&Counter.render/1,
@@ -283,6 +300,38 @@ defmodule LiveLift.ComponentTest do
 
       {output, 0} = System.cmd("node", [path])
       assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
+    after
+      File.rm(path)
+    end
+  end
+
+  test "native map merge and delete keep server and browser results equal" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{item: %{label: "old", extra: "x"}, id: "map", __changed__: %{}}
+    }
+
+    assert {:reply, %{state: %{item: %{label: "new", extra: "x"}}}, _} =
+             MapEditor.handle_event("merge", %{"label" => "new"}, socket)
+
+    assert {:reply, %{state: %{item: %{label: "old"}}}, _} =
+             MapEditor.handle_event("clear", %{}, socket)
+
+    javascript = LiveLift.Client.Compiler.compile_module(MapEditor)
+    path = Path.join(System.tmp_dir!(), "live_lift_map_#{System.unique_integer([:positive])}.mjs")
+
+    try do
+      File.write!(
+        path,
+        javascript <>
+          "\nconst state = {item: {label: 'old', extra: 'x'}}; console.log(JSON.stringify([actions.merge(state, {params: {label: 'new'}}), actions.clear(state)]));"
+      )
+
+      {output, 0} = System.cmd("node", [path])
+
+      assert Jason.decode!(output) == [
+               %{"item" => %{"label" => "new", "extra" => "x"}},
+               %{"item" => %{"label" => "old"}}
+             ]
     after
       File.rm(path)
     end
