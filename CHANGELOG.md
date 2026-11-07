@@ -32,6 +32,7 @@
 - Run declarative parity cases for every opted-in app component in CI, rejecting missing marked events or modules.
 - Queue new disconnected component actions for up to 30 seconds and replay them after a fresh LiveView snapshot, while dropping ambiguous in-flight events.
 - Restore the authoritative snapshot and report a conflict if offline replay fails after reconnect.
+- Run browser behavior, focus retention, and axe WCAG A/AA checks in Chromium, Firefox, and WebKit in CI.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

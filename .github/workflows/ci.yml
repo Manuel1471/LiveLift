@@ -65,7 +65,7 @@ jobs:
         working-directory: examples/demo
       - run: npm ci
         working-directory: bench
-      - run: npx playwright install chromium --with-deps
+      - run: npx playwright install chromium firefox webkit --with-deps
         working-directory: bench
       - run: npm run e2e
         working-directory: bench

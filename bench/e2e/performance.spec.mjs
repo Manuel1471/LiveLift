@@ -1,7 +1,7 @@
 import {test, expect} from "@playwright/test";
 
-test("benchmark native component click latency", async ({page}) => {
-  test.skip(process.env.LIVE_LIFT_BENCH !== "1", "Run with LIVE_LIFT_BENCH=1");
+test("benchmark native component click latency", async ({page, browserName}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
 
   const measure = async (route, optimistic) => {
@@ -51,8 +51,8 @@ test("benchmark native component click latency", async ({page}) => {
   }, null, 2));
 });
 
-test("benchmark 1,000 keyed row reversals in Chromium", async ({page}) => {
-  test.skip(process.env.LIVE_LIFT_BENCH !== "1", "Run with LIVE_LIFT_BENCH=1");
+test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserName}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
   await page.goto("/?bench_rows=1000");
   await expect(page.locator("#task-list [data-live-lift-key]")).toHaveCount(1_000);

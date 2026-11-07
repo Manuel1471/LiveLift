@@ -11,7 +11,7 @@ locally on 2026-11-06 after installing the property harness dependencies;
 that is an early compatibility signal, not a supported version claim.
 The `use LiveLift` / `@client true` LiveComponent API currently covers simple
 click, change and submit handlers with chained `assign/3` and `update/3`, flat event
-params and a literal `~H` template. It has real Chromium tests for optimistic
+params and a literal `~H` template. It has real browser tests for optimistic
 events, server replies, an unmarked server handler and reconnect. It does not
 yet cover nested form params, nested components, streams, durable offline actions or
 arbitrary Elixir handlers.
@@ -31,14 +31,14 @@ support keyboard activation without a custom key handler. The demo labels its
 inputs, exposes changing counts with `aria-live`, and retains the active input
 when keyed rows move. App authors must still give controls accessible names,
 test their own components with assistive technology, and avoid using color
-alone to communicate state. Chromium integration tests run axe WCAG A/AA
-checks on the demo. No automated screen-reader audit is claimed.
+alone to communicate state. Chromium, Firefox and WebKit integration tests
+verify focus retention and run axe WCAG A/AA checks on the demo. No automated
+screen-reader audit is claimed.
 
 Run the real-browser suite with `cd bench && npm ci && npx playwright install
-chromium && npm run e2e`. It checks client/server updates, editing and focus,
+chromium firefox webkit && npm run e2e`. It checks client/server updates, editing and focus,
 server/client DOM equivalence after a render, and the demo's axe results.
-Firefox, WebKit, assistive technology and production deployment are not yet
-covered.
+Assistive technology and production deployment are not yet covered.
 
 ## Source maps
 

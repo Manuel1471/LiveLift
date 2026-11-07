@@ -9,6 +9,11 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {baseURL: "http://127.0.0.1:4031"},
+  projects: [
+    {name: "chromium", use: {browserName: "chromium"}},
+    {name: "firefox", use: {browserName: "firefox"}},
+    {name: "webkit", use: {browserName: "webkit"}},
+  ],
   webServer: {
     command: "mix assets.build && mix phx.server",
     cwd: demo,

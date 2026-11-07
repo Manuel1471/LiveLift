@@ -230,7 +230,8 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
 - [ ] Telemetría (`:telemetry` en servidor, reporte de errores del cliente).
 - [x] **Interruptor de emergencia** por componente y global: vuelve al servidor
   en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
-- [ ] Accesibilidad: foco al re-renderizar, axe en Chromium, Firefox y WebKit.
+- [x] Accesibilidad: foco al re-renderizar y axe WCAG A/AA del demo en Chromium,
+  Firefox y WebKit. No equivale a una auditoría con lector de pantalla.
 - [ ] Política de versiones: rango de LiveView soportado, deprecaciones, changelog
   automatizado, publicación firmada en Hex y npm.
 - [ ] Pruebas de carga con muchas islas por página.
