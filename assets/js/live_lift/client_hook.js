@@ -66,6 +66,18 @@ function validateState(state) {
   validateValue(state, "state", 0, {nodes: 0, bytes: 0});
 }
 
+function sameValue(left, right) {
+  if (Object.is(left, right)) return true;
+  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+  if (Array.isArray(left)) {
+    return left.length === right.length && left.every((item, index) => sameValue(item, right[index]));
+  }
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length &&
+    keys.every((key) => Object.hasOwn(right, key) && sameValue(left[key], right[key]));
+}
+
 function evaluate(expr, scope) {
   if (expr.type === "literal") return expr.value;
   if (expr.type === "map") {
@@ -310,7 +322,7 @@ export function createClientHook(views) {
             nextState = this.view.actions[action](nextState, eventData);
             validateState(nextState);
           }
-          this.render(nextState);
+          if (!sameValue(nextState, this.state)) this.render(nextState);
           this.authoritativeState = nextBase;
           this.serverRevision = nextRevision;
           this.pending = nextPending;
@@ -326,7 +338,7 @@ export function createClientHook(views) {
         }
         const nextState = {...this.state, ...patch};
         validateState(nextState);
-        this.render(nextState);
+        if (!sameValue(nextState, this.state)) this.render(nextState);
         this.state = nextState;
         this.serverRevision = revision;
       };
@@ -377,7 +389,7 @@ export function createClientHook(views) {
         }
         const nextState = {...actionState};
         for (const field of this.serverFields) nextState[field] = this.state[field];
-        this.render(nextState);
+        if (!sameValue(nextState, this.state)) this.render(nextState);
         this.state = nextState;
         return eventData;
       };

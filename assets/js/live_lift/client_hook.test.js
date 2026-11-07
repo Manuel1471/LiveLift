@@ -121,6 +121,34 @@ test("does not commit state when rendering a client action fails", () => {
   assert.equal(el.countNode.textContent, "1");
 });
 
+test("skips rendering unchanged local and acknowledged states", () => {
+  const el = element({count: 1, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const replies = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {
+        keep: (state) => ({...state}),
+        advance: (state) => ({...state, count: state.count + 1}),
+      },
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, _payload, reply) => replies.push(reply),
+  };
+  hook.mounted();
+  const render = hook.render;
+  let renders = 0;
+  hook.render = (...args) => { renders += 1; return render.call(hook, ...args); };
+  hook.runAction("keep", el.controls.advance);
+  assert.equal(renders, 0);
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.equal(renders, 1);
+  replies[0]({revision: 1, ack_seq: 1, state: {count: 2, step: 1}});
+  assert.equal(renders, 1);
+  assert.equal(hook.state.count, 2);
+});
+
 test("accepts nested state and rejects dangerous keys", () => {
   const el = element({count: 1, step: 1, items: [{id: "a", done: false}]});
   const hook = {

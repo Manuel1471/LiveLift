@@ -20,6 +20,9 @@ A repeat after the state and event limit checks measured 152,732 bytes raw
 and 47,221 bytes gzip for Phoenix, versus 169,367 bytes raw and 51,721 bytes
 gzip with LiveLift: +16,635 raw and +4,500 gzip (9.5%). The runtime budget
 therefore needs attention before v0.6.
+After no-change render skipping, the same bundle script measured 169,744 raw
+and 51,819 gzip with LiveLift, or +4,598 gzip over Phoenix alone. The skip
+adds about 98 gzip bytes in this build.
 
 Run `bench/phoenix_event.sh` for two generated apps with the same `add`
 LiveView handler. Five runs of 200 `Phoenix.LiveViewTest.render_click/1` calls
@@ -42,6 +45,11 @@ for 1,000 rows. Linkedom is not a browser,
 so these are a regression signal for LiveLift's DOM work, not a browser
 latency claim. Every action currently rebuilds a desired subtree; large
 lists are an important limit. Prefer LiveView streams for large collections.
+The runtime now skips DOM reconciliation when an action or server reply leaves
+the validated state structurally unchanged. In a 50-sample linkedom run with
+1,000 rows, a no-change action took 0.52 ms median, while reversing the same
+list took 79.51 ms. Both still validate state; the no-change path avoids
+building and patching 1,000 DOM rows. These are local DOM-model timings.
 
 The gain is interaction latency when a small pure action can finish locally
 without a server round trip. A server-backed action still needs LiveView.

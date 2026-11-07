@@ -174,6 +174,10 @@ con caducidad y una prueba caótica de entrega de eventos al servidor.
 - [x] Benchmarks en navegador real, no solo en linkedom (contador nativo en
   Chromium, con latencia simulada y comandos reproducibles).
 
+La omisión de renders sin cambios ya funciona para acciones y respuestas
+autoritativas; quedan pendientes el diff especializado de listas con clave y
+la agrupación por `requestAnimationFrame`.
+
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.
 

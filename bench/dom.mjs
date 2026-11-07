@@ -30,7 +30,15 @@ for (const size of [10, 100, 1000]) {
     button.click();
     samples.push(performance.now() - start);
   }
-  results[size] = stats(samples);
+  hook.view.actions.__benchmark_noop = (state) => ({...state});
+  const noChange = [];
+  for (let i = 0; i < 50; i++) {
+    const start = performance.now();
+    hook.runAction("__benchmark_noop", button);
+    noChange.push(performance.now() - start);
+  }
+  delete hook.view.actions.__benchmark_noop;
+  results[size] = {reverse: stats(samples), no_change: stats(noChange)};
   hook.destroyed();
 }
-console.log(JSON.stringify({node: process.version, library: "linkedom", samples_per_size: 50, reverse_list: results}, null, 2));
+console.log(JSON.stringify({node: process.version, library: "linkedom", samples_per_size: 50, list_actions: results}, null, 2));
