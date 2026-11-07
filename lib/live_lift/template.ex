@@ -328,15 +328,7 @@ defmodule LiveLift.Template do
     do: raise(ArgumentError, "#{file}:#{meta.line}: :for requires an Elixir expression")
 
   defp convert_attr({name, {:string, value, _}, meta}, file) do
-    if String.starts_with?(name, "phx-value-") do
-      key = String.replace_prefix(name, "phx-value-", "")
-
-      unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
-               key not in ~w(__proto__ constructor prototype _live_lift_seq) do
-        raise ArgumentError,
-              "#{file}:#{meta.line}: unsafe phx-value parameter #{key}; use a safe field name"
-      end
-    end
+    validate_phx_value_name!(name, file, meta.line)
 
     if Regex.match?(~r/^on[a-z]/i, name) do
       raise ArgumentError, "#{file}:#{meta.line}: unsafe client attribute: #{name}"
@@ -382,6 +374,8 @@ defmodule LiveLift.Template do
   end
 
   defp convert_attr({name, {:expr, source, meta}, _attr_meta}, file) do
+    validate_phx_value_name!(name, file, meta.line)
+
     cond do
       name == ":params" ->
         %{
@@ -393,12 +387,24 @@ defmodule LiveLift.Template do
       name in ~w(checked selected) ->
         %{name: name, value: Expression.parse(source, file, meta.line), type: "boolean"}
 
-      name in @native_dynamic_attributes ->
+      name in @native_dynamic_attributes or String.starts_with?(name, "phx-value-") ->
         %{name: name, value: Expression.parse(source, file, meta.line), type: "native_dynamic"}
 
       true ->
         raise ArgumentError,
               "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
+    end
+  end
+
+  defp validate_phx_value_name!(name, file, line) do
+    if String.starts_with?(name, "phx-value-") do
+      key = String.replace_prefix(name, "phx-value-", "")
+
+      unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
+               key not in ~w(__proto__ constructor prototype _live_lift_seq) do
+        raise ArgumentError,
+              "#{file}:#{line}: unsafe phx-value parameter #{key}; use a safe field name"
+      end
     end
   end
 

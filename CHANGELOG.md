@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Support dynamic native `phx-value-*` expressions so app-owned lists can remove rows by item ID, and keep server delivery when the clicked control disappears optimistically.
+- Compile `Integer.to_string/1` for safe integers to build stable item IDs in marked handlers.
 - Compile `Map.take/2` for a literal atom-key list with seeded Elixir/JavaScript parity cases.
 - Use a native HEEx repeated element's `id={item.id}` as its client list key and preserve focused server-rendered rows across reorder.
 - Add an experimental `use LiveLift` / `@client true` path for simple native LiveComponents, with optimistic clicks, authoritative replies and reconnect snapshots.

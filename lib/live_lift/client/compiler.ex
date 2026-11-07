@@ -428,6 +428,10 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftStringLength(#{compile_expr(text, arg)})"
   end
 
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Integer]}, :to_string]}, _, [value]}, arg) do
+    "String(__liveLiftInt(#{compile_expr(value, arg)}))"
+  end
+
   defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do
     then_expr =
       case Keyword.fetch(branches, :do) do

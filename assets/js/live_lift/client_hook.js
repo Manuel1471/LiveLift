@@ -564,7 +564,8 @@ export function createClientHook(views) {
         this.pending.push({sequence, action: eventName, eventData});
         const payload = {...params, _live_lift_seq: sequence};
         const epoch = this.connectionEpoch;
-        this.pushEventTo(control, eventName, payload, (reply) => {
+        // The prediction can remove its own control; target the stable component root.
+        this.pushEventTo(this.el, eventName, payload, (reply) => {
           if (epoch !== this.connectionEpoch) return;
           if (reply.disabled) {
             window.location.reload();

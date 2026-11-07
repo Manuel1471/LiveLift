@@ -133,6 +133,9 @@ La plantilla nativa ya admite atributos `class`, `title`, `aria-label` y
 También acepta `:for` nativo con `id={item.id}` como clave estable y conserva
 la fila enfocada al reordenarla; los demás casos sin ID estable quedan en el servidor;
 los slots y componentes de función siguen pendientes.
+Los eventos nativos ya admiten `phx-value-id={item.id}` y el demo añade y quita
+filas con handlers `@client true`. Una acción que quita el botón pulsado se envía
+al servidor mediante la raíz estable del componente.
 `Map.take/2` ya acepta una lista literal de claves átomo; la paridad se comprueba
 con estados generados. `Map.keys/1` y `Map.values/1` siguen pendientes por el
 orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.

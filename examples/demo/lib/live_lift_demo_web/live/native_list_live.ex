@@ -4,7 +4,8 @@ defmodule LiveLiftDemoWeb.NativeListLive do
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
-       items: [%{id: "row-1", label: "One"}, %{id: "row-2", label: "Two"}]
+       items: [%{id: "row-1", label: "One"}, %{id: "row-2", label: "Two"}],
+       next_id: 3
      )}
   end
 
@@ -12,7 +13,12 @@ defmodule LiveLiftDemoWeb.NativeListLive do
     ~H"""
     <main>
       <h1>Native keyed list</h1>
-      <.live_component module={LiveLiftDemoWeb.NativeListComponent} id="native-list" items={@items} />
+      <.live_component
+        module={LiveLiftDemoWeb.NativeListComponent}
+        id="native-list"
+        items={@items}
+        next_id={@next_id}
+      />
     </main>
     """
   end

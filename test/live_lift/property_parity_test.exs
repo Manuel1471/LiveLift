@@ -23,7 +23,8 @@ defmodule LiveLift.PropertyParityTest do
         absent: Map.get(state.optional, :missing, "fallback"),
         merged: Map.merge(state.optional, %{present: state.flag, label: state.label}),
         removed: Map.delete(state.optional, :present),
-        picked: Map.take(state.optional, [:present, :missing])
+        picked: Map.take(state.optional, [:present, :missing]),
+        integer_label: Integer.to_string(state.count)
       }
     )
   end
@@ -126,7 +127,21 @@ defmodule LiveLift.PropertyParityTest do
           flag: false,
           optional: %{}
         }
-      ] ++ (state |> StreamData.seeded(20_261_106) |> Enum.take(1_000))
+      ] ++
+        Enum.map([-9_007_199_254_740_991, 9_007_199_254_740_991], fn count ->
+          %{
+            count: count,
+            step: 0,
+            items: [],
+            amount: 0,
+            other: [],
+            target: %{id: 0, keep: false},
+            label: "",
+            query: "",
+            flag: false,
+            optional: %{}
+          }
+        end) ++ (state |> StreamData.seeded(20_261_106) |> Enum.take(1_000))
 
     Enum.each(cases, &LiveLift.State.validate!/1)
     expected = Enum.map(cases, &Actions.check/1) |> Jason.encode!() |> Jason.decode!()

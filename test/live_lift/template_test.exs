@@ -116,6 +116,31 @@ defmodule LiveLift.TemplateTest do
     end
   end
 
+  test "native dynamic phx-value attributes render item event params" do
+    tree =
+      Template.compile_liveview(
+        ~s(<button :for={item <- @items} id={item.id} phx-click="remove" phx-value-id={item.id} phx-target={@myself}>Remove</button>),
+        "native_params.ex",
+        ["remove"]
+      )
+
+    html =
+      tree
+      |> Template.render_server(%{items: [%{id: "row-<&"}]})
+      |> Phoenix.HTML.safe_to_string()
+
+    assert html =~ ~s(phx-value-id="row-&lt;&amp;")
+    assert html =~ ~s(data-live-lift-action="remove")
+
+    assert_raise ArgumentError, ~r/native_params.ex:1: unsafe phx-value parameter/, fn ->
+      Template.compile_liveview(
+        ~s(<button phx-value-__proto__={@id}>Remove</button>),
+        "native_params.ex",
+        []
+      )
+    end
+  end
+
   test "rejects unsupported attribute interpolation" do
     assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
       Template.compile("<a href=\"{@score}\">Open</a>")

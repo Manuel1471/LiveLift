@@ -53,6 +53,20 @@ test("native HEEx :for keeps the same focused row across a client reorder", asyn
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
 });
 
+test("native list adds and removes rows with dynamic phx-value-id", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  await expect(root.locator("li")).toHaveCount(2);
+  await page.evaluate(() => window.liveSocket.enableLatencySim(450));
+  await root.getByRole("button", {name: "Add row"}).click();
+  await expect(root.locator("#row-3")).toContainText("New", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.locator("#row-2").getByRole("button", {name: "Remove"}).click();
+  await expect(root.locator("#row-2")).toHaveCount(0, {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(root.locator("li")).toHaveCount(2);
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

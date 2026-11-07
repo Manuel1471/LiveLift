@@ -121,7 +121,10 @@ event when the server reports that the switch is off; reload active pages to
 apply the switch immediately.
 
 The demo route `/native-list` reverses a native HEEx list while keeping a focused
-row in place. `/native-counter` runs the opt-in component;
+row in place. It also adds and removes rows with `phx-value-id={item.id}`.
+The hook targets the stable component root when sending a predicted event, so
+removing the clicked button locally does not cancel its server delivery.
+`/native-counter` runs the opt-in component;
 `/native-counter-server` runs the same render and handlers without LiveLift. These paths are also tested
 in Chromium with delayed responses, consecutive clicks, server-only reset and
 reconnect. This is an early supported subset of the new API, not a claim that
