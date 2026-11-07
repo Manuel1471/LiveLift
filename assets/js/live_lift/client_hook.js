@@ -76,6 +76,16 @@ function pathLabel(expr) {
   return (expr.root === "state" ? expr.fields : [expr.root, ...expr.fields]).join(".");
 }
 
+function flatFormParams(form) {
+  const params = Object.create(null);
+  for (const [key, value] of new FormData(form)) {
+    if (Object.hasOwn(params, key)) throw new Error(`Duplicate LiveLift form parameter: ${key}`);
+    if (typeof value !== "string") throw new Error(`Unsupported LiveLift form value: ${key}`);
+    params[key] = value;
+  }
+  return params;
+}
+
 function renderNodes(nodes, scope, views, stack = [], textOnly = false) {
   return nodes.flatMap((node) => renderNode(node, scope, views, stack, textOnly));
 }
@@ -390,7 +400,7 @@ export function createClientHook(views) {
         if (!Object.hasOwn(this.view.actions, eventName)) return;
         event.stopImmediatePropagation();
         const params = control.tagName === "FORM"
-          ? Object.fromEntries(new FormData(control))
+          ? flatFormParams(control)
           : {value: control.value, ...(control.name ? {[control.name]: control.value} : {})};
         this.sendOptimistic(control, eventName, params);
       };
@@ -403,7 +413,7 @@ export function createClientHook(views) {
         if (!Object.hasOwn(this.view.actions, eventName)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        this.sendOptimistic(form, eventName, Object.fromEntries(new FormData(form)));
+        this.sendOptimistic(form, eventName, flatFormParams(form));
       };
 
       this.onInput = (event) => {

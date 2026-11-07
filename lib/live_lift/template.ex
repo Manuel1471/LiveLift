@@ -23,15 +23,112 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
+    if tag == "form" and marked_event?(attrs, events) do
+      validate_flat_form!(children, file, meta.line)
+    end
+
     {:block, type, tag, adapt_liveview_attrs(attrs, file, events),
      Enum.map(children, &adapt_liveview_node(&1, file, events)), meta, close}
   end
 
   defp adapt_liveview_node({:self_close, type, tag, attrs, meta}, file, events) do
+    validate_change_control!(tag, attrs, file, meta.line, events)
     {:self_close, type, tag, adapt_liveview_attrs(attrs, file, events), meta}
   end
 
   defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp marked_event?(attrs, events) do
+    Enum.any?(attrs, fn
+      {name, {:string, event, _}, _} when name in ~w(phx-change phx-submit) ->
+        event in events
+
+      _ ->
+        false
+    end)
+  end
+
+  defp validate_change_control!("input", attrs, file, line, events) do
+    if Enum.any?(attrs, fn
+         {"phx-change", {:string, event, _}, _} -> event in events
+         _ -> false
+       end) do
+      type =
+        Enum.find_value(attrs, fn
+          {"type", {:string, value, _}, _} -> value
+          _ -> nil
+        end)
+
+      if type in ~w(checkbox radio file) do
+        raise ArgumentError,
+              "#{file}:#{line}: @client phx-change does not support #{type} inputs yet; keep this event on the server"
+      end
+    end
+  end
+
+  defp validate_change_control!(_tag, _attrs, _file, _line, _events), do: :ok
+
+  defp validate_flat_form!(children, file, line) do
+    names = flat_form_names(children)
+
+    if unsupported_form_control?(children) do
+      raise ArgumentError,
+            "#{file}:#{line}: @client form has a checkbox, radio, file or multiple-select control; keep this event on the server"
+    end
+
+    for name <- names do
+      unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) and
+               name not in ~w(__proto__ constructor prototype _live_lift_seq) do
+        raise ArgumentError,
+              "#{file}:#{line}: @client form requires flat safe input names; move nested forms to a server handler"
+      end
+    end
+
+    if length(names) != length(Enum.uniq(names)) do
+      raise ArgumentError,
+            "#{file}:#{line}: @client form has duplicate input names; move this event to a server handler"
+    end
+  end
+
+  defp flat_form_names(nodes) do
+    Enum.flat_map(nodes, fn
+      {:block, :tag, _tag, attrs, children, _, _} -> form_name(attrs) ++ flat_form_names(children)
+      {:self_close, :tag, _tag, attrs, _} -> form_name(attrs)
+      _ -> []
+    end)
+  end
+
+  defp unsupported_form_control?(nodes) do
+    Enum.any?(nodes, fn
+      {:block, :tag, tag, attrs, children, _, _} ->
+        unsupported_control?(tag, attrs) or unsupported_form_control?(children)
+
+      {:self_close, :tag, tag, attrs, _} ->
+        unsupported_control?(tag, attrs)
+
+      _ ->
+        false
+    end)
+  end
+
+  defp unsupported_control?("input", attrs) do
+    Enum.any?(attrs, fn
+      {"type", {:string, type, _}, _} -> type in ~w(checkbox radio file)
+      _ -> false
+    end)
+  end
+
+  defp unsupported_control?("select", attrs),
+    do: Enum.any?(attrs, fn {name, _, _} -> name == "multiple" end)
+
+  defp unsupported_control?(_tag, _attrs), do: false
+
+  defp form_name(attrs) do
+    Enum.flat_map(attrs, fn
+      {"name", {:string, value, _}, _} -> [value]
+      _ -> []
+    end)
+  end
 
   defp adapt_liveview_attrs(attrs, file, events) do
     Enum.flat_map(attrs, fn

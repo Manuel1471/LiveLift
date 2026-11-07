@@ -189,4 +189,30 @@ defmodule LiveLift.ComponentTest do
       )
     end
   end
+
+  test "rejects nested or duplicate native form names" do
+    assert_raise ArgumentError, ~r/form.ex:1: @client form requires flat safe input names/, fn ->
+      LiveLift.Template.compile_liveview(
+        ~s(<form phx-submit="save"><input name="user[name]" /></form>),
+        "form.ex",
+        ["save"]
+      )
+    end
+
+    assert_raise ArgumentError, ~r/form.ex:1: @client form has duplicate input names/, fn ->
+      LiveLift.Template.compile_liveview(
+        ~s(<form phx-submit="save"><input name="value" /><input name="value" /></form>),
+        "form.ex",
+        ["save"]
+      )
+    end
+
+    assert_raise ArgumentError, ~r/form.ex:1: @client form has a checkbox/, fn ->
+      LiveLift.Template.compile_liveview(
+        ~s(<form phx-submit="save"><input type="checkbox" name="agree" /></form>),
+        "form.ex",
+        ["save"]
+      )
+    end
+  end
 end

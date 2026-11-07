@@ -7,6 +7,7 @@
 - Bound pending native component actions and reject unsafe event parameter names before local execution.
 - Compile flat event parameter patterns and a simple socket pipe without rewriting the LiveComponent handler.
 - Add a Chromium benchmark comparing the same component with and without client prediction.
+- Reject nested or duplicate native form names and unsupported control types instead of producing divergent client parameters.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

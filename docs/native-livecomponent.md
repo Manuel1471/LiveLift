@@ -49,6 +49,8 @@ static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
 server only. Unsupported
 forms fail during compilation with a source location and a suggestion to keep
 that handler on the server.
+Marked forms require unique, flat, safe input names; checkbox, radio and file
+change events remain server only until their value semantics are covered.
 The browser caps pending marked actions at 100 and rejects unsafe parameter
 names before changing local state. There is no offline queue yet.
 
