@@ -28,7 +28,8 @@ percentage from it.
 Run `cd examples/demo && mix assets.build`, then `cd ../../bench && npm ci &&
 npm run dom` for a DOM-model benchmark of reversing the demo's keyed list.
 With Node 26.5.0 and linkedom, median times were about 0.38 ms for 10 rows,
-3.87 ms for 100 rows, and 72.86 ms for 1,000 rows. Linkedom is not a browser,
+3.87 ms for 100 rows, and 72.86 ms for 1,000 rows. A repeat measured 77.02 ms
+for 1,000 rows. Linkedom is not a browser,
 so these are a regression signal for LiveLift's DOM work, not a browser
 latency claim. Every action currently rebuilds a desired subtree; large
 lists are an important limit. Prefer LiveView streams for large collections.
@@ -44,7 +45,8 @@ It compares the same counter handler with and without the two-line opt-in,
 injecting 150 ms of LiveSocket latency. On the same machine, 20 samples after
 three warmups gave median Playwright-observed times of 17.5 ms to show the
 client prediction, 806.3 ms to receive its server confirmation, and 813.6 ms
-to show the server-only result. The local figure includes Playwright command
+to show the server-only result. A repeat on 2026-11-06 measured 17 ms, 812.1 ms,
+and 813.8 ms respectively. The local figure includes Playwright command
 overhead; these numbers demonstrate the round-trip avoided for immediate
 feedback, not a universal production latency claim.
 
@@ -52,26 +54,30 @@ feedback, not a universal production latency claim.
 
 A standard Phoenix 1.8 app adds one dependency and runs `mix live_lift.install`.
 The installer updates `assets/js/app.js`, the two asset aliases in `mix.exs`,
-and `.gitignore`; it is idempotent. App code then needs three concepts:
-`client_template`, `defclient`, and `<LiveLift.View.island>`. A simple counter
-can use ordinary Elixir map update syntax:
+and `.gitignore`; it is idempotent. For the supported native LiveComponent
+subset, app code adds `use LiveLift` and marks a handler with `@client true`:
 
 ```elixir
-defmodule MyApp.CounterClient do
-  use LiveLift.Client
-  client_template "<button type=\"button\" $click=\"add\">Add</button><output>{@count}</output>"
-  defclient add(state), do: %{state | count: state.count + 1}
+defmodule MyAppWeb.Counter do
+  use Phoenix.LiveComponent
+  use LiveLift
+
+  def render(assigns), do: ~H"<button phx-click=\"inc\" phx-target={@myself}>{@count}</button>"
+
+  @client true
+  def handle_event("inc", _params, socket) do
+    {:noreply, update(socket, :count, &(&1 + 1))}
+  end
 end
 ```
 
-```heex
-<LiveLift.View.island id="counter" module={MyApp.CounterClient} state={%{count: 0}} />
-```
-
-The developer must already know basic Phoenix LiveView and Elixir maps. Lists,
-components and server synchronization add more concepts; see the language and
-sync guides. The installer recognizes standard Phoenix 1.8 asset files. A
-custom LiveSocket or asset pipeline still needs manual integration.
+Handlers without the marker continue on the server. The browser supports a
+documented subset of `~H`, event params, and handler expressions; unsupported
+forms fail compilation with a source location. The older `client_template`,
+`defclient`, and `<LiveLift.View.island>` API still works for existing apps.
+See the [native component guide](native-livecomponent.md) for exact limits.
+The installer recognizes standard Phoenix 1.8 asset files. A custom
+LiveSocket or asset pipeline still needs manual integration.
 
 ## Code quality limits
 
