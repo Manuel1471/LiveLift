@@ -1,5 +1,5 @@
 defmodule LiveLift.ComponentTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
   defmodule Counter do
@@ -224,4 +224,41 @@ defmodule LiveLift.ComponentTest do
       )
     end
   end
+
+  test "global and component switches restore the original LiveView behavior" do
+    original_enabled = Application.get_env(:live_lift, :enabled)
+    original_disabled = Application.get_env(:live_lift, :disabled_components)
+
+    on_exit(fn ->
+      restore_env(:enabled, original_enabled)
+      restore_env(:disabled_components, original_disabled)
+    end)
+
+    for {setting, value} <- [{:enabled, false}, {:disabled_components, [Counter]}] do
+      Application.put_env(:live_lift, :enabled, true)
+      Application.put_env(:live_lift, :disabled_components, [])
+      Application.put_env(:live_lift, setting, value)
+
+      html =
+        render_component(&Counter.render/1,
+          id: "counter",
+          count: 1,
+          myself: %Phoenix.LiveComponent.CID{cid: 1}
+        )
+
+      refute html =~ ~s(phx-hook="LiveLift")
+      assert html =~ ~s(phx-click="inc")
+      socket = %Phoenix.LiveView.Socket{assigns: %{count: 1, id: "counter", __changed__: %{}}}
+      assert {:noreply, next} = Counter.handle_event("inc", %{}, socket)
+      assert next.assigns.count == 2
+
+      assert {:reply, %{disabled: true}, after_refresh} =
+               Counter.handle_event("inc", %{"_live_lift_seq" => 1}, socket)
+
+      assert after_refresh.assigns.count == 2
+    end
+  end
+
+  defp restore_env(key, nil), do: Application.delete_env(:live_lift, key)
+  defp restore_env(key, value), do: Application.put_env(:live_lift, key, value)
 end

@@ -15,6 +15,9 @@ params and a literal `~H` template. It has real Chromium tests for optimistic
 events, server replies, an unmarked server handler and reconnect. It does not
 yet cover nested form params, nested components, streams, offline actions or
 arbitrary Elixir handlers.
+The global and per-component `:live_lift` switches restore server-only
+rendering for new mounts. Active opt-in clients reload after their next marked
+event; operators should refresh active pages when disabling the feature.
 
 ## Accessibility
 

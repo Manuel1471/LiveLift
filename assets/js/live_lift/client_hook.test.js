@@ -286,3 +286,26 @@ test("native component rejects unsafe event parameters", () => {
   assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", {__proto__: 1, constructor: 1}), /Unsafe LiveLift event parameter/);
   assert.equal(hook.state.count, 1);
 });
+
+test("a disabled native component reloads into server mode", () => {
+  const el = element({count: 1, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const previousWindow = globalThis.window;
+  let reloads = 0;
+  globalThis.window = {location: {reload: () => { reloads += 1; }}};
+  try {
+    const hook = {
+      ...createClientHook({"App.Score": {
+        actions: {advance: (state) => ({...state, count: state.count + 1})},
+        template: "<output></output>",
+      }}),
+      el,
+      pushEventTo: (_control, _event, _payload, reply) => reply({disabled: true}),
+    };
+    hook.mounted();
+    hook.sendOptimistic(el.controls.advance, "advance", {});
+    assert.equal(reloads, 1);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});

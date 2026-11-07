@@ -365,6 +365,10 @@ export function createClientHook(views) {
         const epoch = this.connectionEpoch;
         this.pushEventTo(control, eventName, payload, (reply) => {
           if (epoch !== this.connectionEpoch) return;
+          if (reply.disabled) {
+            window.location.reload();
+            return;
+          }
           this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq);
         });
       };

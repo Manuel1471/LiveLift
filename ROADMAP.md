@@ -193,7 +193,8 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
 - [ ] Auditoría de XSS y de los usos de `innerHTML` en el runtime.
 - [ ] Pruebas de prototype pollution y fuzzing del compilador.
 - [ ] Telemetría (`:telemetry` en servidor, reporte de errores del cliente).
-- [ ] **Interruptor de emergencia** por componente y global: vuelve todo al servidor.
+- [x] **Interruptor de emergencia** por componente y global: vuelve al servidor
+  en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
 - [ ] Accesibilidad: foco al re-renderizar, axe en Chromium, Firefox y WebKit.
 - [ ] Política de versiones: rango de LiveView soportado, deprecaciones, changelog
   automatizado, publicación firmada en Hex y npm.

@@ -57,6 +57,18 @@ The server records the last acknowledged action sequence on the component
 socket and returns the current snapshot for duplicate deliveries without
 running the marked handler twice.
 
+To turn off prediction without editing components, configure either switch:
+
+```elixir
+config :live_lift, enabled: false
+config :live_lift, disabled_components: [MyAppWeb.Counter]
+```
+
+New renders use the original LiveView
+markup and event path. An already mounted client reloads on its next marked
+event when the server reports that the switch is off; reload active pages to
+apply the switch immediately.
+
 The demo route `/native-counter` runs the opt-in component;
 `/native-counter-server` runs the same render and handlers without LiveLift. These paths are also tested
 in Chromium with delayed responses, consecutive clicks, server-only reset and

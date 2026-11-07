@@ -75,56 +75,95 @@ defmodule LiveLift.Component do
 
       def render(var!(assigns)) do
         inner = super(var!(assigns))
-        state = LiveLift.Component.state!(var!(assigns), __live_lift_component_fields__())
 
-        var!(assigns) =
-          var!(assigns)
-          |> Phoenix.Component.assign(:live_lift_inner, inner)
-          |> Phoenix.Component.assign(:live_lift_state_json, Jason.encode!(state))
-          |> Phoenix.Component.assign(
-            :live_lift_revision,
-            Map.get(var!(assigns), :__live_lift_revision, 0)
-          )
-          |> Phoenix.Component.assign(
-            :live_lift_ack_seq,
-            Map.get(var!(assigns), :__live_lift_ack_seq, 0)
-          )
+        if LiveLift.Component.enabled?(__MODULE__) do
+          state = LiveLift.Component.state!(var!(assigns), __live_lift_component_fields__())
 
-        ~H"""
-        <div
-          id={@id}
-          phx-hook="LiveLift"
-          phx-update="ignore"
-          data-live-lift-mode="component"
-          data-live-lift-module={inspect(__MODULE__)}
-          data-live-lift-state={@live_lift_state_json}
-          data-live-lift-server-fields="[]"
-          data-live-lift-server-revision={@live_lift_revision}
-          data-live-lift-ack-seq={@live_lift_ack_seq}
-        >{@live_lift_inner}</div>
-        """
+          var!(assigns) =
+            var!(assigns)
+            |> Phoenix.Component.assign(:live_lift_inner, inner)
+            |> Phoenix.Component.assign(:live_lift_state_json, Jason.encode!(state))
+            |> Phoenix.Component.assign(
+              :live_lift_revision,
+              Map.get(var!(assigns), :__live_lift_revision, 0)
+            )
+            |> Phoenix.Component.assign(
+              :live_lift_ack_seq,
+              Map.get(var!(assigns), :__live_lift_ack_seq, 0)
+            )
+
+          ~H"""
+          <div
+            id={@id}
+            phx-hook="LiveLift"
+            phx-update="ignore"
+            data-live-lift-mode="component"
+            data-live-lift-module={inspect(__MODULE__)}
+            data-live-lift-state={@live_lift_state_json}
+            data-live-lift-server-fields="[]"
+            data-live-lift-server-revision={@live_lift_revision}
+            data-live-lift-ack-seq={@live_lift_ack_seq}
+          >{@live_lift_inner}</div>
+          """
+        else
+          inner
+        end
       end
 
       defoverridable handle_event: 3
 
       def handle_event(event, params, socket) do
-        if event in unquote(events) do
-          sequence = LiveLift.Component.sequence!(params)
-          previous = Map.get(socket.assigns, :__live_lift_ack_seq, 0)
-
-          if sequence > 0 and sequence <= previous do
-            LiveLift.Component.acknowledge_duplicate(socket, __live_lift_component_fields__())
-          else
-            result = super(event, params, socket)
-            LiveLift.Component.reply!(result, sequence, __live_lift_component_fields__())
-          end
-        else
+        if not LiveLift.Component.enabled?(__MODULE__) do
           result = super(event, params, socket)
-          LiveLift.Component.sync_unmarked(result, socket, __live_lift_component_fields__())
+          LiveLift.Component.disabled_reply(result, event, params, unquote(events))
+        else
+          LiveLift.Component.handle_marked_or_server(
+            event,
+            params,
+            socket,
+            unquote(events),
+            __live_lift_component_fields__(),
+            fn -> super(event, params, socket) end
+          )
         end
       end
     end
   end
+
+  @doc false
+  def handle_marked_or_server(event, params, socket, events, fields, original) do
+    if event in events do
+      sequence = LiveLift.Component.sequence!(params)
+      previous = Map.get(socket.assigns, :__live_lift_ack_seq, 0)
+
+      if sequence > 0 and sequence <= previous do
+        LiveLift.Component.acknowledge_duplicate(socket, fields)
+      else
+        result = original.()
+        LiveLift.Component.reply!(result, sequence, fields)
+      end
+    else
+      result = original.()
+      LiveLift.Component.sync_unmarked(result, socket, fields)
+    end
+  end
+
+  @doc false
+  def enabled?(module) do
+    Application.get_env(:live_lift, :enabled, true) != false and
+      module not in Application.get_env(:live_lift, :disabled_components, [])
+  end
+
+  @doc false
+  def disabled_reply({:noreply, socket} = result, event, params, events) do
+    if event in events and sequence!(params) > 0 do
+      {:reply, %{disabled: true}, socket}
+    else
+      result
+    end
+  end
+
+  def disabled_reply(result, _event, _params, _events), do: result
 
   defp render_source!([do: {:sigil_H, meta, [{:<<>>, _, parts}, []]}], file)
        when is_list(parts) do
