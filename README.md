@@ -16,6 +16,9 @@ For the experimental two-line migration of a normal LiveComponent, see
 [Opt in a LiveComponent](docs/native-livecomponent.md).
 Run `mix live_lift.audit` to see which existing LiveComponent handlers fit the
 current client subset and why others are blocked.
+Run `mix live_lift.test` with representative state and event parameters to
+compare a marked handler in Elixir and Node; see the
+[native component guide](docs/native-livecomponent.md).
 Use [component event telemetry](docs/telemetry.md) to measure event frequency
 and server handler time after opting in.
 

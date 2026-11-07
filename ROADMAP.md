@@ -205,6 +205,8 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
   marcado o no marcado. Falta medir componentes antes de optar y el tramo del
   navegador para comparar latencia completa.
 - [ ] `mix live_lift.test`: ejecuta los handlers del usuario en Elixir y en Node.
+  Ya compara un evento marcado con estado y parámetros proporcionados por la app;
+  faltan casos declarativos para ejecutar todos los eventos y valores límite en CI.
 - [ ] Documentación en formato diff ("versión servidor contra versión cliente"),
   entendible en una o dos lecturas.
 - [ ] Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de

@@ -28,6 +28,7 @@
 - Match Elixir's `if` without `else` semantics and reject malformed `if` branches with a clear compiler error.
 - Fuzz 1,000 action expressions and syntax-check accepted generated JavaScript in Node.
 - Render native HEEx expression attributes and conditional class lists on the client, preserving LiveView's initial class spacing and nil behavior.
+- Add `mix live_lift.test` to compare a marked app handler against its generated Node action for supplied state and params.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

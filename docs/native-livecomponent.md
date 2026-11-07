@@ -37,6 +37,19 @@ on its own socket and replies with its authoritative assigns. Unmarked
 handlers continue through LiveView normally. A reconnect replaces local
 predictions with the new server snapshot.
 
+Check a marked handler against the generated JavaScript from your Phoenix app:
+
+```sh
+mix live_lift.test MyAppWeb.Counter --event inc --state '{"count":0}'
+mix live_lift.test MyAppWeb.Form --event draft \
+  --state '{"draft":null}' --params '{"value":"Hi"}'
+```
+
+The task runs the original server handler and the generated action once with
+the supplied state and flat string parameters, then compares their returned
+client fields. Supply representative cases, including boundary values. This
+does not prove parity for every possible input or replace browser tests.
+
 This path currently accepts a literal `~H` render and a marked
 `handle_event/3` whose body returns `{:noreply, assign(socket, field, expr)}`
 or `{:noreply, update(socket, field, &expr)}`. The expression must fit the
