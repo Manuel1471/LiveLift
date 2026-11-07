@@ -14,6 +14,8 @@ view inside a regular LiveView. From `examples/demo`, run `mix setup` and
 For an existing Phoenix app, follow the [integration guide](docs/phoenix-integration.md).
 For the experimental two-line migration of a normal LiveComponent, see
 [Opt in a LiveComponent](docs/native-livecomponent.md).
+Run `mix live_lift.audit` to see which existing LiveComponent handlers fit the
+current client subset and why others are blocked.
 
 ## Use it in a Phoenix app
 

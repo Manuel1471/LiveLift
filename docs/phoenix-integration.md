@@ -8,7 +8,34 @@ Phoenix LiveView 1.2.x:
 {:live_lift, "~> 0.1.0-rc.1"}
 ```
 
-Run `mix deps.get`. Define a view in your own app:
+Run `mix deps.get` and `mix live_lift.install`. For a new component, keep
+ordinary LiveView syntax and add two opt-in lines:
+
+```elixir
+defmodule MyAppWeb.Counter do
+  use Phoenix.LiveComponent
+  use LiveLift
+
+  def render(assigns), do: ~H"<button phx-click='inc' phx-target={@myself}>{@count}</button>"
+
+  @client true
+  def handle_event("inc", _params, socket) do
+    {:noreply, update(socket, :count, &(&1 + 1))}
+  end
+end
+```
+
+Without `use LiveLift` and `@client true`, this is a normal server component.
+The [native component guide](native-livecomponent.md) lists the currently
+supported templates and handlers. To check existing components before editing
+them, run `mix live_lift.audit --path lib/my_app_web`. It prints a file and
+line for each handler, with either `compatible` or the reason it is blocked.
+This source audit does not change files; test a migrated component in the
+browser before shipping it.
+
+## Existing `client_template` apps
+
+The earlier API remains available. Define a view in your own app:
 
 ```elixir
 defmodule MyAppWeb.ScoreClient do
@@ -27,7 +54,7 @@ defmodule MyAppWeb.ScoreClient do
 end
 ```
 
-In a standard Phoenix 1.8 app, run `mix live_lift.install`. It adds generation
+In a standard Phoenix 1.8 app, `mix live_lift.install` adds generation
 before the asset bundler in `assets.build` and `assets.deploy` and merges the
 hook with Phoenix's colocated hooks. The command is safe to rerun. For a
 custom app, make these changes manually:

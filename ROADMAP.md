@@ -195,7 +195,8 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
 
 ## Fase 6: Migración y experiencia de desarrollo (continua desde v0.4)
 
-- [ ] `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué.
+- [x] `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué
+  (auditoría de fuente para `use Phoenix.LiveComponent` y `use AppWeb, :live_component`).
 - [ ] Telemetría de latencia y frecuencia por evento, para decidir qué migrar con datos.
 - [ ] `mix live_lift.test`: ejecuta los handlers del usuario en Elixir y en Node.
 - [ ] Documentación en formato diff ("versión servidor contra versión cliente"),
