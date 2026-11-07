@@ -38,7 +38,9 @@ screen-reader audit is claimed.
 Run the real-browser suite with `cd bench && npm ci && npx playwright install
 chromium firefox webkit && npm run e2e`. It checks client/server updates, editing and focus,
 server/client DOM equivalence after a render, and the demo's axe results.
-Assistive technology and production deployment are not yet covered.
+The suite also mounts 100 opted-in components on one page and verifies that
+their events and state remain independent in all three browsers. Assistive
+technology and production deployment are not yet covered.
 
 ## Source maps
 

@@ -22,6 +22,7 @@ defmodule LiveLiftDemoWeb.Router do
     live "/native-counter", NativeCounterLive
     live "/native-counter-server", NativeCounterLive, :server
     live "/native-form", NativeFormLive
+    live "/many-islands", ManyIslandsLive
   end
 
   # Other scopes may use custom stacks.

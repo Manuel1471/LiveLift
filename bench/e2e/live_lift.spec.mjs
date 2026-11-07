@@ -215,3 +215,21 @@ test("native phx-change and phx-submit use the same params on client and server"
   await expect(root.locator("p")).toHaveText("Saved: Saved locally");
   await expect(root.locator("section")).toHaveAttribute("title", "Saved locally");
 });
+
+test("100 opted-in islands keep their state and events isolated", async ({page}) => {
+  await page.goto("/many-islands?count=100");
+  await expect(page.locator('#many-islands [data-live-lift-mode="component"]')).toHaveCount(100);
+
+  for (const index of [1, 50, 100]) {
+    const island = page.locator(`#island-${index}`);
+    await island.getByRole("button", {name: "Add one"}).click();
+    await expect(island.locator("output")).toHaveText("1");
+    await expect(island).toHaveAttribute("data-live-lift-server-revision", "1");
+  }
+
+  for (const index of [2, 49, 51, 99]) {
+    const island = page.locator(`#island-${index}`);
+    await expect(island.locator("output")).toHaveText("0");
+    await expect(island).toHaveAttribute("data-live-lift-server-revision", "0");
+  }
+});

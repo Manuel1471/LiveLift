@@ -24,8 +24,10 @@ After no-change render skipping, the same bundle script measured 169,744 raw
 and 51,819 gzip with LiveLift, or +4,598 gzip over Phoenix alone. The skip
 adds about 98 gzip bytes in this build.
 With keyed-row reuse, the script measured 171,111 raw and 52,229 gzip bytes
-for the LiveLift app: +5,008 gzip over Phoenix. This is the current cost of the
-tested bundle; the runtime size budget remains open.
+for the LiveLift app: +5,008 gzip over Phoenix. The runtime size budget remains
+open.
+After the native attributes and bounded offline queue, the same script measured
+172,584 raw and 52,698 gzip bytes: +5,477 gzip over the Phoenix baseline.
 
 Run `bench/phoenix_event.sh` for two generated apps with the same `add`
 LiveView handler. Five runs of 200 `Phoenix.LiveViewTest.render_click/1` calls
@@ -82,6 +84,17 @@ to show the server-only result. A repeat on 2026-11-06 measured 17 ms, 812.1 ms,
 and 813.8 ms respectively. The local figure includes Playwright command
 overhead; these numbers demonstrate the round-trip avoided for immediate
 feedback, not a universal production latency claim.
+
+The demo route `/many-islands?count=100` mounts 100 independent opted-in
+components; `mode=server` uses the same component in server mode. Run
+`cd bench && LIVE_LIFT_BENCH=1 npm run e2e -- --project=chromium --grep
+"benchmark navigation and mount"` to compare them. Seven samples after two
+warmups on the same machine gave 37.9 ms median / 39.1 ms p95 for server mode
+and 41.4 ms median / 53.2 ms p95 for client mode. This includes navigation,
+server render, LiveView connection and browser mount; it is a small local
+sample, not an isolated hook cost or a production latency promise. The regular
+browser suite verifies that first, middle and last islands update without
+changing neighboring islands in Chromium, Firefox and WebKit.
 
 ## Learning and integration
 

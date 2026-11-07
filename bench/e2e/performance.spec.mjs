@@ -84,3 +84,26 @@ test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserNam
   expect(result.preservedValue).toBe("Task 1000");
   console.log(JSON.stringify({browser: "Chromium", samples: 25, keyedReverse: result}, null, 2));
 });
+
+test("benchmark navigation and mount with 100 islands", async ({page, browserName}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
+  test.setTimeout(120_000);
+
+  const measure = async (mode) => {
+    const durations = [];
+    for (let index = 0; index < 9; index += 1) {
+      const started = performance.now();
+      await page.goto(`/many-islands?count=100&mode=${mode}`);
+      await page.waitForFunction(() => window.liveSocket.isConnected());
+      await expect(page.locator("#many-islands > div")).toHaveCount(100);
+      if (index >= 2) durations.push(performance.now() - started);
+    }
+    durations.sort((left, right) => left - right);
+    return {medianMs: durations[3], p95Ms: durations[6]};
+  };
+
+  const server = await measure("server");
+  const client = await measure("client");
+  console.log(JSON.stringify({browser: "Chromium", islands: 100, samples: 7,
+    navigationAndMount: {server, client}}, null, 2));
+});

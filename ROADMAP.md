@@ -234,7 +234,8 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
   Firefox y WebKit. No equivale a una auditoría con lector de pantalla.
 - [ ] Política de versiones: rango de LiveView soportado, deprecaciones, changelog
   automatizado, publicación firmada en Hex y npm.
-- [ ] Pruebas de carga con muchas islas por página.
+- [x] Pruebas de carga con 100 islas por página: eventos independientes en
+  Chromium, Firefox y WebKit, más benchmark reproducible de montaje en Chromium.
 
 La revisión interna bloquea esquemas de URL codificados con entidades y
 `xlink:href`; las pruebas cubren las tres claves de prototype pollution,
