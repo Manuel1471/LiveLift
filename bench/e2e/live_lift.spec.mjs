@@ -41,16 +41,27 @@ test("keyed task editing preserves focus across reorder", async ({page}) => {
 test("native HEEx :for keeps the same focused row across a client reorder", async ({page}) => {
   await page.goto("/native-list");
   const root = page.locator("#native-list");
-  const first = root.locator("#row-1 input");
+  const first = root.locator('#row-1 input[name="label"]');
   await expect(root.locator("li").first()).toHaveAttribute("id", "row-1");
   await first.fill("Local draft");
-  await page.evaluate(() => { window.__nativeRowInput = document.querySelector("#row-1 input"); });
+  await page.evaluate(() => { window.__nativeRowInput = document.querySelector('#row-1 input[name="label"]'); });
   await root.getByRole("button", {name: "Reverse rows"}).evaluate((button) => button.click());
   await expect(root.locator("li").first()).toHaveAttribute("id", "row-2");
   await expect(first).toBeFocused();
   await expect(first).toHaveValue("Local draft");
-  expect(await page.evaluate(() => document.querySelector("#row-1 input") === window.__nativeRowInput)).toBe(true);
+  expect(await page.evaluate(() => document.querySelector('#row-1 input[name="label"]') === window.__nativeRowInput)).toBe(true);
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+});
+
+test("native list saves an edited row through a normal form submit", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  const row = root.locator("#row-1");
+  await row.getByRole("textbox", {name: "Label"}).fill("Édité <&>");
+  await row.getByRole("button", {name: "Save row"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(row.getByRole("textbox", {name: "Label"})).toHaveValue("Édité <&>");
+  await expect(root.locator("#row-2").getByRole("textbox", {name: "Label"})).toHaveValue("Two");
 });
 
 test("native list adds and removes rows with dynamic phx-value-id", async ({page}) => {
@@ -59,7 +70,7 @@ test("native list adds and removes rows with dynamic phx-value-id", async ({page
   await expect(root.locator("li")).toHaveCount(2);
   await page.evaluate(() => window.liveSocket.enableLatencySim(450));
   await root.getByRole("button", {name: "Add row"}).click();
-  await expect(root.locator("#row-3")).toContainText("New", {timeout: 200});
+  await expect(root.locator('#row-3 input[name="label"]')).toHaveValue("New", {timeout: 200});
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await root.locator("#row-2").getByRole("button", {name: "Remove"}).click();
   await expect(root.locator("#row-2")).toHaveCount(0, {timeout: 200});

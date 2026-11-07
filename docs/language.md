@@ -17,6 +17,8 @@ The ID must read a field of the loop item and evaluate to a unique string or
 safe integer. Lists without a stable item ID remain server only.
 `phx-value-id={item.id}` passes a scalar item value as a string event parameter;
 the parameter name must be safe and cannot be `_live_lift_seq`.
+Marked `phx-change` inside a form currently fails compilation. Use a flat
+`phx-submit` form or keep live form validation on the server.
 
 ## Template bindings
 

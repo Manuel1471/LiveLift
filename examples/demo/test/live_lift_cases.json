@@ -7,5 +7,6 @@
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"save","state":{"draft":"é","saved":"","active":false},"params":{"note":"<&>"}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"add","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"reverse","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3}},
+  {"module":"LiveLiftDemoWeb.NativeListComponent","event":"edit","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3},"params":{"row_id":"row-1","label":"Édité <&>"}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"remove","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3},"params":{"id":"row-1"}}
 ]

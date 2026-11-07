@@ -121,7 +121,11 @@ event when the server reports that the switch is off; reload active pages to
 apply the switch immediately.
 
 The demo route `/native-list` reverses a native HEEx list while keeping a focused
-row in place. It also adds and removes rows with `phx-value-id={item.id}`.
+row in place. It adds and removes rows with `phx-value-id={item.id}`, and saves
+each row's label with a flat `phx-submit` form. The edit handler uses ordinary
+`Enum.map/2` and `%{item | label: value}`. Live validation with `phx-change`
+on a form is still unsupported because LiveView sends form metadata outside
+the current flat event contract.
 The hook targets the stable component root when sending a predicted event, so
 removing the clicked button locally does not cancel its server delivery.
 `/native-counter` runs the opt-in component;

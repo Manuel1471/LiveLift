@@ -141,6 +141,28 @@ defmodule LiveLift.TemplateTest do
     end
   end
 
+  test "rejects marked form phx-change before it can diverge from LiveView" do
+    assert_raise ArgumentError,
+                 ~r/form.ex:1: @client form phx-change is not supported yet; use phx-submit/,
+                 fn ->
+                   Template.compile_liveview(
+                     ~s(<form phx-change="edit"><input name="label" /></form>),
+                     "form.ex",
+                     ["edit"]
+                   )
+                 end
+
+    assert_raise ArgumentError,
+                 ~r/form.ex:1: @client form phx-change is not supported yet; use phx-submit/,
+                 fn ->
+                   Template.compile_liveview(
+                     ~s(<form><input name="label" phx-change="edit" /></form>),
+                     "form.ex",
+                     ["edit"]
+                   )
+                 end
+  end
+
   test "rejects unsupported attribute interpolation" do
     assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
       Template.compile("<a href=\"{@score}\">Open</a>")

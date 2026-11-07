@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add an editable native HEEx list with per-row `phx-submit` forms and Elixir/JavaScript handler parity.
 - Support dynamic native `phx-value-*` expressions so app-owned lists can remove rows by item ID, and keep server delivery when the clicked control disappears optimistically.
 - Compile `Integer.to_string/1` for safe integers to build stable item IDs in marked handlers.
 - Compile `Map.take/2` for a literal atom-key list with seeded Elixir/JavaScript parity cases.

@@ -24,6 +24,12 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
+    if tag == "form" and
+         (marked_change?(attrs, events) or marked_change_descendant?(children, events)) do
+      raise ArgumentError,
+            "#{file}:#{meta.line}: @client form phx-change is not supported yet; use phx-submit or keep live validation on the server"
+    end
+
     if tag == "form" and marked_event?(attrs, events) do
       validate_flat_form!(children, file, meta.line)
     end
@@ -40,6 +46,26 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp marked_change?(attrs, events) do
+    Enum.any?(attrs, fn
+      {"phx-change", {:string, event, _}, _} -> event in events
+      _ -> false
+    end)
+  end
+
+  defp marked_change_descendant?(nodes, events) do
+    Enum.any?(nodes, fn
+      {:block, _, _, attrs, children, _, _} ->
+        marked_change?(attrs, events) or marked_change_descendant?(children, events)
+
+      {:self_close, _, _, attrs, _} ->
+        marked_change?(attrs, events)
+
+      _ ->
+        false
+    end)
+  end
 
   defp native_loop_key(attrs, file) do
     loop = Enum.find(attrs, fn {name, _, _} -> name == ":for" end)

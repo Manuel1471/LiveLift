@@ -9,7 +9,11 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <button type="button" phx-click="reverse" phx-target={@myself}>Reverse rows</button>
       <ul>
         <li :for={item <- @items} id={item.id}>
-          <label>{item.label}<input value={item.label} /></label>
+          <form phx-submit="edit" phx-target={@myself}>
+            <input type="hidden" name="row_id" value={item.id} />
+            <label>Label <input name="label" value={item.label} /></label>
+            <button type="submit">Save row</button>
+          </form>
           <button type="button" phx-click="remove" phx-value-id={item.id} phx-target={@myself}>Remove</button>
         </li>
       </ul>
@@ -32,6 +36,18 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
   @client true
   def handle_event("reverse", _params, socket) do
     {:noreply, update(socket, :items, &Enum.reverse(&1))}
+  end
+
+  @client true
+  def handle_event("edit", params, socket) do
+    {:noreply,
+     update(
+       socket,
+       :items,
+       &Enum.map(&1, fn item ->
+         if item.id == params["row_id"], do: %{item | label: params["label"]}, else: item
+       end)
+     )}
   end
 
   @client true

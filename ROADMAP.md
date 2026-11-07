@@ -136,6 +136,9 @@ los slots y componentes de función siguen pendientes.
 Los eventos nativos ya admiten `phx-value-id={item.id}` y el demo añade y quita
 filas con handlers `@client true`. Una acción que quita el botón pulsado se envía
 al servidor mediante la raíz estable del componente.
+El demo ahora edita una fila con `phx-submit` y un handler `Enum.map/2`, sin
+sintaxis de componentes nueva. `phx-change` sobre formularios sigue pendiente:
+LiveView envía metadatos de formulario que aún no entran en el contrato plano.
 `Map.take/2` ya acepta una lista literal de claves átomo; la paridad se comprueba
 con estados generados. `Map.keys/1` y `Map.values/1` siguen pendientes por el
 orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.
