@@ -133,6 +133,9 @@ La plantilla nativa ya admite atributos `class`, `title`, `aria-label` y
 También acepta `:for` nativo con `id={item.id}` como clave estable y conserva
 la fila enfocada al reordenarla; los demás casos sin ID estable quedan en el servidor;
 los slots y componentes de función siguen pendientes.
+`Map.take/2` ya acepta una lista literal de claves átomo; la paridad se comprueba
+con estados generados. `Map.keys/1` y `Map.values/1` siguen pendientes por el
+orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.
 `String.contains?/2`, `String.trim/1` y `String.length/1` ya tienen paridad
 en el corpus probado, incluidos espacios Unicode y grafemas complejos. La
 segmentación de grafemas depende de `Intl.Segmenter` y de la versión Unicode del

@@ -64,6 +64,14 @@ defmodule LiveLift.Client.Compiler do
     delete result[key];
     return result;
   }
+  function __liveLiftMapTake(map, keys) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    const result = {};
+    for (const key of keys) {
+      if (Object.hasOwn(map, key)) result[key] = map[key];
+    }
+    return result;
+  }
   function __liveLiftRem(left, right) {
     left = __liveLiftInt(left);
     right = __liveLiftInt(right);
@@ -345,6 +353,22 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :delete]}, _, [map, key]}, arg)
        when is_atom(key) do
     "__liveLiftMapDelete(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(key))})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :take]}, _, [map, keys]}, arg)
+       when is_list(keys) do
+    if Enum.all?(keys, &is_atom/1) do
+      names = Enum.map(keys, &identifier!/1)
+      "__liveLiftMapTake(#{compile_expr(map, arg)}, #{Jason.encode!(names)})"
+    else
+      raise ArgumentError,
+            "unsupported client Map.take/2 keys: use a literal list of atom keys or move this handler to the server"
+    end
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :take]}, _, [_map, _keys]}, _arg) do
+    raise ArgumentError,
+          "unsupported client Map.take/2 keys: use a literal list of atom keys or move this handler to the server"
   end
 
   defp compile_expr(

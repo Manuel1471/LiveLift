@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile `Map.take/2` for a literal atom-key list with seeded Elixir/JavaScript parity cases.
 - Use a native HEEx repeated element's `id={item.id}` as its client list key and preserve focused server-rendered rows across reorder.
 - Add an experimental `use LiveLift` / `@client true` path for simple native LiveComponents, with optimistic clicks, authoritative replies and reconnect snapshots.
 - Support native `phx-change`, `phx-submit`, `phx-value-*` and flat event parameters in the marked handler subset.

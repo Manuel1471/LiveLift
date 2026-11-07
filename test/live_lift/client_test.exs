@@ -209,6 +209,15 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+
+    assert_raise ArgumentError, ~r/Map.take\/2 keys: use a literal list of atom keys/, fn ->
+      Code.compile_string("""
+      defmodule UnsupportedMapTake do
+        use LiveLift.Client
+        defclient(pick(state), do: Map.take(state.map, state.keys))
+      end
+      """)
+    end
   end
 
   test "compiles primitive values and Elixir conditional truthiness" do

@@ -51,6 +51,7 @@ string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
 functions; `Enum.member?/2`; `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
+`Map.take/2` with a literal list of atom keys (missing keys are omitted);
 `String.trim/1`; `String.length/1`; and
 `String.contains?/2` with a string or list
 of strings as the pattern. An empty pattern list returns `false`; an empty

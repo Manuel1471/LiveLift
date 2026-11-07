@@ -22,7 +22,8 @@ defmodule LiveLift.PropertyParityTest do
         choice: if(state.flag, do: "yes", else: "no"),
         absent: Map.get(state.optional, :missing, "fallback"),
         merged: Map.merge(state.optional, %{present: state.flag, label: state.label}),
-        removed: Map.delete(state.optional, :present)
+        removed: Map.delete(state.optional, :present),
+        picked: Map.take(state.optional, [:present, :missing])
       }
     )
   end
@@ -75,7 +76,16 @@ defmodule LiveLift.PropertyParityTest do
         label: label,
         query: query,
         flag: StreamData.member_of([true, false, nil, 0, [], ""]),
-        optional: StreamData.constant(%{present: nil})
+        optional:
+          StreamData.one_of([
+            StreamData.constant(%{}),
+            StreamData.fixed_map(%{present: StreamData.member_of([nil, false, 0, "é"])}),
+            StreamData.fixed_map(%{
+              present: StreamData.member_of([nil, false, 0, "é"]),
+              missing: StreamData.member_of([nil, true, "<value>"]),
+              extra: StreamData.integer(-5..5)
+            })
+          ])
       })
 
     cases =
