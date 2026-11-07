@@ -85,6 +85,15 @@ defmodule LiveLift.ComponentTest do
              Counter.handle_event("inc", %{"_live_lift_seq" => 7}, socket)
 
     assert next.assigns.count == 2
+
+    assert {:reply, %{revision: 1, ack_seq: 7, state: %{count: 2}}, duplicate} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 7}, next)
+
+    assert duplicate.assigns.count == 2
+
+    assert_raise ArgumentError, ~r/invalid LiveLift event sequence/, fn ->
+      Counter.handle_event("inc", %{"_live_lift_seq" => "bad"}, next)
+    end
   end
 
   test "assign and update actions agree with generated JavaScript" do

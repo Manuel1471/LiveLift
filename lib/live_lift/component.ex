@@ -108,11 +108,18 @@ defmodule LiveLift.Component do
       defoverridable handle_event: 3
 
       def handle_event(event, params, socket) do
-        result = super(event, params, socket)
-
         if event in unquote(events) do
-          LiveLift.Component.reply!(result, params, __live_lift_component_fields__())
+          sequence = LiveLift.Component.sequence!(params)
+          previous = Map.get(socket.assigns, :__live_lift_ack_seq, 0)
+
+          if sequence > 0 and sequence <= previous do
+            LiveLift.Component.acknowledge_duplicate(socket, __live_lift_component_fields__())
+          else
+            result = super(event, params, socket)
+            LiveLift.Component.reply!(result, sequence, __live_lift_component_fields__())
+          end
         else
+          result = super(event, params, socket)
           LiveLift.Component.sync_unmarked(result, socket, __live_lift_component_fields__())
         end
       end
@@ -172,13 +179,21 @@ defmodule LiveLift.Component do
   end
 
   @doc false
-  def reply!({:noreply, socket}, params, fields) do
-    revision = Map.get(socket.assigns, :__live_lift_revision, 0) + 1
+  def sequence!(params) when is_map(params) do
     seq = Map.get(params, "_live_lift_seq", 0)
 
     unless is_integer(seq) and seq >= 0 and seq <= 9_007_199_254_740_991 do
       raise ArgumentError, "invalid LiveLift event sequence"
     end
+
+    seq
+  end
+
+  def sequence!(_params), do: raise(ArgumentError, "LiveLift event params must be a map")
+
+  @doc false
+  def reply!({:noreply, socket}, seq, fields) do
+    revision = Map.get(socket.assigns, :__live_lift_revision, 0) + 1
 
     socket =
       socket
@@ -189,8 +204,20 @@ defmodule LiveLift.Component do
     {:reply, %{revision: revision, ack_seq: seq, state: state}, socket}
   end
 
-  def reply!(_result, _params, _fields) do
+  def reply!(_result, _seq, _fields) do
     raise ArgumentError, "@client handle_event/3 must return {:noreply, socket}"
+  end
+
+  @doc false
+  def acknowledge_duplicate(socket, fields) do
+    state = state!(socket.assigns, fields)
+
+    {:reply,
+     %{
+       revision: Map.get(socket.assigns, :__live_lift_revision, 0),
+       ack_seq: Map.get(socket.assigns, :__live_lift_ack_seq, 0),
+       state: state
+     }, socket}
   end
 
   @doc false

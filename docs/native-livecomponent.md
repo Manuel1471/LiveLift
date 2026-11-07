@@ -53,6 +53,9 @@ Marked forms require unique, flat, safe input names; checkbox, radio and file
 change events remain server only until their value semantics are covered.
 The browser caps pending marked actions at 100 and rejects unsafe parameter
 names before changing local state. There is no offline queue yet.
+The server records the last acknowledged action sequence on the component
+socket and returns the current snapshot for duplicate deliveries without
+running the marked handler twice.
 
 The demo route `/native-counter` runs the opt-in component;
 `/native-counter-server` runs the same render and handlers without LiveLift. These paths are also tested
