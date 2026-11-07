@@ -10,8 +10,11 @@ The native LiveComponent opt-in currently translates literal `~H`, static
 `update/3` inside a marked `handle_event/3`. See
 [the component guide](native-livecomponent.md).
 The native template path also accepts expression attributes for `class`,
-`title`, `aria-label`, and `value`; class lists can use `&&` for conditional
+`title`, `aria-label`, `value`, and `id`; class lists can use `&&` for conditional
 entries. `nil` and `false` scalar attributes are omitted, as in HEEx.
+Native `:for` uses the repeated element's `id={item.id}` as its stable key.
+The ID must read a field of the loop item and evaluate to a unique string or
+safe integer. Lists without a stable item ID remain server only.
 
 ## Template bindings
 

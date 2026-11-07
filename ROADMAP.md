@@ -129,7 +129,9 @@ El subconjunto inicial ya acepta un patrón plano `%{"name" => name}` y cadenas
 de `assign/update`, tanto por pipe como por llamadas anidadas. Faltan patrones
 anidados, `assign_new` y las demás operaciones de esta fase; por eso sigue abierta.
 La plantilla nativa ya admite atributos `class`, `title`, `aria-label` y
-`value` con expresiones de asignaciones, y listas de clase con `&&` condicional;
+`value` con expresiones de asignaciones, y listas de clase con `&&` condicional.
+También acepta `:for` nativo con `id={item.id}` como clave estable y conserva
+la fila enfocada al reordenarla; los demás casos sin ID estable quedan en el servidor;
 los slots y componentes de función siguen pendientes.
 `String.contains?/2`, `String.trim/1` y `String.length/1` ya tienen paridad
 en el corpus probado, incluidos espacios Unicode y grafemas complejos. La

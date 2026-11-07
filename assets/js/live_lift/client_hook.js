@@ -171,8 +171,41 @@ function itemOnly(node, variable, nested = false) {
   if (node.type !== "element" || (nested && node.for)) return false;
   if (!itemExpression(node.if, variable) || !itemExpression(node.key, variable)) return false;
   if (node.attrs.some((attr) => attr.name === "data-live-lift-show" ||
-      (["dynamic", "params", "boolean"].includes(attr.type) && !itemExpression(attr.value, variable)))) return false;
+      (["dynamic", "native_dynamic", "params", "boolean"].includes(attr.type) && !itemExpression(attr.value, variable)))) return false;
   return node.children.every((child) => itemOnly(child, variable, true));
+}
+
+function hydrateKeyedRows(nodes, scope, root) {
+  for (const node of nodes) {
+    if (node.type !== "element") continue;
+    if (node.if && [false, null].includes(evaluate(node.if, scope))) continue;
+    if (node.for) {
+      const items = evaluate(node.for.source, scope);
+      if (!Array.isArray(items)) throw new Error(":for expects a list");
+      const keys = new Set();
+      const rows = new Map();
+      for (const element of root.querySelectorAll("[id]")) {
+        if (element.tagName !== node.tag.toUpperCase()) continue;
+        const id = element.id;
+        rows.set(id, rows.has(id) ? null : element);
+      }
+      for (const item of items) {
+        const itemScope = {...scope, [node.for.var]: item};
+        const key = evaluate(node.key, itemScope);
+        if (typeof key !== "string" && !Number.isSafeInteger(key)) throw new Error(":key must be a string or safe integer");
+        const keyString = String(key);
+        if (keys.has(keyString)) throw new Error(`Duplicate client list key: ${key}`);
+        keys.add(keyString);
+        const row = rows.get(keyString);
+        if (!row) continue;
+        row.setAttribute("data-live-lift-key", keyString);
+        row.setAttribute("data-live-lift-node-id", node.node_id);
+        hydrateKeyedRows(node.children, itemScope, row);
+      }
+    } else {
+      hydrateKeyedRows(node.children, scope, root);
+    }
+  }
 }
 
 function renderNodes(nodes, scope, views, stack = [], textOnly = false) {
@@ -367,6 +400,7 @@ export function createClientHook(views) {
         throw new Error("Invalid LiveLift server revision");
       }
       this.optimistic = this.el.dataset.liveLiftMode === "component";
+      if (serverRendered && this.optimistic) hydrateKeyedRows(this.view.template, {state: this.state}, this.el);
       if (this.optimistic) {
         this.authoritativeState = this.state;
         this.pending = [];

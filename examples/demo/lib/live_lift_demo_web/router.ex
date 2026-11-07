@@ -22,6 +22,7 @@ defmodule LiveLiftDemoWeb.Router do
     live "/native-counter", NativeCounterLive
     live "/native-counter-server", NativeCounterLive, :server
     live "/native-form", NativeFormLive
+    live "/native-list", NativeListLive
     live "/many-islands", ManyIslandsLive
   end
 

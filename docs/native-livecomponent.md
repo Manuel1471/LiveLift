@@ -69,7 +69,11 @@ or `{:noreply, update(socket, field, &expr)}`. The expression must fit the
 keys with `params["name"]` or `Map.get(params, "name")`. The template supports
 static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
 `phx-target={@myself}`. Native expression attributes `class={@tone}`,
-`title={@title}`, `aria-label={@label}`, and `value={@value}` are supported.
+`title={@title}`, `aria-label={@label}`, `value={@value}`, and `id={item.id}` are supported.
+For a native `:for={item <- @items}`, put a stable `id={item.id}` on the repeated
+element. LiveLift uses that ordinary HTML ID as its client key; it preserves
+the server-rendered row and its focused input when an unchanged item moves.
+Missing, duplicate, or invalid IDs fail instead of falling back to index keys.
 `class={["base", @active && "active"]}` also works, including `false` and
 `nil` values. Dynamic URLs and other expression attributes remain server only.
 A handler may bind flat params with
@@ -116,7 +120,8 @@ markup and event path. An already mounted client reloads on its next marked
 event when the server reports that the switch is off; reload active pages to
 apply the switch immediately.
 
-The demo route `/native-counter` runs the opt-in component;
+The demo route `/native-list` reverses a native HEEx list while keeping a focused
+row in place. `/native-counter` runs the opt-in component;
 `/native-counter-server` runs the same render and handlers without LiveLift. These paths are also tested
 in Chromium with delayed responses, consecutive clicks, server-only reset and
 reconnect. This is an early supported subset of the new API, not a claim that

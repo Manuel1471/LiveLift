@@ -80,6 +80,42 @@ defmodule LiveLift.TemplateTest do
            |> Phoenix.HTML.safe_to_string() == ~s(<p class="ready">Hi</p>)
   end
 
+  test "native HEEx :for uses the repeated element id as its client key" do
+    tree =
+      Template.compile_liveview(
+        ~s(<ul><li :for={item <- @items} id={item.id}>{item.label}</li></ul>),
+        "native_list.ex",
+        []
+      )
+
+    assert tree
+           |> Template.render_server(%{
+             items: [%{id: "row-1", label: "One"}, %{id: "row-2", label: "<Two>"}]
+           })
+           |> Phoenix.HTML.safe_to_string() =~
+             ~s(<li id="row-1" data-live-lift-key="row-1")
+
+    assert tree
+           |> Template.render_server(%{items: [%{id: "row-2", label: "<Two>"}]})
+           |> Phoenix.HTML.safe_to_string() =~ "&lt;Two&gt;"
+
+    assert_raise ArgumentError, ~r/native_list.ex:1: @client :for requires id=\{item.id\}/, fn ->
+      Template.compile_liveview(
+        ~s(<li :for={item <- @items}>{item.label}</li>),
+        "native_list.ex",
+        []
+      )
+    end
+
+    assert_raise ArgumentError, ~r/native_list.ex:1: @client :for requires id=\{item.id\}/, fn ->
+      Template.compile_liveview(
+        ~s(<li :for={item <- @items} id={@id}>{item.label}</li>),
+        "native_list.ex",
+        []
+      )
+    end
+  end
+
   test "rejects unsupported attribute interpolation" do
     assert_raise ArgumentError, ~r/unsupported client template attribute/, fn ->
       Template.compile("<a href=\"{@score}\">Open</a>")

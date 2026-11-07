@@ -4,5 +4,6 @@
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"label","state":{"count":1,"label":""},"params":{"label":"é 😀 <&>"}},
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"draft","state":{"draft":null,"saved":"","active":false},"params":{"value":"é <draft>"}},
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"draft","state":{"draft":"old","saved":"saved","active":true},"params":{"value":""}},
-  {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"save","state":{"draft":"é","saved":"","active":false},"params":{"note":"<&>"}}
+  {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"save","state":{"draft":"é","saved":"","active":false},"params":{"note":"<&>"}},
+  {"module":"LiveLiftDemoWeb.NativeListComponent","event":"reverse","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}]}}
 ]

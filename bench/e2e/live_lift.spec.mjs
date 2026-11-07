@@ -38,6 +38,21 @@ test("keyed task editing preserves focus across reorder", async ({page}) => {
   await expect(page.locator("#task-list [data-live-lift-key]")).toHaveCount(2);
 });
 
+test("native HEEx :for keeps the same focused row across a client reorder", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  const first = root.locator("#row-1 input");
+  await expect(root.locator("li").first()).toHaveAttribute("id", "row-1");
+  await first.fill("Local draft");
+  await page.evaluate(() => { window.__nativeRowInput = document.querySelector("#row-1 input"); });
+  await root.getByRole("button", {name: "Reverse rows"}).evaluate((button) => button.click());
+  await expect(root.locator("li").first()).toHaveAttribute("id", "row-2");
+  await expect(first).toBeFocused();
+  await expect(first).toHaveValue("Local draft");
+  expect(await page.evaluate(() => document.querySelector("#row-1 input") === window.__nativeRowInput)).toBe(true);
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

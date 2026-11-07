@@ -5,6 +5,7 @@ defmodule LiveLift.Template do
   alias LiveLift.Template.Parser
 
   @dynamic_attributes ~w(class title aria-label value)
+  @native_dynamic_attributes ~w(class title aria-label value id)
   @events ~w($click $server $input $change $submit)
   @void_tags ~w(area base br col embed hr img input link meta param source track wbr)
   @forbidden_tags ~w(script iframe object embed base link meta style foreignobject animate animatemotion animatetransform set)
@@ -27,16 +28,48 @@ defmodule LiveLift.Template do
       validate_flat_form!(children, file, meta.line)
     end
 
-    {:block, type, tag, adapt_liveview_attrs(attrs, file, events),
+    {:block, type, tag, attrs |> native_loop_key(file) |> adapt_liveview_attrs(file, events),
      Enum.map(children, &adapt_liveview_node(&1, file, events)), meta, close}
   end
 
   defp adapt_liveview_node({:self_close, type, tag, attrs, meta}, file, events) do
     validate_change_control!(tag, attrs, file, meta.line, events)
-    {:self_close, type, tag, adapt_liveview_attrs(attrs, file, events), meta}
+
+    {:self_close, type, tag, attrs |> native_loop_key(file) |> adapt_liveview_attrs(file, events),
+     meta}
   end
 
   defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp native_loop_key(attrs, file) do
+    loop = Enum.find(attrs, fn {name, _, _} -> name == ":for" end)
+    key = Enum.find(attrs, fn {name, _, _} -> name == ":key" end)
+
+    if loop && !key do
+      %{var: var} = parse_loop(loop, file)
+      id = Enum.find(attrs, fn {name, _, _} -> name == "id" end)
+
+      case id do
+        {"id", {:expr, source, meta} = value, attr_meta} ->
+          case Expression.parse(source, file, meta.line) do
+            %{type: "path", root: ^var, fields: [_ | _]} ->
+              attrs ++ [{":key", value, attr_meta}]
+
+            _ ->
+              raise ArgumentError,
+                    "#{file}:#{meta.line}: @client :for requires id={#{var}.id} from the repeated item; use a stable item id or keep this list on the server"
+          end
+
+        _ ->
+          {_, _, meta} = loop
+
+          raise ArgumentError,
+                "#{file}:#{meta.line}: @client :for requires id={#{var}.id} on the repeated element; use a stable item id or keep this list on the server"
+      end
+    else
+      attrs
+    end
+  end
 
   defp marked_event?(attrs, events) do
     Enum.any?(attrs, fn
@@ -360,7 +393,7 @@ defmodule LiveLift.Template do
       name in ~w(checked selected) ->
         %{name: name, value: Expression.parse(source, file, meta.line), type: "boolean"}
 
-      name in @dynamic_attributes ->
+      name in @native_dynamic_attributes ->
         %{name: name, value: Expression.parse(source, file, meta.line), type: "native_dynamic"}
 
       true ->
