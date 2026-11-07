@@ -56,6 +56,10 @@ names before changing local state. There is no offline queue yet.
 The server records the last acknowledged action sequence on the component
 socket and returns the current snapshot for duplicate deliveries without
 running the marked handler twice.
+The client applies a newer snapshot, replays unacknowledged actions and commits
+the result only after rendering succeeds. Stale replies can acknowledge
+pending actions without rolling back a newer server revision. The convergence
+suite runs 1,000 seeded reply orders with deliberate server corrections.
 
 To turn off prediction without editing components, configure either switch:
 

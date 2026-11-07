@@ -309,3 +309,89 @@ test("a disabled native component reloads into server mode", () => {
     globalThis.window = previousWindow;
   }
 });
+
+test("authoritative corrections replay pending actions and ignore late replies", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const replies = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, payload, reply) => replies.push({payload, reply}),
+  };
+  hook.mounted();
+  for (let index = 0; index < 3; index += 1) hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.equal(hook.state.count, 3);
+  assert.equal(hook.pending.length, 3);
+
+  replies[0].reply({revision: 1, ack_seq: 1, state: {count: 2, step: 1}});
+  assert.equal(hook.state.count, 4);
+  assert.deepEqual(hook.pending.map(({sequence}) => sequence), [2, 3]);
+  replies[2].reply({revision: 3, ack_seq: 3, state: {count: 5, step: 1}});
+  assert.equal(hook.state.count, 5);
+  assert.equal(hook.pending.length, 0);
+  replies[1].reply({revision: 2, ack_seq: 2, state: {count: 4, step: 1}});
+  assert.equal(hook.state.count, 5);
+  assert.equal(hook.serverRevision, 3);
+});
+
+test("failed server reconciliation leaves the previous prediction intact", () => {
+  const el = element({count: 1, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: () => {},
+  };
+  hook.mounted();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.throws(() => hook.applyAuthoritative(1, {count: 3}, 1), /Unknown LiveLift state field: step/);
+  assert.deepEqual(hook.state, {count: 2, step: 1});
+  assert.deepEqual(hook.authoritativeState, {count: 1, step: 1});
+  assert.equal(hook.serverRevision, 0);
+  assert.equal(hook.pending.length, 1);
+});
+
+test("1,000 seeded reply orders converge to the server state", () => {
+  for (let seed = 1; seed <= 1_000; seed += 1) {
+    const el = element({count: 0, step: 1});
+    el.dataset.liveLiftMode = "component";
+    const callbacks = [];
+    const hook = {
+      ...createClientHook({"App.Score": {
+        actions: {advance: (state) => ({...state, count: state.count + 1})},
+        template: "<output></output>",
+      }}),
+      el,
+      pushEventTo: (_control, _event, _payload, reply) => callbacks.push(reply),
+    };
+    hook.mounted();
+    const count = 1 + (seed % 6);
+    for (let index = 0; index < count; index += 1) {
+      hook.sendOptimistic(el.controls.advance, "advance", {});
+    }
+
+    let serverCount = 0;
+    const replies = callbacks.map((_callback, index) => {
+      serverCount += 1 + ((seed + index) % 3 === 0 ? 1 : 0);
+      return {index, payload: {revision: index + 1, ack_seq: index + 1,
+        state: {count: serverCount, step: 1}}};
+    });
+    let random = seed;
+    for (let index = replies.length - 1; index > 0; index -= 1) {
+      random = (Math.imul(random, 1664525) + 1013904223) >>> 0;
+      const other = random % (index + 1);
+      [replies[index], replies[other]] = [replies[other], replies[index]];
+    }
+    for (const {index, payload} of replies) callbacks[index](payload);
+    assert.equal(hook.state.count, serverCount, `seed ${seed}`);
+    assert.equal(hook.pending.length, 0, `seed ${seed}`);
+    assert.equal(hook.serverRevision, count, `seed ${seed}`);
+  }
+});

@@ -123,6 +123,20 @@ test("pending native component clicks converge after server replies", async ({pa
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
 });
 
+test("server reset interleaved with pending predictions converges", async ({page}) => {
+  await page.goto("/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("output");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(250));
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(count).toHaveText("1", {timeout: 200});
+  await root.getByRole("button", {name: "Reset on server"}).click();
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+  await expect(root).toHaveAttribute("data-live-lift-state", /"count":1/);
+  await expect(count).toHaveText("1");
+});
+
 test("native component reconnects from the server snapshot", async ({page}) => {
   await page.goto("/native-counter");
   const root = page.locator("#native-counter");

@@ -10,6 +10,7 @@
 - Reject nested or duplicate native form names and unsupported control types instead of producing divergent client parameters.
 - Deduplicate marked component events on the server before invoking the original handler.
 - Add global and per-component switches that restore server-only rendering and events.
+- Apply authoritative snapshots atomically and verify convergence across 1,000 reply orders and an interleaved server reset.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

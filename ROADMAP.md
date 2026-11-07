@@ -138,9 +138,9 @@ validación de formulario en vivo, lista ordenable.
 
 ## Fase 3: Sincronización optimista (4 a 6 semanas, v0.5)
 
-- [ ] El evento viaja por el canal normal de LiveView; el servidor ejecuta el mismo
+- [x] El evento viaja por el canal normal de LiveView; el servidor ejecuta el mismo
   `handle_event` sobre **sus propios assigns**.
-- [ ] Si el resultado difiere de la predicción, parche versionado con el estado
+- [x] Si el resultado difiere de la predicción, parche versionado con el estado
   autoritativo; el cliente reaplica las acciones pendientes.
 - [ ] Cola de acciones pendientes, claves de idempotencia, ordenamiento, duplicados.
 - [ ] Reconexión: pedir snapshot, vaciar la cola, cola offline con caducidad.
@@ -150,6 +150,11 @@ validación de formulario en vivo, lista ordenable.
 **Listo cuando:** pruebas caóticas (corte de red, reordenamiento, duplicados) con
 Playwright y una propiedad de **convergencia**: en reposo, cliente y servidor tienen el
 mismo estado.
+
+La reconciliación aplica la respuesta de forma atómica. Un arnés con 1,000
+órdenes de respuesta y correcciones generadas prueba convergencia; Chromium
+prueba eventos pendientes intercalados con un reset de servidor. Falta cubrir
+interrupciones y duplicados de transporte con una prueba caótica completa.
 
 ## Fase 4: Rendimiento (3 a 4 semanas, v0.6)
 

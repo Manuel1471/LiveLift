@@ -251,39 +251,44 @@ export function createClientHook(views) {
           const snapshot = JSON.parse(this.el.dataset.liveLiftState);
           const revision = Number(this.el.dataset.liveLiftServerRevision || "0");
           if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("Invalid LiveLift server revision");
+          const nextSequence = Math.max(this.nextSequence, Number(this.el.dataset.liveLiftAckSeq || "0") + 1);
+          if (!Number.isSafeInteger(nextSequence) || nextSequence < 1) throw new Error("Invalid LiveLift event sequence");
           validateState(snapshot);
+          this.render(snapshot);
           this.pending = [];
           this.authoritativeState = snapshot;
           this.serverRevision = revision;
-          this.nextSequence = Math.max(this.nextSequence, Number(this.el.dataset.liveLiftAckSeq || "0") + 1);
-          this.render(snapshot);
+          this.nextSequence = nextSequence;
           this.state = snapshot;
           this.reconnectPending = false;
         };
         this.applyAuthoritative = (revision, state, ackSequence = 0) => {
+          if (!Number.isSafeInteger(revision) || revision < 0) {
+            throw new Error("Invalid LiveLift server revision");
+          }
           if (!Number.isSafeInteger(ackSequence) || ackSequence < 0) {
             throw new Error("Invalid LiveLift acknowledged sequence");
           }
-          if (this.reconnectPending) {
-            this.authoritativeState = state;
-            this.serverRevision = -1;
-            this.pending = [];
-            this.reconnectPending = false;
+          if (ackSequence >= this.nextSequence) {
+            throw new Error("LiveLift acknowledged an unsent action");
           }
-          if (!Number.isSafeInteger(revision) || revision < this.serverRevision) return;
           validateState(state);
-          if (revision > this.serverRevision) {
-            this.authoritativeState = state;
-            this.serverRevision = revision;
-          }
-          if (ackSequence > 0) this.pending = this.pending.filter(({sequence}) => sequence > ackSequence);
-          let nextState = this.authoritativeState;
-          for (const {action, eventData} of this.pending) {
+
+          const reset = this.reconnectPending;
+          const nextRevision = reset || revision > this.serverRevision ? revision : this.serverRevision;
+          const nextBase = reset || revision > this.serverRevision ? state : this.authoritativeState;
+          const nextPending = (reset ? [] : this.pending).filter(({sequence}) => sequence > ackSequence);
+          let nextState = nextBase;
+          for (const {action, eventData} of nextPending) {
             nextState = this.view.actions[action](nextState, eventData);
             validateState(nextState);
           }
           this.render(nextState);
+          this.authoritativeState = nextBase;
+          this.serverRevision = nextRevision;
+          this.pending = nextPending;
           this.state = nextState;
+          this.reconnectPending = false;
         };
       }
       this.applyServerPatch = (revision, patch) => {
