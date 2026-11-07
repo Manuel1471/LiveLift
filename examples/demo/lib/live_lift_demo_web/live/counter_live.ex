@@ -1,9 +1,22 @@
 defmodule LiveLiftDemoWeb.CounterLive do
   use LiveLiftDemoWeb, :live_view
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
+    task_items =
+      if params["bench_rows"] == "1000" do
+        Enum.map(1..1_000, &%{id: &1, name: "Task #{&1}"})
+      else
+        [%{id: 1, name: "Write Elixir"}, %{id: 2, name: "Ship a component"}]
+      end
+
     {:ok,
-     assign(socket, server_count: 0, server_history: [0], saved_score: nil, sync_revision: 0)}
+     assign(socket,
+       server_count: 0,
+       server_history: [0],
+       saved_score: nil,
+       sync_revision: 0,
+       task_items: task_items
+     )}
   end
 
   def render(assigns) do
@@ -106,8 +119,8 @@ defmodule LiveLiftDemoWeb.CounterLive do
           module={LiveLiftDemo.TaskListView}
           state={
             %{
-              items: [%{id: 1, name: "Write Elixir"}, %{id: 2, name: "Ship a component"}],
-              next_id: 3,
+              items: @task_items,
+              next_id: length(@task_items) + 1,
               draft: "",
               has_items: true,
               empty: false

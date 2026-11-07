@@ -28,6 +28,8 @@ test("keyed task editing preserves focus across reorder", async ({page}) => {
   await page.getByRole("button", {name: "Reverse order"}).evaluate((button) => button.click());
   await expect(input).toBeFocused();
   await expect(input).toHaveValue("Edited in browser");
+  await input.fill("Edited after reorder");
+  await expect(input).toHaveValue("Edited after reorder");
 
   await page.getByRole("textbox", {name: "New task"}).fill("Third task");
   await page.getByRole("button", {name: "Add task"}).click();

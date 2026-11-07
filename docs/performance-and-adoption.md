@@ -23,6 +23,9 @@ therefore needs attention before v0.6.
 After no-change render skipping, the same bundle script measured 169,744 raw
 and 51,819 gzip with LiveLift, or +4,598 gzip over Phoenix alone. The skip
 adds about 98 gzip bytes in this build.
+With keyed-row reuse, the script measured 171,111 raw and 52,229 gzip bytes
+for the LiveLift app: +5,008 gzip over Phoenix. This is the current cost of the
+tested bundle; the runtime size budget remains open.
 
 Run `bench/phoenix_event.sh` for two generated apps with the same `add`
 LiveView handler. Five runs of 200 `Phoenix.LiveViewTest.render_click/1` calls
@@ -36,6 +39,9 @@ percentage from it.
 The same script repeated after the limit checks gave a median of 46 µs for
 Phoenix and 56 µs with one island across five runs, about 10 µs extra in
 this local workload.
+The latest run measured 42 µs for Phoenix and 56 µs with one island (median
+of five runs). The ~14 µs difference is local measurement noise and work for
+this small server event, not a general Phoenix overhead estimate.
 
 Run `cd examples/demo && mix assets.build`, then `cd ../../bench && npm ci &&
 npm run dom` for a DOM-model benchmark of reversing the demo's keyed list.
@@ -43,13 +49,23 @@ With Node 26.5.0 and linkedom, median times were about 0.38 ms for 10 rows,
 3.87 ms for 100 rows, and 72.86 ms for 1,000 rows. A repeat measured 77.02 ms
 for 1,000 rows. Linkedom is not a browser,
 so these are a regression signal for LiveLift's DOM work, not a browser
-latency claim. Every action currently rebuilds a desired subtree; large
-lists are an important limit. Prefer LiveView streams for large collections.
+latency claim. Large changing lists remain an important limit. Prefer LiveView
+streams for large server-owned collections.
 The runtime now skips DOM reconciliation when an action or server reply leaves
 the validated state structurally unchanged. In a 50-sample linkedom run with
 1,000 rows, a no-change action took 0.52 ms median, while reversing the same
 list took 79.51 ms. Both still validate state; the no-change path avoids
 building and patching 1,000 DOM rows. These are local DOM-model timings.
+
+For keyed loops whose row content depends only on the immutable item, the
+runtime now reuses the existing row when the same item moves. A subsequent
+50-sample linkedom run measured 52.32 ms median for reversing 1,000 rows.
+The browser benchmark (`cd bench && LIVE_LIFT_BENCH=1 npx playwright test -g
+"1,000 keyed row"`) measured 3.3 ms median and 7.5 ms p95 across 25
+Chromium reversals on the same machine. It checks row count, order, input
+identity and value. This is one app and machine, not a guarantee that every
+1,000-row view fits in a frame. Rows reading parent state still render when
+that state changes.
 
 The gain is interaction latency when a small pure action can finish locally
 without a server round trip. A server-backed action still needs LiveView.

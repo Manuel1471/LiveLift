@@ -125,6 +125,27 @@ function flatFormParams(form) {
   return params;
 }
 
+function itemExpression(expr, variable) {
+  if (!expr) return true;
+  if (expr.type === "literal") return true;
+  if (expr.type === "path") return expr.root === variable;
+  if (expr.type === "map") return expr.entries.every(({expr: value}) => itemExpression(value, variable));
+  return false;
+}
+
+function itemOnly(node, variable, nested = false) {
+  if (node.type === "text") return true;
+  if (node.type === "binding") return itemExpression(node.expr, variable);
+  if (node.type === "component") {
+    return node.props.every((prop) => itemExpression(prop.expr, variable));
+  }
+  if (node.type !== "element" || (nested && node.for)) return false;
+  if (!itemExpression(node.if, variable) || !itemExpression(node.key, variable)) return false;
+  if (node.attrs.some((attr) => attr.name === "data-live-lift-show" ||
+      (["dynamic", "params", "boolean"].includes(attr.type) && !itemExpression(attr.value, variable)))) return false;
+  return node.children.every((child) => itemOnly(child, variable, true));
+}
+
 function renderNodes(nodes, scope, views, stack = [], textOnly = false) {
   return nodes.flatMap((node) => renderNode(node, scope, views, stack, textOnly));
 }
@@ -153,6 +174,25 @@ function renderNode(node, scope, views, stack, textOnly) {
     const items = evaluate(node.for.source, scope);
     if (!Array.isArray(items)) throw new Error(":for expects a list");
     const keys = new Set();
+    const stable = itemOnly(node, node.for.var);
+    const previous = new Map();
+    const existing = new Map();
+    if (stable && scope.__previousState && scope.__root &&
+        node.for.source.type === "path" && node.for.source.root === "state") {
+      const oldItems = evaluate(node.for.source, {state: scope.__previousState});
+      if (Array.isArray(oldItems)) {
+        for (const oldItem of oldItems) {
+          const oldKey = evaluate(node.key, {state: scope.__previousState, [node.for.var]: oldItem});
+          previous.set(String(oldKey), oldItem);
+        }
+      }
+      for (const element of scope.__root.querySelectorAll("[data-live-lift-key]")) {
+        if (element.tagName === node.tag.toUpperCase() &&
+            element.getAttribute("data-live-lift-node-id") === node.node_id) {
+          existing.set(element.getAttribute("data-live-lift-key"), element);
+        }
+      }
+    }
     return items.flatMap((item) => {
       const itemScope = {...scope, [node.for.var]: item};
       const key = evaluate(node.key, itemScope);
@@ -160,6 +200,14 @@ function renderNode(node, scope, views, stack, textOnly) {
       const keyString = String(key);
       if (keys.has(keyString)) throw new Error(`Duplicate client list key: ${key}`);
       keys.add(keyString);
+      if (existing.has(keyString) && previous.has(keyString) && previous.get(keyString) === item) {
+        // Build a placeholder so renderElement cannot detach the live row before reconcile moves it.
+        const placeholder = document.createElement(node.tag);
+        placeholder.setAttribute("data-live-lift-key", keyString);
+        if (node.node_id !== null) placeholder.setAttribute("data-live-lift-node-id", node.node_id);
+        placeholder.__liveLiftReuse = existing.get(keyString);
+        return [placeholder];
+      }
       return renderElement(node, itemScope, key, views, stack);
     });
   }
@@ -220,6 +268,9 @@ function reconcile(parent, desired) {
       : nodeId !== null
         ? identified.get(`${next.tagName}:${nodeId}`)
         : matchesUnmarked(indexed) ? indexed : unmarked.find(matchesUnmarked);
+    if (next.__liveLiftReuse && current !== next.__liveLiftReuse) {
+      throw new Error(`LiveLift keyed node disappeared before reconciliation: ${key}`);
+    }
     const chosen = current || next;
     if (current) patchNode(current, next);
     used.add(chosen);
@@ -229,6 +280,7 @@ function reconcile(parent, desired) {
 }
 
 function patchNode(current, next) {
+  if (next.__liveLiftReuse === current) return;
   if (current.nodeType === 3 || current.nodeType === 8) {
     if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
     return;
@@ -557,7 +609,8 @@ export function createClientHook(views) {
         const focused = this.el.contains(document.activeElement) ? document.activeElement : null;
         const selection = focused && typeof focused.selectionStart === "number"
           ? [focused.selectionStart, focused.selectionEnd] : null;
-        reconcile(this.el, renderNodes(this.view.template, {state}, views));
+        reconcile(this.el, renderNodes(this.view.template,
+          {state, __previousState: this.state, __root: this.el}, views));
         if (focused && focused.isConnected && document.activeElement !== focused) {
           focused.focus({preventScroll: true});
           if (selection && typeof focused.setSelectionRange === "function") {

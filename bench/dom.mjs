@@ -8,6 +8,28 @@ function stats(values) {
   return {median_ms: values[Math.floor(values.length / 2)], p95_ms: values[Math.floor(values.length * 0.95)]};
 }
 
+// A row that also reads parent state must not be reused solely because its item is unchanged.
+{
+  const {document} = parseHTML("<html><body><div id='probe'></div></body></html>");
+  globalThis.document = document;
+  const el = document.getElementById("probe");
+  el.dataset.liveLiftModule = "Probe";
+  el.dataset.liveLiftState = JSON.stringify({items: [{id: 1}], label: "old"});
+  const path = (root, fields) => ({type: "path", root, fields});
+  const row = {type: "element", tag: "li", attrs: [], children: [
+    {type: "binding", expr: path("state", ["label"])},
+  ], for: {var: "item", source: path("state", ["items"])},
+  key: path("item", ["id"]), if: null, node_id: "probe:1"};
+  const template = [{type: "element", tag: "ul", attrs: [], children: [row],
+    for: null, key: null, if: null, node_id: null}];
+  const hook = {...createClientHook({Probe: {template,
+    actions: {change: (state) => ({...state, label: "new"})}}}), el};
+  hook.mounted();
+  hook.runAction("change", el);
+  assert.equal(el.querySelector("li").textContent, "new");
+  hook.destroyed();
+}
+
 const results = {};
 for (const size of [10, 100, 1000]) {
   const {document} = parseHTML("<html><body><div id='tasks'></div></body></html>");

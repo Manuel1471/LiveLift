@@ -175,8 +175,11 @@ con caducidad y una prueba caótica de entrega de eventos al servidor.
   Chromium, con latencia simulada y comandos reproducibles).
 
 La omisión de renders sin cambios ya funciona para acciones y respuestas
-autoritativas; quedan pendientes el diff especializado de listas con clave y
-la agrupación por `requestAnimationFrame`.
+autoritativas. Las filas con clave que dependen solo del elemento conservan su
+DOM al cambiar de orden; el benchmark del demo con 1,000 filas midió 3.3 ms de
+mediana y 7.5 ms p95 en Chromium. Quedan pendientes el diff de filas que
+cambian de contenido, la segmentación general por dependencias y la agrupación
+por `requestAnimationFrame`.
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.

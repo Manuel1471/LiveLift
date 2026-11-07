@@ -50,3 +50,37 @@ test("benchmark native component click latency", async ({page}) => {
     serverMedianMs: median(server.settled),
   }, null, 2));
 });
+
+test("benchmark 1,000 keyed row reversals in Chromium", async ({page}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1", "Run with LIVE_LIFT_BENCH=1");
+  test.setTimeout(120_000);
+  await page.goto("/?bench_rows=1000");
+  await expect(page.locator("#task-list [data-live-lift-key]")).toHaveCount(1_000);
+
+  const result = await page.evaluate(() => {
+    const root = document.querySelector("#task-list");
+    const button = document.querySelector("#task-list .task-reverse");
+    const rows = () => document.querySelectorAll("#task-list [data-live-lift-key]");
+    button.click();
+    const first = rows()[0];
+    if (first.getAttribute("data-live-lift-key") !== "1000") throw new Error("Reverse failed");
+    const preservedInput = root.querySelector('[data-live-lift-key="1000"] input');
+    const values = [];
+    for (let index = 0; index < 25; index += 1) {
+      const start = performance.now();
+      button.click();
+      values.push(performance.now() - start);
+    }
+    values.sort((a, b) => a - b);
+    return {
+      medianMs: values[12], p95Ms: values[23], rows: rows().length,
+      preservedInput: root.querySelector('[data-live-lift-key="1000"] input') === preservedInput,
+      preservedValue: preservedInput.value,
+    };
+  });
+
+  expect(result.rows).toBe(1_000);
+  expect(result.preservedInput).toBe(true);
+  expect(result.preservedValue).toBe("Task 1000");
+  console.log(JSON.stringify({browser: "Chromium", samples: 25, keyedReverse: result}, null, 2));
+});

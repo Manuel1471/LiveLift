@@ -42,6 +42,8 @@ jobs:
         working-directory: examples/demo
       - run: mix assets.build
         working-directory: examples/demo
+      - run: npm run dom
+        working-directory: bench
 
   browser:
     runs-on: ubuntu-latest
