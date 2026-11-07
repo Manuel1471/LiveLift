@@ -4,6 +4,8 @@ const MAX_LIST_LENGTH = 10_000;
 const MAX_MAP_FIELDS = 1_024;
 const MAX_STATE_NODES = 50_000;
 const MAX_STATE_BYTES = 1_048_576;
+const MAX_EVENT_FIELDS = 64;
+const MAX_EVENT_BYTES = 65_536;
 const encoder = new TextEncoder();
 const decodedEntities = new Map();
 
@@ -383,13 +385,20 @@ export function createClientHook(views) {
       this.sendOptimistic = (control, eventName, params) => {
         if (this.pending.length >= 100) throw new Error("LiveLift pending action limit reached");
         if (!Number.isSafeInteger(this.nextSequence)) throw new Error("LiveLift event sequence overflow");
-        for (const key of Object.keys(params)) {
+        const entries = Object.entries(params);
+        if (entries.length > MAX_EVENT_FIELDS) throw new Error("LiveLift event parameter limit exceeded");
+        let bytes = 0;
+        for (const [key, value] of entries) {
           if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
             throw new Error(`Unsafe LiveLift event parameter: ${key}`);
           }
+          if (typeof value !== "string") throw new Error(`Unsupported LiveLift event parameter: ${key}`);
+          bytes += encoder.encode(key).length + encoder.encode(value).length;
+          if (bytes > MAX_EVENT_BYTES) throw new Error("LiveLift event parameter size limit exceeded");
         }
-        const sequence = this.nextSequence++;
+        const sequence = this.nextSequence;
         const eventData = this.runAction(eventName, control, params);
+        this.nextSequence += 1;
         this.pending.push({sequence, action: eventName, eventData});
         const payload = {...params, _live_lift_seq: sequence};
         const epoch = this.connectionEpoch;

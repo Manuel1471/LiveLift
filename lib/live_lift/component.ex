@@ -219,6 +219,27 @@ defmodule LiveLift.Component do
 
   @doc false
   def sequence!(params) when is_map(params) do
+    event_params = Map.delete(params, "_live_lift_seq")
+
+    if map_size(event_params) > 64,
+      do: raise(ArgumentError, "LiveLift event parameter limit exceeded")
+
+    bytes =
+      Enum.reduce(event_params, 0, fn {key, value}, total ->
+        unless is_binary(key) and Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
+                 key not in ~w(__proto__ constructor prototype) do
+          raise ArgumentError, "unsafe LiveLift event parameter: #{inspect(key)}"
+        end
+
+        unless is_binary(value) and String.valid?(value),
+          do: raise(ArgumentError, "unsupported LiveLift event parameter: #{key}")
+
+        total + byte_size(key) + byte_size(value)
+      end)
+
+    if bytes > 65_536,
+      do: raise(ArgumentError, "LiveLift event parameter size limit exceeded")
+
     seq = Map.get(params, "_live_lift_seq", 0)
 
     unless is_integer(seq) and seq >= 0 and seq <= 9_007_199_254_740_991 do

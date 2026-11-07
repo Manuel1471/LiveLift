@@ -96,6 +96,23 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  test "rejects oversized and unsafe optimistic event parameters" do
+    socket = %Phoenix.LiveView.Socket{assigns: %{count: 1, id: "counter", __changed__: %{}}}
+
+    assert_raise ArgumentError, ~r/event parameter limit exceeded/, fn ->
+      params = Map.new(1..65, fn index -> {"field_#{index}", "x"} end)
+      Counter.handle_event("inc", Map.put(params, "_live_lift_seq", 1), socket)
+    end
+
+    assert_raise ArgumentError, ~r/event parameter size limit exceeded/, fn ->
+      Counter.handle_event("inc", %{"note" => String.duplicate("é", 32_769)}, socket)
+    end
+
+    assert_raise ArgumentError, ~r/unsafe LiveLift event parameter/, fn ->
+      Counter.handle_event("inc", %{"__proto__" => "x"}, socket)
+    end
+  end
+
   test "assign and update actions agree with generated JavaScript" do
     for {module, action, step} <- [{Counter, "inc", 1}, {AssignCounter, "add_two", 2}] do
       javascript = LiveLift.Client.Compiler.compile_module(module)

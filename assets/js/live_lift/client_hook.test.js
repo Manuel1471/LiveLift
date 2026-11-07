@@ -303,6 +303,24 @@ test("native component rejects unsafe event parameters", () => {
   assert.equal(hook.state.count, 1);
 });
 
+test("native component rejects oversized event parameters before prediction", () => {
+  const el = element({count: 1, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const hook = {
+    ...createClientHook({"App.Score": {actions: {advance: (state) => ({...state, count: state.count + 1})}, template: "<output></output>"}}),
+    el,
+    pushEventTo: () => assert.fail("oversized event reached server"),
+  };
+  hook.mounted();
+  const many = Object.fromEntries(Array.from({length: 65}, (_, i) => [`field_${i}`, "x"]));
+  assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", many), /event parameter limit exceeded/);
+  assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", {note: "é".repeat(32_769)}),
+    /event parameter size limit exceeded/);
+  assert.equal(hook.state.count, 1);
+  assert.equal(hook.pending.length, 0);
+  assert.equal(hook.nextSequence, 1);
+});
+
 test("a disabled native component reloads into server mode", () => {
   const el = element({count: 1, step: 1});
   el.dataset.liveLiftMode = "component";

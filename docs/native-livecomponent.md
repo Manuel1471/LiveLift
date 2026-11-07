@@ -56,6 +56,10 @@ names before changing local state. There is no offline queue yet.
 The server records the last acknowledged action sequence on the component
 socket and returns the current snapshot for duplicate deliveries without
 running the marked handler twice.
+Optimistic events accept at most 64 flat string parameters and 64 KiB of
+combined UTF-8 key/value content. The browser checks before predicting; the
+server checks before invoking the marked handler. State limits are documented
+in [the language contract](language.md).
 The client applies a newer snapshot, replays unacknowledged actions and commits
 the result only after rendering succeeds. Stale replies can acknowledge
 pending actions without rolling back a newer server revision. The convergence

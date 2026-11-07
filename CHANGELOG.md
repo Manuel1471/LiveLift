@@ -12,6 +12,7 @@
 - Add global and per-component switches that restore server-only rendering and events.
 - Apply authoritative snapshots atomically and verify convergence across 1,000 reply orders and an interleaved server reset.
 - Enforce matching list, map, node, and UTF-8 state-size limits in Elixir and the browser.
+- Limit optimistic event parameters to 64 flat fields and 64 KiB on both sides before handler execution.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

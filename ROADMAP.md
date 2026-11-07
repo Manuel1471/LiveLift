@@ -144,7 +144,7 @@ validación de formulario en vivo, lista ordenable.
   autoritativo; el cliente reaplica las acciones pendientes.
 - [ ] Cola de acciones pendientes, claves de idempotencia, ordenamiento, duplicados.
 - [ ] Reconexión: pedir snapshot, vaciar la cola, cola offline con caducidad.
-- [ ] Límites de tamaño de estado, listas y parámetros.
+- [x] Límites de tamaño de estado, listas y parámetros.
 - [ ] Política de conflictos configurable.
 
 **Listo cuando:** pruebas caóticas (corte de red, reordenamiento, duplicados) con
