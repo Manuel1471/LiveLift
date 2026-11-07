@@ -81,7 +81,11 @@ that handler on the server.
 Marked forms require unique, flat, safe input names; checkbox, radio and file
 change events remain server only until their value semantics are covered.
 The browser caps pending marked actions at 100 and rejects unsafe parameter
-names before changing local state. There is no offline queue yet.
+names before changing local state. While disconnected, it keeps up to 100 new
+actions in memory for at most 30 seconds. It replays those actions in order
+after LiveView supplies a fresh snapshot on reconnect. Actions already sent
+before the disconnect are discarded instead of resent, because they may have
+reached the server.
 The server records the last acknowledged action sequence on the component
 socket and returns the current snapshot for duplicate deliveries without
 running the marked handler twice.
@@ -93,9 +97,12 @@ The client applies a newer snapshot, replays unacknowledged actions and commits
 the result only after rendering succeeds. Stale replies can acknowledge
 pending actions without rolling back a newer server revision. The convergence
 suite runs 1,000 seeded reply orders with deliberate server corrections.
-Duplicate replies do not run the handler again, and a connection cut drops
-pending predictions when the fresh LiveView snapshot arrives. There is no
-offline replay queue; a disconnected click is not guaranteed to persist.
+Duplicate replies do not run the handler again. A connection cut drops
+in-flight predictions when the fresh LiveView snapshot arrives, then replays
+only actions created while disconnected. Expired actions roll back to the
+snapshot. If replay against the new server state fails, LiveLift restores the
+snapshot, drops the queue, and raises an explicit conflict error. The queue is
+not durable across a page reload or a remount.
 
 To turn off prediction without editing components, configure either switch:
 

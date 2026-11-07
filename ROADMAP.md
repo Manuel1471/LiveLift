@@ -153,7 +153,9 @@ validación de formulario en vivo, lista ordenable.
 - [x] Si el resultado difiere de la predicción, parche versionado con el estado
   autoritativo; el cliente reaplica las acciones pendientes.
 - [ ] Cola de acciones pendientes, claves de idempotencia, ordenamiento, duplicados.
-- [ ] Reconexión: pedir snapshot, vaciar la cola, cola offline con caducidad.
+- [x] Reconexión: usar el snapshot fresco de LiveView, descartar eventos en vuelo
+  y drenar en orden una cola de acciones creadas sin conexión con caducidad de 30 s.
+  La cola vive solo mientras la página y el hook sigan montados.
 - [x] Límites de tamaño de estado, listas y parámetros.
 - [ ] Política de conflictos configurable.
 
@@ -164,8 +166,11 @@ mismo estado.
 La reconciliación aplica la respuesta de forma atómica. Un arnés con 1,000
 órdenes de respuesta, respuestas duplicadas y correcciones generadas prueba
 convergencia; Chromium prueba eventos pendientes intercalados con un reset de
-servidor y un corte de conexión con predicción pendiente. Falta una cola offline
-con caducidad y una prueba caótica de entrega de eventos al servidor.
+servidor y un corte de conexión con predicción pendiente. Chromium también
+prueba dos clics sin conexión que se reenvían en orden tras el snapshot; faltan
+una cola durable y una prueba caótica de entrega de eventos al servidor.
+Si una acción offline ya no se puede aplicar al snapshot fresco, se descarta
+la cola con un error explícito y se conserva el estado autoritativo.
 
 ## Fase 4: Rendimiento (3 a 4 semanas, v0.6)
 

@@ -30,6 +30,8 @@
 - Render native HEEx expression attributes and conditional class lists on the client, preserving LiveView's initial class spacing and nil behavior.
 - Add `mix live_lift.test` to compare a marked app handler against its generated Node action for supplied state and params.
 - Run declarative parity cases for every opted-in app component in CI, rejecting missing marked events or modules.
+- Queue new disconnected component actions for up to 30 seconds and replay them after a fresh LiveView snapshot, while dropping ambiguous in-flight events.
+- Restore the authoritative snapshot and report a conflict if offline replay fails after reconnect.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

@@ -12,7 +12,7 @@ the original LiveView handler.
 | Server state to HTML | State is validated, JSON encoded, and escaped by HEEx. | Every island state field is visible in the page; never include secrets. |
 | Template to DOM | The compiler rejects executable tags, `on*` attributes, and unsafe URL schemes, including entity-obfuscated prefixes. Dynamic values become text nodes or allowed attributes. | Templates are app-owned code. Do not compile untrusted template strings. |
 | Browser event to server | Marked handlers receive normal LiveView events. The server validates flat params and runs the original handler against its own assigns. Per-socket sequence numbers deduplicate marked events. | A client can forge values, event names, and sequence numbers. The app must validate domain rules and authorization. |
-| Server reply to browser | Snapshots are validated and versioned; pending predictions replay after a newer reply. | Offline events are not durable. A reconnect drops pending predictions and reads the new server snapshot. |
+| Server reply to browser | Snapshots are validated and versioned; pending predictions replay after a newer reply. | In-flight events may have reached the server before a disconnect, so they are not resent. New offline actions are queued in memory for up to 30 seconds and replayed after the reconnect snapshot; a page reload loses them. |
 
 The legacy `$server` bridge sends client-owned state as an event payload. Treat
 it as a **proposed value**, validate it in the LiveView handler, and use server

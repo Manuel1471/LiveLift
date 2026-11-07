@@ -6,6 +6,7 @@ const MAX_STATE_NODES = 50_000;
 const MAX_STATE_BYTES = 1_048_576;
 const MAX_EVENT_FIELDS = 64;
 const MAX_EVENT_BYTES = 65_536;
+const OFFLINE_ACTION_MAX_AGE_MS = 30_000;
 const encoder = new TextEncoder();
 const decodedEntities = new Map();
 
@@ -375,6 +376,8 @@ export function createClientHook(views) {
         }
         this.connectionEpoch = 0;
         this.reconnectPending = false;
+        this.offline = false;
+        this.offlineQueue = [];
         this.resetOptimisticSnapshot = () => {
           const snapshot = JSON.parse(this.el.dataset.liveLiftState);
           const revision = Number(this.el.dataset.liveLiftServerRevision || "0");
@@ -382,6 +385,18 @@ export function createClientHook(views) {
           const nextSequence = Math.max(this.nextSequence, Number(this.el.dataset.liveLiftAckSeq || "0") + 1);
           if (!Number.isSafeInteger(nextSequence) || nextSequence < 1) throw new Error("Invalid LiveLift event sequence");
           validateState(snapshot);
+          let fresh = this.offlineQueue.filter(({createdAt}) => performance.now() - createdAt <= OFFLINE_ACTION_MAX_AGE_MS);
+          let replayed = snapshot;
+          let replayError = null;
+          try {
+            for (const {eventName, eventData} of fresh) {
+              replayed = this.view.actions[eventName](replayed, eventData);
+              validateState(replayed);
+            }
+          } catch (error) {
+            replayError = error;
+            fresh = [];
+          }
           this.render(snapshot);
           this.pending = [];
           this.authoritativeState = snapshot;
@@ -389,6 +404,12 @@ export function createClientHook(views) {
           this.nextSequence = nextSequence;
           this.state = snapshot;
           this.reconnectPending = false;
+          this.offline = false;
+          this.offlineQueue = [];
+          if (replayError) {
+            throw new Error(`LiveLift offline replay conflict; queued actions were dropped: ${replayError.message}`);
+          }
+          for (const {control, eventName, params} of fresh) this.sendOptimistic(control, eventName, params);
         };
         this.applyAuthoritative = (revision, state, ackSequence = 0) => {
           if (!Number.isSafeInteger(revision) || revision < 0) {
@@ -484,7 +505,9 @@ export function createClientHook(views) {
       };
 
       this.sendOptimistic = (control, eventName, params) => {
-        if (this.pending.length >= 100) throw new Error("LiveLift pending action limit reached");
+        if ((this.offline ? this.offlineQueue : this.pending).length >= 100) {
+          throw new Error("LiveLift pending action limit reached");
+        }
         if (!Number.isSafeInteger(this.nextSequence)) throw new Error("LiveLift event sequence overflow");
         const entries = Object.entries(params);
         if (entries.length > MAX_EVENT_FIELDS) throw new Error("LiveLift event parameter limit exceeded");
@@ -499,6 +522,10 @@ export function createClientHook(views) {
         }
         const sequence = this.nextSequence;
         const eventData = this.runAction(eventName, control, params);
+        if (this.offline) {
+          this.offlineQueue.push({control, eventName, params, eventData, createdAt: performance.now()});
+          return;
+        }
         this.nextSequence += 1;
         this.pending.push({sequence, action: eventName, eventData});
         const payload = {...params, _live_lift_seq: sequence};
@@ -609,6 +636,7 @@ export function createClientHook(views) {
       if (this.optimistic) {
         this.connectionEpoch += 1;
         this.reconnectPending = true;
+        this.offline = true;
       }
     },
 

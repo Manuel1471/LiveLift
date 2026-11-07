@@ -169,6 +169,22 @@ test("a pending prediction is discarded after a connection cut", async ({page}) 
   await expect(count).toHaveText("0");
 });
 
+test("offline clicks replay in order after the fresh LiveView snapshot", async ({page}) => {
+  await page.goto("/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("output");
+  await page.evaluate(() => window.liveSocket.disconnect());
+  await page.waitForFunction(() => !window.liveSocket.isConnected());
+  await root.getByRole("button", {name: "Add one"}).click();
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(count).toHaveText("2");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
+  await page.evaluate(() => window.liveSocket.connect());
+  await page.waitForFunction(() => window.liveSocket.isConnected());
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(count).toHaveText("2");
+});
+
 test("the same LiveComponent without opt-in keeps normal server behavior", async ({page}) => {
   await page.goto("/native-counter-server");
   const root = page.locator('section[aria-label="Native LiveComponent counter"]');

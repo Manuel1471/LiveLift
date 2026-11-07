@@ -13,7 +13,7 @@ The `use LiveLift` / `@client true` LiveComponent API currently covers simple
 click, change and submit handlers with chained `assign/3` and `update/3`, flat event
 params and a literal `~H` template. It has real Chromium tests for optimistic
 events, server replies, an unmarked server handler and reconnect. It does not
-yet cover nested form params, nested components, streams, offline actions or
+yet cover nested form params, nested components, streams, durable offline actions or
 arbitrary Elixir handlers.
 The [security model](security.md) documents the trust boundaries and internal
 XSS review. The legacy `$server` bridge passes proposed client values to the

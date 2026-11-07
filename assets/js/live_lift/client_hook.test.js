@@ -493,3 +493,110 @@ test("a disconnected component drops pending predictions and stale replies at sn
   assert.equal(hook.serverRevision, 3);
   assert.equal(hook.nextSequence, 2);
 });
+
+test("offline actions replay only after a fresh snapshot and receive new sequences", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const sent = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, payload, reply) => sent.push({payload, reply}),
+  };
+  hook.mounted();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  hook.disconnected();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.equal(hook.state.count, 2);
+  assert.equal(hook.offlineQueue.length, 1);
+  assert.equal(sent.length, 1);
+
+  el.dataset.liveLiftState = JSON.stringify({count: 7, step: 1});
+  el.dataset.liveLiftServerRevision = "3";
+  el.dataset.liveLiftAckSeq = "1";
+  hook.updated();
+  assert.equal(hook.state.count, 8);
+  assert.equal(hook.offlineQueue.length, 0);
+  assert.deepEqual(hook.pending.map(({sequence}) => sequence), [2]);
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1].payload._live_lift_seq, 2);
+  sent[0].reply({revision: 1, ack_seq: 1, state: {count: 1, step: 1}});
+  assert.equal(hook.state.count, 8);
+  sent[1].reply({revision: 4, ack_seq: 2, state: {count: 8, step: 1}});
+  assert.equal(hook.pending.length, 0);
+  assert.equal(hook.state.count, 8);
+});
+
+test("expired offline actions roll back to the new server snapshot", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const sent = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, payload) => sent.push(payload),
+  };
+  hook.mounted();
+  hook.disconnected();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  hook.offlineQueue[0].createdAt -= 30_001;
+  el.dataset.liveLiftState = JSON.stringify({count: 7, step: 1});
+  el.dataset.liveLiftServerRevision = "3";
+  hook.updated();
+  assert.equal(hook.state.count, 7);
+  assert.equal(hook.offlineQueue.length, 0);
+  assert.equal(sent.length, 0);
+});
+
+test("offline action queue is bounded before changing local state", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: () => assert.fail("offline actions must not be sent before a snapshot"),
+  };
+  hook.mounted();
+  hook.disconnected();
+  for (let index = 0; index < 100; index += 1) hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.equal(hook.state.count, 100);
+  assert.equal(hook.offlineQueue.length, 100);
+  assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", {}), /pending action limit/);
+  assert.equal(hook.state.count, 100);
+});
+
+test("an offline replay conflict restores the server snapshot and clears the queue", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => {
+        if (state.count === 7) throw new Error("item changed on server");
+        return {...state, count: state.count + 1};
+      }},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: () => assert.fail("conflicting action must not reach the server"),
+  };
+  hook.mounted();
+  hook.disconnected();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  el.dataset.liveLiftState = JSON.stringify({count: 7, step: 1});
+  el.dataset.liveLiftServerRevision = "3";
+  assert.throws(() => hook.updated(), /offline replay conflict/);
+  assert.equal(hook.state.count, 7);
+  assert.equal(hook.offline, false);
+  assert.equal(hook.offlineQueue.length, 0);
+  assert.equal(hook.pending.length, 0);
+  assert.equal(hook.serverRevision, 3);
+});
