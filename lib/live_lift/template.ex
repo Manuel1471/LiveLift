@@ -7,7 +7,7 @@ defmodule LiveLift.Template do
   @dynamic_attributes ~w(class title aria-label value)
   @events ~w($click $server $input $change $submit)
   @void_tags ~w(area base br col embed hr img input link meta param source track wbr)
-  @forbidden_tags ~w(script iframe object embed)
+  @forbidden_tags ~w(script iframe object embed base link meta style foreignobject animate animatemotion animatetransform set)
 
   @spec compile(String.t(), String.t()) :: list(map())
   def compile(source, file \\ "nofile") when is_binary(source) do
@@ -201,7 +201,7 @@ defmodule LiveLift.Template do
       raise ArgumentError, "#{file}:#{meta.line}: client components are not supported yet: #{tag}"
     end
 
-    if tag in @forbidden_tags do
+    if String.downcase(tag) in @forbidden_tags do
       raise ArgumentError, "#{file}:#{meta.line}: unsafe client template tag: #{tag}"
     end
 
@@ -305,11 +305,17 @@ defmodule LiveLift.Template do
       end
     end
 
-    if Regex.match?(~r/^on[a-z]/i, name) or
-         (name in ~w(href src action formaction) and
-            Regex.match?(~r/^\s*javascript:/i, value)) do
+    if Regex.match?(~r/^on[a-z]/i, name) do
       raise ArgumentError, "#{file}:#{meta.line}: unsafe client attribute: #{name}"
     end
+
+    url_name = String.downcase(name)
+
+    if url_name in ~w(href xlink:href src action formaction),
+      do: validate_static_url!(url_name, value, file, meta.line)
+
+    if url_name == "xml:base",
+      do: raise(ArgumentError, "#{file}:#{meta.line}: unsafe client attribute: xml:base")
 
     cond do
       name in @events and Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, value) ->
@@ -357,6 +363,24 @@ defmodule LiveLift.Template do
       true ->
         raise ArgumentError,
               "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
+    end
+  end
+
+  defp validate_static_url!(name, value, file, line) do
+    leading = String.trim_leading(value) |> String.split(~r{[/?#]}, parts: 2) |> hd()
+    allowed = if name in ~w(href xlink:href), do: ~w(http https mailto tel), else: ~w(http https)
+
+    scheme =
+      case String.split(leading, ":", parts: 2) do
+        [prefix, _rest] -> String.downcase(prefix)
+        [_relative] -> nil
+      end
+
+    if String.contains?(leading, "&") or
+         Regex.match?(~r/[\x00-\x1F\x7F]/, leading) or
+         (scheme && scheme not in allowed) do
+      raise ArgumentError,
+            "#{file}:#{line}: unsafe client attribute: #{name}; use a relative or allowed URL scheme without HTML entities in its prefix"
     end
   end
 

@@ -123,3 +123,5 @@ See [production limits and reproducible benchmarks](docs/production-readiness.md
 before using it in a deployed app.
 For bundle overhead, server event measurements and the shortest setup, see
 [performance and adoption](docs/performance-and-adoption.md).
+See the [security model](docs/security.md) before sending client values to a
+server handler or including app state in an island.

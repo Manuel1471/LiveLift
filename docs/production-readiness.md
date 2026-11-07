@@ -10,11 +10,15 @@ An optional CI lane tests LiveView `main` without blocking releases. It passed
 locally on 2026-11-06 after installing the property harness dependencies;
 that is an early compatibility signal, not a supported version claim.
 The `use LiveLift` / `@client true` LiveComponent API currently covers simple
-click, change and submit handlers with one `assign/3` or `update/3`, flat event
+click, change and submit handlers with chained `assign/3` and `update/3`, flat event
 params and a literal `~H` template. It has real Chromium tests for optimistic
 events, server replies, an unmarked server handler and reconnect. It does not
 yet cover nested form params, nested components, streams, offline actions or
 arbitrary Elixir handlers.
+The [security model](security.md) documents the trust boundaries and internal
+XSS review. The legacy `$server` bridge passes proposed client values to the
+app's LiveView handler; it must validate them and decide whether to accept
+them. This review is not an external audit.
 The global and per-component `:live_lift` switches restore server-only
 rendering for new mounts. Active opt-in clients reload after their next marked
 event; operators should refresh active pages when disabling the feature.

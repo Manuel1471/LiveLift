@@ -107,6 +107,73 @@ defmodule LiveLift.TemplateTest do
     assert_raise ArgumentError, ~r/unsafe client attribute/, fn ->
       Template.compile("<a href=\"javascript:alert(1)\">Go</a>", "view.ex")
     end
+
+    for href <- [
+          "java&#x73;cript:alert(1)",
+          "javascript&#58;alert(1)",
+          "javascript&colon;alert(1)",
+          "java&#9;script:alert(1)",
+          "java\tscript:alert(1)",
+          "data:text/html,hello"
+        ] do
+      assert_raise ArgumentError, ~r/view.ex:1: unsafe client attribute: href/, fn ->
+        Template.compile(~s(<a href="#{href}">Go</a>), "view.ex")
+      end
+    end
+
+    assert_raise ArgumentError, ~r/unsafe client attribute: src/, fn ->
+      Template.compile(~s(<img src="data:image/svg+xml,example" />), "view.ex")
+    end
+
+    assert_raise ArgumentError, ~r/unsafe client attribute: xlink:href/, fn ->
+      Template.compile(~s|<svg><a xlink:href="javascript:alert(1)">x</a></svg>|, "view.ex")
+    end
+
+    assert_raise ArgumentError, ~r/unsafe client attribute: href/, fn ->
+      Template.compile(~s|<a HREF="javascript:alert(1)">x</a>|, "view.ex")
+    end
+
+    assert_raise ArgumentError, ~r/unsafe client attribute: xml:base/, fn ->
+      Template.compile(~s(<svg xml:base="/assets/"></svg>), "view.ex")
+    end
+
+    for tag <- ~w(base meta link style foreignObject animate) do
+      assert_raise ArgumentError, ~r/unsafe client template tag/, fn ->
+        source = if tag in ~w(base meta link), do: "<#{tag} />", else: "<#{tag}></#{tag}>"
+        Template.compile(source, "view.ex")
+      end
+    end
+
+    assert [_] = Template.compile(~s(<a href="https://example.com/?a=1&amp;b=2">Go</a>))
+    assert [_] = Template.compile(~s(<a href="/relative/path">Go</a>))
+    assert [_] = Template.compile(~s(<a href="mailto:hello@example.com">Go</a>))
+  end
+
+  test "1,000 encoded JavaScript URL variants fail compilation" do
+    for seed <- 1..1_000 do
+      disguised =
+        "javascript:"
+        |> String.to_charlist()
+        |> Enum.map_reduce(:rand.seed_s(:exsss, {seed, seed * 2, seed * 3}), fn char, random ->
+          {choice, next} = :rand.uniform_s(4, random)
+
+          piece =
+            case choice do
+              1 -> <<char>>
+              2 -> "&##{char};"
+              3 -> "&#x#{Integer.to_string(char, 16)};"
+              4 -> if char == ?:, do: "&colon;", else: <<char>>
+            end
+
+          {piece, next}
+        end)
+        |> elem(0)
+        |> Enum.join()
+
+      assert_raise ArgumentError, ~r/unsafe client attribute: href/, fn ->
+        Template.compile(~s|<a href="#{disguised}alert(1)">Go</a>|, "fuzz.ex")
+      end
+    end
   end
 
   test "keeps directive-like text and existing HTML entities literal" do

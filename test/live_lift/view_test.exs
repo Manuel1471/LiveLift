@@ -64,8 +64,10 @@ defmodule LiveLift.ViewTest do
     assert LiveLift.State.validate!(%{items: [%{id: "a", done: false}]}) ==
              %{items: [%{id: "a", done: false}]}
 
-    assert_raise ArgumentError, ~r/unsafe LiveLift state key/, fn ->
-      LiveLift.State.validate!(%{__proto__: 1})
+    for key <- ~w(__proto__ constructor prototype) do
+      assert_raise ArgumentError, ~r/unsafe LiveLift state key/, fn ->
+        LiveLift.State.validate!(%{String.to_atom(key) => 1})
+      end
     end
   end
 

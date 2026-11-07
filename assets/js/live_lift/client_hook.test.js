@@ -157,9 +157,11 @@ test("accepts nested state and rejects dangerous keys", () => {
   };
   hook.mounted();
 
-  const unsafe = element(JSON.parse('{"count":1,"step":1,"__proto__":1}'));
-  const unsafeHook = {...createClientHook({"App.Score": {actions: {}, template: []}}), el: unsafe};
-  assert.throws(() => unsafeHook.mounted(), /Unsafe LiveLift state key/);
+  for (const key of ["__proto__", "constructor", "prototype"]) {
+    const unsafe = element(JSON.parse(`{"count":1,"step":1,"${key}":1}`));
+    const unsafeHook = {...createClientHook({"App.Score": {actions: {}, template: []}}), el: unsafe};
+    assert.throws(() => unsafeHook.mounted(), /Unsafe LiveLift state key/);
+  }
 });
 
 test("enforces list and total state size limits before mounting", () => {
@@ -327,7 +329,10 @@ test("native component rejects unsafe event parameters", () => {
     pushEventTo: () => {},
   };
   hook.mounted();
-  assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", {__proto__: 1, constructor: 1}), /Unsafe LiveLift event parameter/);
+  for (const key of ["__proto__", "constructor", "prototype"]) {
+    const params = Object.fromEntries([[key, "x"]]);
+    assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", params), /Unsafe LiveLift event parameter/);
+  }
   assert.equal(hook.state.count, 1);
 });
 

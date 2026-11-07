@@ -129,8 +129,10 @@ defmodule LiveLift.ComponentTest do
       Counter.handle_event("inc", %{"note" => String.duplicate("é", 32_769)}, socket)
     end
 
-    assert_raise ArgumentError, ~r/unsafe LiveLift event parameter/, fn ->
-      Counter.handle_event("inc", %{"__proto__" => "x"}, socket)
+    for key <- ~w(__proto__ constructor prototype) do
+      assert_raise ArgumentError, ~r/unsafe LiveLift event parameter/, fn ->
+        Counter.handle_event("inc", %{key => "x"}, socket)
+      end
     end
   end
 
@@ -262,12 +264,14 @@ defmodule LiveLift.ComponentTest do
   end
 
   test "rejects unsafe native event parameter names at compilation" do
-    assert_raise ArgumentError, ~r/unsafe.ex:1: unsafe phx-value parameter __proto__/, fn ->
-      LiveLift.Template.compile_liveview(
-        ~s(<button phx-click="inc" phx-value-__proto__="x">Go</button>),
-        "unsafe.ex",
-        ["inc"]
-      )
+    for key <- ~w(__proto__ constructor prototype) do
+      assert_raise ArgumentError, ~r/unsafe.ex:1: unsafe phx-value parameter/, fn ->
+        LiveLift.Template.compile_liveview(
+          ~s(<button phx-click="inc" phx-value-#{key}="x">Go</button>),
+          "unsafe.ex",
+          ["inc"]
+        )
+      end
     end
   end
 
