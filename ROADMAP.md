@@ -204,9 +204,9 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
   Los componentes con `use LiveLift` ya emiten duración y resultado por evento
   marcado o no marcado. Falta medir componentes antes de optar y el tramo del
   navegador para comparar latencia completa.
-- [ ] `mix live_lift.test`: ejecuta los handlers del usuario en Elixir y en Node.
-  Ya compara un evento marcado con estado y parámetros proporcionados por la app;
-  faltan casos declarativos para ejecutar todos los eventos y valores límite en CI.
+- [x] `mix live_lift.test`: ejecuta los handlers marcados en Elixir y en Node
+  con casos declarativos; exige cobertura de eventos y componentes de la app.
+  El demo ejecuta casos de Unicode, `nil` y el límite de entero seguro en CI.
 - [ ] Documentación en formato diff ("versión servidor contra versión cliente"),
   entendible en una o dos lecturas.
 - [ ] Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de

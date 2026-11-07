@@ -38,6 +38,19 @@ defmodule LiveLift.TestTaskTest do
       do: {:reply, %{state: %{count: socket.assigns.count}}, socket}
   end
 
+  defmodule Multi do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@count}</output>"
+
+    @client true
+    def handle_event("inc", _params, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
+
+    @client true
+    def handle_event("dec", _params, socket), do: {:noreply, update(socket, :count, &(&1 - 1))}
+  end
+
   test "compares a marked handler in Elixir and Node" do
     output =
       capture_io(fn ->
@@ -103,6 +116,36 @@ defmodule LiveLift.TestTaskTest do
         "--state",
         ~s({"count":0})
       ])
+    end
+  end
+
+  test "a cases file runs every event in listed modules" do
+    path =
+      Path.join(System.tmp_dir!(), "live_lift_cases_#{System.unique_integer([:positive])}.json")
+
+    cases = [
+      %{module: "LiveLift.TestTaskTest.Multi", event: "inc", state: %{count: 0}},
+      %{module: "LiveLift.TestTaskTest.Multi", event: "dec", state: %{count: 0}},
+      %{
+        module: "LiveLift.TestTaskTest.Counter",
+        event: "inc",
+        state: %{count: 1},
+        params: %{step: "é"}
+      }
+    ]
+
+    try do
+      File.write!(path, Jason.encode!(cases))
+      output = capture_io(fn -> Mix.Tasks.LiveLift.Test.run(["--cases", path]) end)
+      assert output =~ "3 parity cases passed across 2 modules"
+
+      File.write!(path, Jason.encode!(Enum.take(cases, 1)))
+
+      assert_raise Mix.Error, ~r/marked events without cases: dec/, fn ->
+        capture_io(fn -> Mix.Tasks.LiveLift.Test.run(["--cases", path]) end)
+      end
+    after
+      File.rm(path)
     end
   end
 end

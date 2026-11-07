@@ -38,6 +38,8 @@ jobs:
         working-directory: examples/demo
       - run: mix test
         working-directory: examples/demo
+      - run: mix live_lift.test --cases test/live_lift_cases.json
+        working-directory: examples/demo
       - run: mix assets.setup
         working-directory: examples/demo
       - run: mix assets.build

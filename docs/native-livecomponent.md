@@ -43,12 +43,24 @@ Check a marked handler against the generated JavaScript from your Phoenix app:
 mix live_lift.test MyAppWeb.Counter --event inc --state '{"count":0}'
 mix live_lift.test MyAppWeb.Form --event draft \
   --state '{"draft":null}' --params '{"value":"Hi"}'
+mix live_lift.test --cases test/live_lift_cases.json
 ```
 
 The task runs the original server handler and the generated action once with
 the supplied state and flat string parameters, then compares their returned
-client fields. Supply representative cases, including boundary values. This
-does not prove parity for every possible input or replace browser tests.
+client fields. A cases file is a JSON array such as:
+
+```json
+[
+  {"module":"MyAppWeb.Counter","event":"inc","state":{"count":0}},
+  {"module":"MyAppWeb.Counter","event":"inc","state":{"count":9007199254740990}}
+]
+```
+
+For each listed component, the task requires a case for every marked event.
+It also fails if the app contains an opted-in component omitted from the file.
+Run it in CI with representative and boundary cases. A finite corpus cannot
+prove parity for every input or replace browser tests.
 
 This path currently accepts a literal `~H` render and a marked
 `handle_event/3` whose body returns `{:noreply, assign(socket, field, expr)}`

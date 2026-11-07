@@ -4,7 +4,11 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
 
   def render(assigns) do
     ~H"""
-    <section class={["native-form", @active && "has-saved", @draft]} title={@saved} aria-label="Native LiveComponent form">
+    <section
+      class={["native-form", @active && "has-saved", @draft]}
+      title={@saved}
+      aria-label="Native LiveComponent form"
+    >
       <label>Draft <input name="value" value={@draft} phx-change="draft" phx-target={@myself} /></label>
       <output aria-live="polite">{@draft}</output>
       <form phx-submit="save" phx-target={@myself}>
