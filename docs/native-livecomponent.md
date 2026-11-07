@@ -44,8 +44,8 @@ or `{:noreply, update(socket, field, &expr)}`. The expression must fit the
 keys with `params["name"]` or `Map.get(params, "name")`. The template supports
 static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
 `phx-target={@myself}`. A handler may bind flat params with
-`%{"name" => name}` and use a single `socket |> assign(...)` or
-`socket |> update(...)` pipe. Nested form params and other LiveView features remain
+`%{"name" => name}` and chain `socket |> assign(...) |> update(...)` operations.
+Direct nested `assign/update` calls are also accepted. Nested form params and other LiveView features remain
 server only. Unsupported
 forms fail during compilation with a source location and a suggestion to keep
 that handler on the server.

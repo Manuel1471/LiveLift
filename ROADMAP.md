@@ -125,9 +125,9 @@ Orden de funcionalidades:
 7. `String`: `trim`, `length`, `downcase`, `contains?`, `split`, `replace`.
 8. `Map` y `List`: `merge`, `delete`, `take`, `keys`, `values`.
 
-El subconjunto inicial ya acepta un patrón plano `%{"name" => name}` y una
-llamada directa o pipe simple de `assign/update`. Faltan patrones anidados,
-varias operaciones encadenadas y `assign_new`; por eso la fase 2 sigue abierta.
+El subconjunto inicial ya acepta un patrón plano `%{"name" => name}` y cadenas
+de `assign/update`, tanto por pipe como por llamadas anidadas. Faltan patrones
+anidados, `assign_new` y las demás operaciones de esta fase; por eso sigue abierta.
 
 Trampas de paridad a probar a propósito: `String.length` por grafemas (`Intl.Segmenter`),
 orden de strings fuera del plano básico, `downcase` con Unicode, redondeo y formato de

@@ -14,6 +14,7 @@
 - Enforce matching list, map, node, and UTF-8 state-size limits in Elixir and the browser.
 - Limit optimistic event parameters to 64 flat fields and 64 KiB on both sides before handler execution.
 - Test duplicate replies and a connection cut while a prediction is pending.
+- Compile chained `assign/update` operations in native marked handlers while preserving the original server body.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

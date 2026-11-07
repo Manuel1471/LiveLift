@@ -47,23 +47,24 @@ defmodule LiveLift.Component.Compiler do
   end
 
   defp update_to_state!(
-         {:|>, _, [socket, {operation, meta, args}]},
+         {:|>, _, [source, {operation, meta, args}]},
          socket_arg,
          file,
          line
        )
        when operation in [:assign, :update] and is_list(args) do
-    update_to_state!({operation, meta, [socket | args]}, socket_arg, file, line)
+    update_to_state!({operation, meta, [source | args]}, socket_arg, file, line)
   end
 
   defp update_to_state!(
-         {:update, meta, [{socket_name, _, _}, field, {:&, _, [expression]}]},
-         {socket_name, _, _},
-         _file,
-         _line
+         {:update, meta, [source, field, {:&, _, [expression]}]},
+         socket_arg,
+         file,
+         line
        )
        when is_atom(field) do
-    replacement = {{:., [], [{:state, [], nil}, field]}, [], []}
+    state = state_source!(source, socket_arg, file, line)
+    replacement = {{:., [], [state, field]}, [], []}
 
     expression =
       Macro.prewalk(expression, fn
@@ -71,16 +72,18 @@ defmodule LiveLift.Component.Compiler do
         other -> other
       end)
 
-    map_update(field, expression, meta)
+    map_update(state, field, expression, meta)
   end
 
   defp update_to_state!(
-         {:assign, meta, [{socket_name, _, _}, field, expression]},
-         {socket_name, _, _},
-         _file,
-         _line
+         {:assign, meta, [source, field, expression]},
+         {socket_name, _, _} = socket_arg,
+         file,
+         line
        )
        when is_atom(field) do
+    state = state_source!(source, socket_arg, file, line)
+
     expression =
       Macro.prewalk(expression, fn
         {{:., _, [{{:., _, [{^socket_name, _, _}, :assigns]}, _, []}, key]}, _, []}
@@ -91,7 +94,7 @@ defmodule LiveLift.Component.Compiler do
           other
       end)
 
-    map_update(field, expression, meta)
+    map_update(state, field, expression, meta)
   end
 
   defp update_to_state!(_update, _socket, file, line) do
@@ -99,8 +102,15 @@ defmodule LiveLift.Component.Compiler do
           "#{file}:#{line}: @client currently supports assign/3 and update/3; move other handlers to the server"
   end
 
-  defp map_update(field, expression, meta) do
-    {:%{}, meta, [{:|, meta, [{:state, meta, nil}, [{field, expression}]]}]}
+  defp state_source!({name, _, context}, {name, _, _}, _file, _line)
+       when is_atom(context) or is_nil(context),
+       do: {:state, [], nil}
+
+  defp state_source!(source, socket_arg, file, line),
+    do: update_to_state!(source, socket_arg, file, line)
+
+  defp map_update(state, field, expression, meta) do
+    {:%{}, meta, [{:|, meta, [state, [{field, expression}]]}]}
   end
 
   defp rewrite_params(body, {name, _, _}) when is_atom(name) and name != :%{} do

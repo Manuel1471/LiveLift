@@ -58,6 +58,27 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule ChainedCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@count} {@label}</output>"
+
+    @client true
+    def handle_event("advance", _params, socket) do
+      {:noreply,
+       socket
+       |> assign(:count, socket.assigns.count + 1)
+       |> update(:count, &(&1 + 2))
+       |> assign(:label, "ready")}
+    end
+
+    @client true
+    def handle_event("direct", _params, socket) do
+      {:noreply, assign(update(socket, :count, &(&1 + 1)), :label, "direct")}
+    end
+  end
+
   test "uses the real HEEx render and compiles the marked event" do
     html =
       render_component(&Counter.render/1,
@@ -183,6 +204,40 @@ defmodule LiveLift.ComponentTest do
 
       {output, 0} = System.cmd("node", [path])
       assert Jason.decode!(output) == %{"label" => "pattern"}
+    after
+      File.rm(path)
+    end
+  end
+
+  test "chained assign and update match the original server handler" do
+    cases = [-10, 0, 7]
+
+    expected =
+      Enum.map(cases, fn count ->
+        socket = %Phoenix.LiveView.Socket{
+          assigns: %{count: count, label: "old", id: "chained", __changed__: %{}}
+        }
+
+        for event <- ["advance", "direct"] do
+          {:reply, %{state: state}, _} = ChainedCounter.handle_event(event, %{}, socket)
+          state
+        end
+      end)
+
+    javascript = LiveLift.Client.Compiler.compile_module(ChainedCounter)
+
+    path =
+      Path.join(System.tmp_dir!(), "live_lift_chain_#{System.unique_integer([:positive])}.mjs")
+
+    try do
+      File.write!(
+        path,
+        javascript <>
+          "\nconsole.log(JSON.stringify(#{Jason.encode!(cases)}.map(count => ['advance', 'direct'].map(event => actions[event]({count, label: 'old'})))));\n"
+      )
+
+      {output, 0} = System.cmd("node", [path])
+      assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
     after
       File.rm(path)
     end
