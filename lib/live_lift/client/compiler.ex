@@ -71,6 +71,14 @@ defmodule LiveLift.Client.Compiler do
     // Elixir trims U+0085 but leaves U+FEFF; JavaScript trim() does the reverse.
     return __liveLiftString(value).replace(/^[\u0009-\u000D\u0020\u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+|[\u0009-\u000D\u0020\u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+$/g, "");
   }
+  let __liveLiftGraphemes;
+  function __liveLiftStringLength(value) {
+    if (typeof Intl === "undefined" || typeof Intl.Segmenter !== "function") throw new Error("LiveLift requires Intl.Segmenter for String.length/1");
+    __liveLiftGraphemes ??= new Intl.Segmenter(undefined, {granularity: "grapheme"});
+    let count = 0;
+    for (const _segment of __liveLiftGraphemes.segment(__liveLiftString(value))) count += 1;
+    return count;
+  }
   function __liveLiftAnd(left, right) { return __liveLiftTruthy(left) ? right() : left; }
   function __liveLiftOr(left, right) { return __liveLiftTruthy(left) ? left : right(); }
   function __liveLiftMember(list, value) {
@@ -341,6 +349,10 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:String]}, :trim]}, _, [text]}, arg) do
     "__liveLiftTrim(#{compile_expr(text, arg)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:String]}, :length]}, _, [text]}, arg) do
+    "__liveLiftStringLength(#{compile_expr(text, arg)})"
   end
 
   defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do

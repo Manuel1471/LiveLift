@@ -173,6 +173,15 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+
+    assert_raise ArgumentError, ~r/unsupported client expression.*String.length/, fn ->
+      Code.compile_string("""
+      defmodule UnsupportedStringLength do
+        use LiveLift.Client
+        defclient(size(state), do: String.length(state.label, 2))
+      end
+      """)
+    end
   end
 
   test "compiles primitive values and Elixir conditional truthiness" do

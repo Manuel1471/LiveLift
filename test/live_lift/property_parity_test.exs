@@ -15,6 +15,7 @@ defmodule LiveLift.PropertyParityTest do
         label: state.label <> "!",
         contains: String.contains?(state.label, state.query),
         trimmed: String.trim(state.label),
+        graphemes: String.length(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
         absent: Map.get(state.optional, :missing, "fallback")
       }
@@ -32,6 +33,11 @@ defmodule LiveLift.PropertyParityTest do
           "é",
           "😀",
           "é",
+          "👨‍👩‍👧‍👦",
+          "🇲🇽",
+          "👍🏽",
+          "क्‍ष",
+          "\r\n",
           "&",
           "<",
           "\"",
