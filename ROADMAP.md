@@ -132,6 +132,9 @@ anidados, `assign_new` y las demás operaciones de esta fase; por eso sigue abie
 en el corpus probado, incluidos espacios Unicode y grafemas complejos. La
 segmentación de grafemas depende de `Intl.Segmenter` y de la versión Unicode del
 navegador; las demás funciones de `String` de esta fase siguen pendientes.
+`Enum.take/2`, `Enum.drop/2` y `Enum.uniq/1` también tienen paridad para listas
+seguras; `find`, `reduce`, `sort_by`, `count`, `join`, `flat_map` y `with_index`
+siguen pendientes.
 
 Trampas de paridad a probar a propósito: `String.length` por grafemas (`Intl.Segmenter`),
 orden de strings fuera del plano básico, `downcase` con Unicode, redondeo y formato de

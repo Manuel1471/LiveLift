@@ -84,6 +84,23 @@ defmodule LiveLift.Client.Compiler do
   function __liveLiftMember(list, value) {
     return __liveLiftList(list).some((item) => __liveLiftEqual(item, value));
   }
+  function __liveLiftTake(list, count) {
+    list = __liveLiftList(list);
+    count = __liveLiftInt(count);
+    return count < 0 ? list.slice(Math.max(list.length + count, 0)) : list.slice(0, count);
+  }
+  function __liveLiftDrop(list, count) {
+    list = __liveLiftList(list);
+    count = __liveLiftInt(count);
+    return count < 0 ? list.slice(0, Math.max(list.length + count, 0)) : list.slice(count);
+  }
+  function __liveLiftUniq(list) {
+    const output = [];
+    for (const item of __liveLiftList(list)) {
+      if (!output.some((existing) => __liveLiftEqual(existing, item))) output.push(item);
+    }
+    return output;
+  }
   """
 
   @spec compile_module(module()) :: String.t()
@@ -338,6 +355,16 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :member?]}, _, [list, value]}, arg) do
     "__liveLiftMember(#{compile_expr(list, arg)}, #{compile_expr(value, arg)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)
+       when operation in [:take, :drop] do
+    helper = if operation == :take, do: "__liveLiftTake", else: "__liveLiftDrop"
+    "#{helper}(#{compile_expr(list, arg)}, #{compile_expr(count, arg)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :uniq]}, _, [list]}, arg) do
+    "__liveLiftUniq(#{compile_expr(list, arg)})"
   end
 
   defp compile_expr(

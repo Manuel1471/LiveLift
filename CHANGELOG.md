@@ -18,6 +18,7 @@
 - Compile `String.contains?/2` for string and list patterns with seeded Elixir/JavaScript parity coverage.
 - Match Elixir's Unicode whitespace semantics for compiled `String.trim/1`.
 - Compile `String.length/1` with grapheme counting through `Intl.Segmenter` and test complex Unicode cases.
+- Compile `Enum.take/2`, `Enum.drop/2`, and `Enum.uniq/1` with negative-count and structural-equality parity cases.
 - Replace dynamic text wrapper spans with text nodes bounded by comments, preserving native markup.
 - Cover 1,000 generated action states and 1,000 template renders with seeded Elixir/JavaScript parity checks.
 - Isolate the internal LiveView parser behind an adapter and add a non-blocking CI lane against LiveView `main`.

@@ -182,6 +182,15 @@ defmodule LiveLift.ClientTest do
       end
       """)
     end
+
+    assert_raise ArgumentError, ~r/unsupported client expression.*Enum.take/, fn ->
+      Code.compile_string("""
+      defmodule UnsupportedTake do
+        use LiveLift.Client
+        defclient(select(state), do: Enum.take(state.items, 1, 2))
+      end
+      """)
+    end
   end
 
   test "compiles primitive values and Elixir conditional truthiness" do
