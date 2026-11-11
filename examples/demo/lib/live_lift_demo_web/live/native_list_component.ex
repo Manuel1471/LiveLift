@@ -15,6 +15,7 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
             <button type="submit">Save row</button>
           </form>
           <button type="button" phx-click="remove" phx-value-id={item.id} phx-target={@myself}>Remove</button>
+          <button type="button" phx-click="move_to_top" phx-value-id={item.id} phx-target={@myself}>Move to top</button>
         </li>
       </ul>
     </section>
@@ -53,5 +54,16 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
   @client true
   def handle_event("remove", params, socket) do
     {:noreply, update(socket, :items, &Enum.reject(&1, fn item -> item.id == params["id"] end))}
+  end
+
+  @client true
+  def handle_event("move_to_top", params, socket) do
+    {:noreply,
+     update(
+       socket,
+       :items,
+       &(Enum.filter(&1, fn item -> item.id == params["id"] end) ++
+           Enum.reject(&1, fn item -> item.id == params["id"] end))
+     )}
   end
 end

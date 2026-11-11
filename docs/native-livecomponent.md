@@ -74,6 +74,9 @@ static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
 For a native `:for={item <- @items}`, put a stable `id={item.id}` on the repeated
 element. LiveLift uses that ordinary HTML ID as its client key; it preserves
 the server-rendered row and its focused input when an unchanged item moves.
+The demo's `move_to_top` handler is app code built from `Enum.filter/2`,
+`Enum.reject/2`, and `++`; repeated moves can produce any row order. It keeps
+the focused input node when that row moves.
 Missing, duplicate, or invalid IDs fail instead of falling back to index keys.
 `class={["base", @active && "active"]}` also works, including `false` and
 `nil` values. Dynamic URLs and other expression attributes remain server only.

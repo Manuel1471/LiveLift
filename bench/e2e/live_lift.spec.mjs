@@ -72,6 +72,27 @@ test("native list validates live form changes and saves the edited row", async (
   expect(errors).toEqual([]);
 });
 
+test("app-owned list reorder keeps the focused keyed input", async ({page}) => {
+  await page.goto("/native-list?rows=3");
+  const root = page.locator("#native-list");
+  const third = root.locator("#row-3 input[name='label']");
+  await third.fill("Draft Three");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await page.evaluate(() => { window.__focusedNativeRow = document.querySelector("#row-3 input[name='label']"); });
+
+  await root.locator("#row-2").getByRole("button", {name: "Move to top"}).evaluate((button) => button.click());
+  await expect(root.locator("li").first()).toHaveAttribute("id", "row-2");
+  await expect(third).toBeFocused();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+
+  await root.locator("#row-3").getByRole("button", {name: "Move to top"}).evaluate((button) => button.click());
+  await expect(root.locator("li").first()).toHaveAttribute("id", "row-3");
+  await expect(third).toBeFocused();
+  await expect(third).toHaveValue("Draft Three");
+  expect(await page.evaluate(() => document.querySelector("#row-3 input[name='label']") === window.__focusedNativeRow)).toBe(true);
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+});
+
 test("native form handles a change event without a preceding input event", async ({page}) => {
   await page.goto("/native-list");
   const root = page.locator("#native-list");

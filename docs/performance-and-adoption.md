@@ -90,6 +90,10 @@ inside a moved row. The legacy list benchmark on that machine measured
 3.2 ms median and 7.4 ms p95. The native row has a form and a remove button,
 so these are different DOM workloads. The native p95 is close to a 16.7 ms
 frame budget; measure your own component before moving a large list.
+After adding the app-owned `move_to_top` button, the same Chromium benchmark
+measured 10.6 ms median and 16.6 ms p95 across 25 reversals, with the input
+node preserved. This is close to the prior run; the p95 remains near one
+60 Hz frame.
 
 The gain is interaction latency when a small pure action can finish locally
 without a server round trip. A server-backed action still needs LiveView.

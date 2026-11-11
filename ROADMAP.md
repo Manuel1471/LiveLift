@@ -218,7 +218,7 @@ validación de formulario en vivo, lista ordenable.
 |---|---|---|
 | Contador optimista con guardado del servidor | Verificado | Ninguna: demo y app Phoenix generada, con paridad y navegador |
 | Validación de formulario en vivo con mapa anidado | Verificado | Ninguna: casos válidos e inválidos en Elixir/JS y Chromium, Firefox y WebKit |
-| Lista ordenable con filas editables y foco estable | Parcial | Orden arbitrario por acción propia de la app; paridad y navegador con claves y foco |
+| Lista ordenable con filas editables y foco estable | Verificado | Ninguna: `move_to_top` elige una fila, conserva foco e identidad en tres navegadores; paridad Elixir/JS |
 
 El gate también requiere cerrar o rechazar explícitamente con ubicación de
 origen los componentes de función, slots y las formas del compilador indicadas
