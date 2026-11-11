@@ -17,7 +17,7 @@ posteriores queda registrado abajo y no cambia este orden.
 | Paso | Puerta de aceptación | Estado | Próximo bloqueo |
 |---|---|---|---|
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
-| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Abierta | Migración de formularios anidados y eventos de servidor |
+| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Abierta | Migración de eventos de servidor |
 | 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | En espera de 1 | Componentes de función y lenguaje del compilador |
 | 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
 | 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
@@ -130,9 +130,9 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
   al usar `LiveLift.Client` o llamar `LiveLift.View.island/1`.
 - [ ] `mix live_lift.migrate` para convertir la API anterior. Ya convierte
   plantillas literales con `$click`, `$input` de texto y textarea, `$change` de select
-  y `$submit` de formularios planos, junto con acciones de actualización de mapa,
+  y `$submit` de formularios con mapas anidados acotados, junto con acciones de actualización de mapa,
   incluso varios campos que leen el estado original, a un componente nuevo.
-  Rechaza explícitamente el resto; faltan eventos de servidor y formularios anidados
+  Rechaza explícitamente el resto; faltan eventos de servidor
   antes de cerrar esta tarea.
 - [x] Aislar el parser interno de Phoenix tras un módulo adaptador; CI contra LiveView
   `main` (fallo permitido); parser propio de respaldo para el subconjunto
@@ -144,8 +144,8 @@ equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.
 La API no se anuncia como lista hasta pasar S5 en el navegador.
 S5 pasó para el contador inicial. Los formularios `phx-change` y
 `phx-submit` con mapas anidados acotados tienen paridad Elixir/JavaScript y
-una prueba en Chromium, Firefox y WebKit. La migración automática de formularios
-anidados y `$server` sigue pendiente; los componentes anidados y handlers más
+una prueba en Chromium, Firefox y WebKit. La migración automática de
+`$server` sigue pendiente; los componentes anidados y handlers más
 amplios pertenecen al cierre del subconjunto de la fase 2.
 
 ## Fase 2: Compilador v2 (4 a 6 semanas, v0.4)

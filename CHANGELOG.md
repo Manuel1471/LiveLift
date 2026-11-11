@@ -2,8 +2,9 @@
 
 ## Unreleased
 
+- Migrate bounded nested legacy `$submit` form names when `event.params` reads the matching nested path; reject mismatched paths before writing.
 - Support bounded nested map names in native marked forms, with matching Elixir/browser validation and nested handler reads.
-- Migrate flat legacy `$submit` forms using `event.params.field` to native `phx-submit` handlers, rejecting nested names and mismatched event access.
+- Migrate flat legacy `$submit` forms using `event.params.field` to native `phx-submit` handlers, rejecting mismatched event access.
 - Migrate legacy select `$change` and textarea `$input` actions to native `phx-change`, preserving selected bindings and checking Elixir/Node results.
 - Migrate legacy text `$input` actions using `event.value` to native `phx-change` with flat `params["value"]`, with Elixir/Node parity coverage.
 - Add a bounded HEEx template parser fallback when LiveView's private parser is unavailable or changes its result shape; compare its nodes against the current parser on demo templates.

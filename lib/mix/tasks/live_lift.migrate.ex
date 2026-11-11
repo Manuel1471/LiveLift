@@ -6,7 +6,7 @@ defmodule Mix.Tasks.LiveLift.Migrate do
         --module MyAppWeb.Counter --output lib/my_app_web/components/counter.ex
 
   The command accepts literal `client_template` markup with `$click` buttons,
-  text `$input` controls, select `$change` controls, flat `$submit` forms, and
+  text `$input` controls, select `$change` controls, bounded map `$submit` forms, and
   `defclient` map updates. It rejects
   other forms with a source location rather than generating a component with
   changed behavior. Mount the generated component in place of the old island
@@ -163,16 +163,26 @@ defmodule Mix.Tasks.LiveLift.Migrate do
         {{:., _, [{^event, _, _}, :value]}, _, []} = node, modes ->
           {node, [:value | modes]}
 
-        {{:., _, [{{:., _, [{^event, _, _}, :params]}, _, []}, key]}, _, []} = node, modes
-        when is_atom(key) ->
-          {node, [:fields | modes]}
-
         node, modes ->
-          {node, modes}
+          case legacy_param_path(node, event) do
+            {:ok, [_ | _]} -> {node, [:fields | modes]}
+            _ -> {node, modes}
+          end
       end)
 
     modes
   end
+
+  defp legacy_param_path({{:., _, [{event, _, _}, :params]}, _, []}, event), do: {:ok, []}
+
+  defp legacy_param_path({{:., _, [source, key]}, _, []}, event) when is_atom(key) do
+    case legacy_param_path(source, event) do
+      {:ok, path} -> {:ok, path ++ [Atom.to_string(key)]}
+      _ -> :error
+    end
+  end
+
+  defp legacy_param_path(_node, _event), do: :error
 
   defp map_action(name, state, event, body, file, line) do
     case body do
@@ -211,12 +221,18 @@ defmodule Mix.Tasks.LiveLift.Migrate do
                 {{:., _, [{^event, _, _}, :value]}, _, []} when not is_nil(event) ->
                   Code.string_to_quoted!(~s(params["value"]))
 
-                {{:., _, [{{:., _, [{^event, _, _}, :params]}, _, []}, key]}, _, []}
-                when not is_nil(event) and is_atom(key) ->
-                  Code.string_to_quoted!(~s(params[#{inspect(Atom.to_string(key))}]))
-
                 node ->
-                  node
+                  case legacy_param_path(node, event) do
+                    {:ok, [_ | _] = path} ->
+                      Code.string_to_quoted!(
+                        Enum.reduce(path, "params", fn key, acc ->
+                          acc <> "[" <> inspect(key) <> "]"
+                        end)
+                      )
+
+                    _ ->
+                      node
+                  end
               end)
 
             {:assign, [], [source, field, rewritten]}
@@ -253,7 +269,20 @@ defmodule Mix.Tasks.LiveLift.Migrate do
 
   defp render_node({:block, :tag, tag, attrs, children, _meta, _close}, file, actions) do
     if tag == "form" and Enum.any?(attrs, fn {name, _, _} -> name == "$submit" end) do
-      reject_nested_legacy_form_names!(children, file)
+      names = legacy_form_names!(children, file)
+
+      {"$submit", {:string, event, _}, meta} =
+        Enum.find(attrs, fn {name, _, _} -> name == "$submit" end)
+
+      {_, assignment, _} =
+        Enum.find(actions, fn {name, _, _} -> name == event end) ||
+          Mix.raise("#{file}:#{meta.line}: $submit requires a matching action")
+
+      for path <- native_param_paths(assignment), path not in names do
+        Mix.raise(
+          "#{file}:#{meta.line}: $submit action reads #{Enum.join(path, ".")} without a matching input name; migrate this action manually"
+        )
+      end
     end
 
     open = render_open(tag, attrs, file, actions)
@@ -267,33 +296,61 @@ defmodule Mix.Tasks.LiveLift.Migrate do
     do:
       Mix.raise("#{file}:1: unsupported legacy template node #{inspect(node)}; migrate manually")
 
-  defp reject_nested_legacy_form_names!(nodes, file) do
-    Enum.each(nodes, fn
+  defp legacy_form_names!(nodes, file) do
+    Enum.flat_map(nodes, fn
       {:block, :tag, _tag, attrs, children, _, _} ->
-        reject_nested_legacy_name!(attrs, file)
-        reject_nested_legacy_form_names!(children, file)
+        legacy_name!(attrs, file) ++ legacy_form_names!(children, file)
 
       {:self_close, :tag, _tag, attrs, _} ->
-        reject_nested_legacy_name!(attrs, file)
+        legacy_name!(attrs, file)
 
       _ ->
-        :ok
+        []
     end)
   end
 
-  defp reject_nested_legacy_name!(attrs, file) do
-    Enum.each(attrs, fn
+  defp legacy_name!(attrs, file) do
+    Enum.flat_map(attrs, fn
       {"name", {:string, name, _}, meta} ->
-        unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) do
+        unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*(\[[a-zA-Z_][a-zA-Z0-9_]*\]){0,3}$/, name) do
           Mix.raise(
-            "#{file}:#{meta.line}: $submit migration requires flat safe input names matching event.params fields; migrate this action manually"
+            "#{file}:#{meta.line}: $submit migration requires safe map input names up to four segments; migrate this action manually"
           )
         end
 
+        [Regex.scan(~r/[a-zA-Z_][a-zA-Z0-9_]*/, name) |> List.flatten()]
+
       _ ->
-        :ok
+        []
     end)
   end
+
+  defp native_param_paths(assignment) do
+    {_assignment, paths} =
+      Macro.prewalk(assignment, [], fn node, paths ->
+        case native_param_path(node) do
+          {:ok, [_ | _] = path} -> {node, [path | paths]}
+          _ -> {node, paths}
+        end
+      end)
+
+    Enum.reject(paths, fn path ->
+      Enum.any?(paths, fn other ->
+        length(other) > length(path) and Enum.take(other, length(path)) == path
+      end)
+    end)
+  end
+
+  defp native_param_path({:params, _, _}), do: {:ok, []}
+
+  defp native_param_path({{:., _, [Access, :get]}, _, [source, key]}) when is_binary(key) do
+    case native_param_path(source) do
+      {:ok, path} -> {:ok, path ++ [key]}
+      _ -> :error
+    end
+  end
+
+  defp native_param_path(_node), do: :error
 
   defp render_open(tag, attrs, file, actions, self_close \\ false) do
     if Enum.any?(attrs, fn {name, _, _} -> name == "$click" end) and tag != "button" do

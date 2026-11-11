@@ -190,7 +190,7 @@ defmodule LiveLift.MigrateTest do
     end
   end
 
-  test "migrates a flat submit form and rejects nested form names" do
+  test "migrates a flat submit form and rejects mismatched nested access" do
     root = temp_root()
     source = Path.join(root, "legacy.ex")
     target = Path.join(root, "submit.ex")
@@ -236,7 +236,7 @@ defmodule LiveLift.MigrateTest do
 
       nested_target = Path.join(root, "nested.ex")
 
-      assert_raise Mix.Error, ~r/flat safe input names/, fn ->
+      assert_raise Mix.Error, ~r/without a matching input name/, fn ->
         Mix.Tasks.LiveLift.Migrate.run([
           source,
           "--module",
@@ -247,6 +247,46 @@ defmodule LiveLift.MigrateTest do
       end
 
       refute File.exists?(nested_target)
+    after
+      File.rm_rf!(root)
+    end
+  end
+
+  test "migrates a nested map submit form with matching event access" do
+    root = temp_root()
+    source = Path.join(root, "legacy.ex")
+    target = Path.join(root, "nested.ex")
+    script = Path.join(root, "nested.mjs")
+    module = "MigratedNested#{System.unique_integer([:positive])}"
+
+    File.write!(source, """
+    defmodule LegacyNested do
+      use LiveLift.Client
+      client_template("<form $submit='save'><input name='profile[note]' /><button type='submit'>Save</button></form><output>{@saved}</output>")
+      defclient save(state, event), do: %{state | saved: event.params.profile.note}
+    end
+    """)
+
+    try do
+      Mix.Tasks.LiveLift.Migrate.run([source, "--module", module, "--output", target])
+      output = File.read!(target)
+      assert output =~ ~s(params["profile"]["note"])
+
+      [{compiled, _}] = Code.compile_file(target)
+      socket = %Phoenix.LiveView.Socket{assigns: %{id: "nested", saved: "", __changed__: %{}}}
+      params = %{"profile" => %{"note" => "é <note>"}}
+
+      assert {:reply, %{state: %{saved: "é <note>"}}, _} =
+               compiled.handle_event("save", params, socket)
+
+      File.write!(
+        script,
+        LiveLift.Client.Compiler.compile_module(compiled) <>
+          "\nconsole.log(JSON.stringify(actions.save({saved: ''}, {params: {profile: {note: 'é <note>'}}})));\n"
+      )
+
+      {result, 0} = System.cmd("node", [script])
+      assert Jason.decode!(result) == %{"saved" => "é <note>"}
     after
       File.rm_rf!(root)
     end
