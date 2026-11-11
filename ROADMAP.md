@@ -134,8 +134,8 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
   Rechaza explícitamente el resto; faltan eventos de servidor y formularios
   antes de cerrar esta tarea.
 - [ ] Aislar el parser interno de Phoenix tras un módulo adaptador; CI contra LiveView
-  `main` (fallo permitido); plan B de tokenizador propio. (Adaptador y CI listos;
-  tokenizador de respaldo pendiente.)
+  `main` (fallo permitido); plan B de tokenizador propio. (Adaptador, CI y error
+  accionable ante cambio de contrato listos; tokenizador de respaldo pendiente.)
 
 **Listo cuando:** el mismo módulo corre en modo servidor y en modo cliente con HTML
 equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.

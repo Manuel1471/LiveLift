@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Report an actionable source-located error when a LiveView upgrade removes or changes the private HEEx parser contract.
 - Make the Phoenix asset installer repair partially wired aliases and reject an unsupported hook layout before changing any files.
 - Migrate legacy actions that update multiple map fields while preserving reads from the original state; verify generated handlers against Elixir and Node.
 - Add `mix live_lift.migrate` for simple legacy click views. It generates a separate native LiveComponent, validates the converted handler, and rejects unsupported legacy forms with a source location.

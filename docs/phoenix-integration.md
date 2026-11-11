@@ -1,7 +1,8 @@
 # Add LiveLift to a Phoenix LiveView app
 
 LiveLift 0.1.0-rc.1 is an experimental package. The parser currently requires
-Phoenix LiveView 1.2.x:
+Phoenix LiveView 1.2.x. If its private HEEx parser changes, compilation stops
+with the source file and a supported-version suggestion:
 
 ```elixir
 # mix.exs
