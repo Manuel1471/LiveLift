@@ -146,8 +146,8 @@ equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.
 La API no se anuncia como lista hasta pasar S5 en el navegador.
 S5 pasó para el contador inicial. Los formularios `phx-change` y
 `phx-submit` con mapas anidados acotados tienen paridad Elixir/JavaScript y
-una prueba en Chromium, Firefox y WebKit. La migración automática de
-`$server` requiere la migración manual documentada; los componentes anidados y handlers más
+una prueba en Chromium, Firefox y WebKit. `$server` requiere la migración
+manual documentada; los componentes anidados y handlers más
 amplios pertenecen al cierre del subconjunto de la fase 2.
 
 **Evidencia de cierre:** `test/integration/phoenix_consumer.sh` genera una app
@@ -213,6 +213,16 @@ decimales, representación de átomos como valores.
 
 **Listo cuando:** tres casos de aceptación compilan sin escapes: todo optimista,
 validación de formulario en vivo, lista ordenable.
+
+| Caso de aceptación | Estado | Evidencia que falta |
+|---|---|---|
+| Contador optimista con guardado del servidor | Verificado | Ninguna: demo y app Phoenix generada, con paridad y navegador |
+| Validación de formulario en vivo con mapa anidado | Pendiente | Mostrar error local y corrección autoritativa en navegador; paridad de casos válidos e inválidos |
+| Lista ordenable con filas editables y foco estable | Parcial | Orden arbitrario por acción propia de la app; paridad y navegador con claves y foco |
+
+El gate también requiere cerrar o rechazar explícitamente con ubicación de
+origen los componentes de función, slots y las formas del compilador indicadas
+arriba. Los checks de fases posteriores no cuentan para este cierre.
 
 ## Fase 3: Sincronización optimista (4 a 6 semanas, v0.5)
 

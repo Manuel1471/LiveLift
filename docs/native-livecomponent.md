@@ -63,8 +63,8 @@ Run it in CI with representative and boundary cases. A finite corpus cannot
 prove parity for every input or replace browser tests.
 
 This path currently accepts a literal `~H` render and a marked
-`handle_event/3` whose body returns `{:noreply, assign(socket, field, expr)}`
-or `{:noreply, update(socket, field, &expr)}`. The expression must fit the
+`handle_event/3` whose body returns `{:noreply, socket}` after one or more
+`assign/3` or `update/3` operations. The expression must fit the
 [client language subset](language.md). Marked handlers can read string
 keys with `params["name"]`, `Map.get(params, "name")`, or nested paths such as
 `params["profile"]["note"]`. The template supports
