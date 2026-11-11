@@ -23,7 +23,12 @@ LiveView. The server must validate it. There is no automatic two-way state
 merge: a remount resets the island, and LiveView cannot patch its descendants
 while `phx-update="ignore"` owns them.
 
-The template parser currently calls an internal Phoenix LiveView 1.2 parser.
-That dependency is version constrained, but compatibility must be checked
-when adopting a newer LiveView release. The [language reference](language.md)
+The template adapter uses Phoenix LiveView 1.2's internal parser when available
+and a bounded LiveLift parser if that API disappears or changes its result
+shape. The fallback handles the declared template subset and rejects other
+syntax with a source location. The dependency is still version constrained;
+browser and parity compatibility must be checked for every newer LiveView
+release. The [language reference](language.md)
 defines exactly what LiveLift supports today.
+CI forces the fallback with `LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1` and compiles
+the demo through both parser paths.

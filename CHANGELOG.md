@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add a bounded HEEx template parser fallback when LiveView's private parser is unavailable or changes its result shape; compare its nodes against the current parser on demo templates.
 - Report an actionable source-located error when a LiveView upgrade removes or changes the private HEEx parser contract.
 - Make the Phoenix asset installer repair partially wired aliases and reject an unsupported hook layout before changing any files.
 - Migrate legacy actions that update multiple map fields while preserving reads from the original state; verify generated handlers against Elixir and Node.

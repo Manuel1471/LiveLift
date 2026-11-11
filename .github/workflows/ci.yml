@@ -29,6 +29,9 @@ jobs:
       - run: npm ci
         working-directory: bench
       - run: mix test
+      - run: mix test
+        env:
+          LIVE_LIFT_FORCE_TEMPLATE_FALLBACK: '1'
       - run: mix run spikes/liveview_api.exs
       - run: npm test
         working-directory: assets
@@ -44,6 +47,10 @@ jobs:
         working-directory: examples/demo
       - run: mix assets.build
         working-directory: examples/demo
+      - run: mix compile --force && mix test && mix assets.build
+        working-directory: examples/demo
+        env:
+          LIVE_LIFT_FORCE_TEMPLATE_FALLBACK: '1'
       - run: npm run dom
         working-directory: bench
 

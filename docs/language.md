@@ -88,5 +88,6 @@ parity tests for its edge cases.
 
 Templates are HTML with this explicit syntax, not general HEEx or `~HOLO`.
 Executable HTML tags and inline JavaScript attributes are rejected. The
-parser currently uses Phoenix LiveView 1.2's internal tag parser, so future
-LiveView versions need compatibility testing before support is claimed.
+adapter uses Phoenix LiveView 1.2's internal tag parser and falls back to a
+bounded LiveLift parser if that API changes. Future LiveView versions still
+need compatibility testing before support is claimed.

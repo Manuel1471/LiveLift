@@ -12,14 +12,22 @@ defmodule LiveLift.Template do
 
   @spec compile(String.t(), String.t()) :: list(map())
   def compile(source, file \\ "nofile") when is_binary(source) do
-    source |> Parser.parse!(file) |> Enum.map(&convert_node(&1, file))
+    source |> Parser.parse!(file) |> compile_parsed(file, :legacy)
   end
 
   @doc false
   def compile_liveview(source, file, client_events) when is_binary(source) do
     source
     |> Parser.parse!(file)
-    |> Enum.map(&adapt_liveview_node(&1, file, client_events))
+    |> compile_parsed(file, {:liveview, client_events})
+  end
+
+  @doc false
+  def compile_parsed(nodes, file, :legacy), do: Enum.map(nodes, &convert_node(&1, file))
+
+  def compile_parsed(nodes, file, {:liveview, events}) do
+    nodes
+    |> Enum.map(&adapt_liveview_node(&1, file, events))
     |> Enum.map(&convert_node(&1, file))
   end
 
