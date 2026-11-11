@@ -436,6 +436,12 @@ defmodule Mix.Tasks.LiveLift.Migrate do
     " phx-submit=\"#{event}\""
   end
 
+  defp render_attr({"$server", {:string, event, _}, meta}, file, _actions) do
+    Mix.raise(
+      "#{file}:#{meta.line}: $server=\"#{event}\" sends client state and revision to the parent LiveView; a native phx-click does not. Keep this island until its parent handler is migrated; see docs/server-event-migration.md"
+    )
+  end
+
   defp render_attr({name, {:expr, source, _}, _meta}, _file, _actions)
        when name in ["checked", "selected"],
        do: " #{name}={#{source}}"

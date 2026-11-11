@@ -68,6 +68,16 @@ per-row `phx-change`/`phx-submit` form edits an item through the original
 event before LiveView sends a second request. This validates flat text
 parameters and a keyed list; it does not validate arbitrary LiveView forms.
 
+## S6 — legacy `$server` migration
+
+**Automatic attribute replacement is not equivalent.** The legacy hook sends
+the current client-owned state and revision to the parent LiveView; a native
+`phx-click` sends only its event parameters. The demo's `save_score` handler
+requires both fields and rejects a missing or stale revision. The migrator
+therefore rejects `$server` with a source-located explanation and a
+[manual migration guide](server-event-migration.md). This remains a phase 1
+gate until a reproducible migration path is tested in another app.
+
 ## Decision
 
 Proceed with the narrow `use LiveLift` implementation. Keep the current

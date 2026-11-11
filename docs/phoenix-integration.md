@@ -62,7 +62,8 @@ before writing. It leaves the original file untouched and refuses to overwrite
 the destination. Review the new component, pass its initial fields as assigns,
 and replace the old `<LiveLift.View.island>` mount with `<.live_component>`.
 Multiple fields are converted together; each expression reads the original
-`socket.assigns`, matching a legacy map update. `$server`, checkbox and radio controls,
+`socket.assigns`, matching a legacy map update. `$server` buttons need the
+[server event migration guide](server-event-migration.md); checkbox and radio controls,
 array form fields, list directives, conditional action bodies, extra module
 declarations, and other constructs stop with a source-located error; they need
 manual migration because their state or event semantics differ. The command

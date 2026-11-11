@@ -45,15 +45,17 @@ defmodule LiveLift.MigrateTest do
     """)
 
     try do
-      assert_raise Mix.Error, ~r/legacy\.ex:\d+: \$server needs manual migration/, fn ->
-        Mix.Tasks.LiveLift.Migrate.run([
-          source,
-          "--module",
-          "MigratedCounter",
-          "--output",
-          target
-        ])
-      end
+      assert_raise Mix.Error,
+                   ~r/legacy\.ex:\d+: \$server="save" sends client state and revision to the parent LiveView/,
+                   fn ->
+                     Mix.Tasks.LiveLift.Migrate.run([
+                       source,
+                       "--module",
+                       "MigratedCounter",
+                       "--output",
+                       target
+                     ])
+                   end
 
       refute File.exists?(target)
     after

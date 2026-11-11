@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Document why legacy `$server` cannot be replaced by `phx-click` alone and give a source-located migration error and manual guide.
 - Migrate bounded nested legacy `$submit` form names when `event.params` reads the matching nested path; reject mismatched paths before writing.
 - Support bounded nested map names in native marked forms, with matching Elixir/browser validation and nested handler reads.
 - Migrate flat legacy `$submit` forms using `event.params.field` to native `phx-submit` handlers, rejecting mismatched event access.
