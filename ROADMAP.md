@@ -17,7 +17,7 @@ posteriores queda registrado abajo y no cambia este orden.
 | Paso | Puerta de aceptación | Estado | Próximo bloqueo |
 |---|---|---|---|
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
-| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Abierta | Avisos de API anterior, tarea de migración y respaldo del parser |
+| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Abierta | Migración de formularios y eventos de servidor; respaldo del parser |
 | 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | En espera de 1 | Formularios anidados, componentes de función y lenguaje del compilador |
 | 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
 | 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |

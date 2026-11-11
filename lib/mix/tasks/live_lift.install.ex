@@ -17,9 +17,14 @@ defmodule Mix.Tasks.LiveLift.Install do
     js = File.read!(app_js)
     mix = File.read!(mix_exs)
 
-    unless String.contains?(js, "hooks: {...colocatedHooks}") or
-             String.contains?(js, "LiveLift: createClientHook(liveLiftViews)") do
-      Mix.raise("unsupported LiveSocket hooks configuration in assets/js/app.js")
+    hook_installed? = String.contains?(js, "LiveLift: createClientHook(liveLiftViews)")
+
+    unless hook_installed? or
+             (String.contains?(js, "hooks: {...colocatedHooks}") and
+                String.contains?(js, "import {hooks as colocatedHooks}")) do
+      Mix.raise(
+        "unsupported LiveSocket hooks configuration in assets/js/app.js; expected the Phoenix colocatedHooks import and hooks map"
+      )
     end
 
     unless String.contains?(mix, ~s("assets.build": ["compile",)) and
@@ -28,7 +33,7 @@ defmodule Mix.Tasks.LiveLift.Install do
     end
 
     js =
-      if String.contains?(js, "LiveLift: createClientHook(liveLiftViews)"),
+      if hook_installed?,
         do: js,
         else:
           js
@@ -44,21 +49,17 @@ defmodule Mix.Tasks.LiveLift.Install do
           )
 
     mix =
-      if String.contains?(mix, @compile_command) do
-        mix
-      else
-        mix
-        |> String.replace(
-          ~s("assets.build": ["compile",),
-          ~s("assets.build": ["compile", "#{@compile_command}",),
-          global: false
-        )
-        |> String.replace(
-          ~s("assets.deploy": [),
-          ~s("assets.deploy": ["#{@compile_command}",),
-          global: false
-        )
-      end
+      mix
+      |> install_alias("assets.build", ~s("assets.build": ["compile",))
+      |> install_alias("assets.deploy", ~s("assets.deploy": [))
+
+    unless String.contains?(js, "import {createClientHook} from \"./live_lift_runtime.js\"") and
+             String.contains?(js, "import {views as liveLiftViews} from \"./generated_views.js\"") and
+             String.contains?(js, "LiveLift: createClientHook(liveLiftViews)") and
+             alias_has_command?(mix, "assets.build") and
+             alias_has_command?(mix, "assets.deploy") do
+      Mix.raise("LiveLift asset integration is incomplete; no files were changed")
+    end
 
     File.write!(app_js, js)
     File.write!(mix_exs, mix)
@@ -86,4 +87,28 @@ defmodule Mix.Tasks.LiveLift.Install do
   end
 
   def run(_), do: Mix.raise("usage: mix live_lift.install")
+
+  defp install_alias(mix, name, anchor) do
+    if alias_has_command?(mix, name) do
+      mix
+    else
+      replacement =
+        case name do
+          "assets.build" -> ~s("assets.build": ["compile", "#{@compile_command}",)
+          "assets.deploy" -> ~s("assets.deploy": ["#{@compile_command}",)
+        end
+
+      String.replace(mix, anchor, replacement, global: false)
+    end
+  end
+
+  defp alias_has_command?(mix, name) do
+    case String.split(mix, ~s("#{name}": [), parts: 2) do
+      [_, rest] ->
+        rest |> String.split("]", parts: 2) |> hd() |> String.contains?(@compile_command)
+
+      _ ->
+        false
+    end
+  end
 end

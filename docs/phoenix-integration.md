@@ -8,7 +8,11 @@ Phoenix LiveView 1.2.x:
 {:live_lift, "~> 0.1.0-rc.1"}
 ```
 
-Run `mix deps.get` and `mix live_lift.install`. For a new component, keep
+Run `mix deps.get` and `mix live_lift.install`. The installer checks the
+standard Phoenix 1.8 colocated hook and both asset aliases before writing.
+It repairs a missing compile step if only one alias was previously integrated;
+an unsupported hook layout fails with an explanation and leaves the files
+unchanged. For a new component, keep
 ordinary LiveView syntax and add two opt-in lines:
 
 ```elixir
