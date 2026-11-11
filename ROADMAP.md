@@ -7,6 +7,37 @@ capacidades parecidas a las de Hologram sin reescribir su aplicación.
 Las duraciones son estimaciones gruesas para una sola persona y son muy inciertas.
 Orden de magnitud hasta 1.0: 7 a 10 meses.
 
+## Orden de cierre
+
+Las casillas de las fases siguientes registran trabajo individual, **no** la
+aceptación de una fase. Se cierra una puerta solo cuando se cumplen todos sus
+criterios y se conserva evidencia reproducible. El trabajo adelantado de fases
+posteriores queda registrado abajo y no cambia este orden.
+
+| Paso | Puerta de aceptación | Estado | Próximo bloqueo |
+|---|---|---|---|
+| S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
+| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Abierta | Avisos de API anterior, tarea de migración y respaldo del parser |
+| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | En espera de 1 | Formularios anidados, componentes de función y lenguaje del compilador |
+| 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
+| 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
+| 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
+| 6. Experiencia | Auditoría, test, telemetría, documentación de migración e instalador verificados en otra app | En espera de 5 | Medición antes de optar, inspector e instalación completa |
+| 7 y 1.0 | Seguridad y compatibilidad verificadas; dos apps reales; revisión cruzada; API estable | En espera de 6 | Revisión externa, apps piloto y política de versiones |
+
+**Regla de ejecución:** terminar la primera puerta abierta antes de ampliar el
+lenguaje o añadir funciones de otra fase. Las correcciones de seguridad y de
+regresiones pueden hacerse en cualquier momento. Una casilla adelantada sigue
+siendo válida como evidencia, pero la puerta permanece abierta hasta verificar
+su conjunto completo.
+
+**Registro de trabajo adelantado:** la fase 2 ya tiene listas nativas con clave,
+eventos dinámicos y formularios planos; la fase 3 tiene snapshots y reconexión
+básica; la fase 4 tiene benchmarks de 1,000 filas; las fases 6 y 7 tienen tareas
+de auditoría, paridad, pruebas de accesibilidad y límites. Los detalles y las
+limitaciones están en cada fase y en `docs/liveview-api-spikes.md`. Ninguno de
+estos avances sustituye la puerta anterior.
+
 ## Principios
 
 1. **LiveView-shaped.** Nada de sintaxis nueva donde LiveView ya tiene una (`~H`,
