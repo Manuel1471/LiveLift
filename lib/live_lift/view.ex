@@ -14,6 +14,7 @@ defmodule LiveLift.View do
   attr(:server_fields, :list, default: [])
   attr(:server_revision, :integer, default: 0)
 
+  @deprecated "Use a Phoenix.LiveComponent with use LiveLift and @client true; see docs/native-livecomponent.md"
   def island(assigns) do
     LiveLift.State.validate!(assigns.state)
     fields = Enum.map(assigns.server_fields, &to_string/1)

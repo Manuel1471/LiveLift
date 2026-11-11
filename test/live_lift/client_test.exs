@@ -3,6 +3,22 @@ defmodule LiveLift.ClientTest do
 
   alias LiveLift.Client.Compiler
 
+  test "legacy client modules emit a source-located migration warning" do
+    module = "LegacyWarning#{System.unique_integer([:positive])}"
+
+    warning =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        Code.compile_string(
+          "defmodule #{module} do\n  use LiveLift.Client\nend",
+          "legacy_view.ex"
+        )
+      end)
+
+    assert warning =~ "legacy_view.ex:2"
+    assert warning =~ "use LiveLift.Client is deprecated"
+    assert warning =~ "docs/native-livecomponent.md"
+  end
+
   defmodule CounterActions do
     use LiveLift.Client
 

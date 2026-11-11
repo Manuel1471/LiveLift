@@ -1,11 +1,14 @@
 defmodule LiveLift do
   @moduledoc """
-  Small, opt-in client-side islands inside Phoenix LiveView.
+  Opt-in browser interactions for Phoenix LiveComponents.
 
-  `LiveLift.Client` defines restricted Elixir views and actions that compile to
-  JavaScript. `LiveLift.View.island/1` mounts one within a regular LiveView.
-  Server data remains owned by LiveView; each island's state is temporary
-  browser data.
+  Add `use LiveLift` to a stateful LiveComponent and put `@client true` before a
+  supported `handle_event/3`. LiveLift compiles the marked handler and its
+  existing `~H` template for immediate browser prediction. LiveView still runs
+  the original handler on server-owned state and sends the authoritative result.
+
+  The earlier `LiveLift.Client` and `LiveLift.View.island/1` API remains
+  available for existing apps while they migrate.
   """
 
   defmacro __using__(_opts) do

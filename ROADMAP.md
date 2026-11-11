@@ -126,7 +126,8 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 - [x] Frontera `phx-update="ignore"` generada automáticamente.
 - [x] `phx-click`, `phx-change`, `phx-submit`, `phx-value-*` en lugar de `$click`
   en el subconjunto inicial de eventos con parámetros planos.
-- [ ] Deprecar `client_template`, `defclient`, `$click` y `island` con avisos.
+- [x] Deprecar `client_template`, `defclient`, `$click` y `island` con avisos
+  al usar `LiveLift.Client` o llamar `LiveLift.View.island/1`.
 - [ ] `mix live_lift.migrate` para convertir la API anterior.
 - [ ] Aislar el parser interno de Phoenix tras un módulo adaptador; CI contra LiveView
   `main` (fallo permitido); plan B de tokenizador propio. (Adaptador y CI listos;

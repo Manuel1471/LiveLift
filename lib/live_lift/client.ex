@@ -16,6 +16,11 @@ defmodule LiveLift.Client do
   """
 
   defmacro __using__(_opts) do
+    IO.warn(
+      "use LiveLift.Client is deprecated; migrate to a Phoenix.LiveComponent with use LiveLift and @client true. See docs/native-livecomponent.md",
+      Macro.Env.stacktrace(__CALLER__)
+    )
+
     quote do
       import LiveLift.Client, only: [defclient: 2, client_template: 1]
       Module.register_attribute(__MODULE__, :live_lift_client_actions, accumulate: true)

@@ -1,14 +1,15 @@
 # LiveLift
 
-LiveLift explores Hologram-like client views inside Phoenix LiveView. Your app
-defines a template and actions in Elixir. LiveLift renders the initial HTML on
-the server, compiles the supported template and actions to JavaScript, and
-runs them in the browser. The surrounding page remains a regular LiveView.
+LiveLift runs selected Phoenix LiveComponent interactions in the browser. Keep
+your `~H` template and `handle_event/3`; add `use LiveLift` and mark a supported
+handler with `@client true`. The server still runs that handler on its own state
+and sends the authoritative result. The surrounding page remains a regular
+LiveView.
 
 ## Run the browser demo
 
-The [Phoenix demo](examples/demo/README.md) contains a user-defined client
-view inside a regular LiveView. From `examples/demo`, run `mix setup` and
+The [Phoenix demo](examples/demo/README.md) contains native LiveComponents and
+legacy client views inside a regular LiveView. From `examples/demo`, run `mix setup` and
 `mix phx.server`, then visit <http://localhost:4000>.
 
 For an existing Phoenix app, follow the [integration guide](docs/phoenix-integration.md).
@@ -30,34 +31,23 @@ Add the experimental Hex package to your app's `mix.exs`:
 {:live_lift, "~> 0.1.0-rc.1"}
 ```
 
-Define your view in Elixir:
+Use an ordinary stateful LiveComponent and mark a compatible handler:
 
 ```elixir
-defmodule MyApp.ScoreView do
-  use LiveLift.Client
+defmodule MyAppWeb.Counter do
+  use Phoenix.LiveComponent
+  use LiveLift
 
-  client_template """
-  <section>
-    <h2>Score</h2>
-    <button type="button" $click="retreat">−</button>
-    <output class="{@tone}">{@score}</output>
-    <button type="button" $click="advance">+</button>
-    <p $show="milestone">Milestone reached</p>
-    <button type="button" $server="save_score">Save</button>
-  </section>
-  """
+  def render(assigns) do
+    ~H"""
+    <button phx-click="inc" phx-target={@myself}>{@count}</button>
+    """
+  end
 
-  defclient advance(state), do: %{
-    state |
-    score: state.score + state.step,
-    tone: if(state.score + state.step == 12, do: "milestone", else: "regular"),
-    milestone: state.score + state.step == 12
-  }
-  defclient retreat(state), do: %{
-    state |
-    score: state.score - state.step,
-    tone: "regular", milestone: false
-  }
+  @client true
+  def handle_event("inc", _params, socket) do
+    {:noreply, update(socket, :count, &(&1 + 1))}
+  end
 end
 ```
 
@@ -87,32 +77,28 @@ let liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
-The compile task discovers client views in your app and generates one registry.
-Ignore the two generated JavaScript files in Git. Mount the view inside a
-LiveView template:
+The compile task discovers opted-in components in your app and generates one
+registry. Ignore the generated JavaScript files in Git. Mount the component in
+a LiveView template:
 
 ```heex
-<LiveLift.View.island
-  id="score"
-  module={MyApp.ScoreView}
-  state={%{score: 10, step: 2, tone: "regular", milestone: false}}
-/>
+<.live_component module={MyAppWeb.Counter} id="counter" count={10} />
 ```
 
-The island needs a unique `id`. Its state is local after mount and resets if
-the island remounts. LiveLift creates a `phx-update="ignore"` boundary so
-LiveView keeps ownership of the surrounding page. `$server="event_name"`
-sends the current local state to the enclosing LiveView's `handle_event/3`.
-Your handler must validate that payload before using it. The demo shows the
-round trip.
+LiveLift creates the `phx-update="ignore"` boundary for the opted-in component.
+Marked events predict locally, travel through the normal LiveView channel, and
+converge on the server result. Unmarked events stay on the server. The
+[native component guide](docs/native-livecomponent.md) describes the current
+language subset and compile-time failures. Use `mix live_lift.audit` before
+opting in a larger component.
 
 For server-owned fields and versioned responses, see the [sync contract](docs/sync.md).
 
-The current language includes text and attribute bindings, keyed lists,
-conditional nodes, events with typed parameters, and presentation components
-defined by the app. See the [supported client language](docs/language.md) for
-exact syntax, action expressions, and validation rules. Elixir modules and
-templates outside this subset are not automatically compiled for the browser.
+The older `LiveLift.Client`, `client_template`, `defclient`, `$click`, and
+`LiveLift.View.island` API still runs for existing apps and now emits migration
+warnings. Its syntax and limits remain in the [integration guide](docs/phoenix-integration.md).
+Elixir modules and templates outside the supported subset are not automatically
+compiled for the browser.
 
 For architecture, differences from Hologram, and limitations, see
 [the comparison](docs/comparison.md).
