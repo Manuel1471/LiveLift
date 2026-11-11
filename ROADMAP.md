@@ -129,7 +129,8 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 - [x] Deprecar `client_template`, `defclient`, `$click` y `island` con avisos
   al usar `LiveLift.Client` o llamar `LiveLift.View.island/1`.
 - [ ] `mix live_lift.migrate` para convertir la API anterior. Ya convierte
-  plantillas literales con `$click`, `$input` de texto y acciones de actualización de mapa,
+  plantillas literales con `$click`, `$input` de texto y textarea, `$change` de select
+  y acciones de actualización de mapa,
   incluso varios campos que leen el estado original, a un componente nuevo.
   Rechaza explícitamente el resto; faltan eventos de servidor y formularios complejos
   antes de cerrar esta tarea.

@@ -49,16 +49,17 @@ mix live_lift.migrate lib/my_app/score_view.ex \
   --output lib/my_app_web/components/score_component.ex
 ```
 
-The command converts a literal template with `$click` buttons, text `$input`
-controls and `defclient` actions that update state fields with a map update. A
+The command converts a literal template with `$click` buttons, text or textarea
+`$input`, select `$change`, and `defclient` actions that update state fields with a map update. A
 text input's `event.value` becomes the ordinary flat `params["value"]` from
-`phx-change`; the generated control gets `name="value"` when needed. It parses
+`phx-change`; the generated control gets `name="value"` when needed. Select
+options can keep `selected={@field}`. It parses
 the template and checks the generated handler against the native compiler
 before writing. It leaves the original file untouched and refuses to overwrite
 the destination. Review the new component, pass its initial fields as assigns,
 and replace the old `<LiveLift.View.island>` mount with `<.live_component>`.
 Multiple fields are converted together; each expression reads the original
-`socket.assigns`, matching a legacy map update. `$server`, non-text controls,
+`socket.assigns`, matching a legacy map update. `$server`, checkbox and radio controls,
 list directives, conditional action bodies, extra module
 declarations, and other constructs stop with a source-located error; they need
 manual migration because their state or event semantics differ. The command

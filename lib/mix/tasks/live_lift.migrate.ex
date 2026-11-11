@@ -6,7 +6,7 @@ defmodule Mix.Tasks.LiveLift.Migrate do
         --module MyAppWeb.Counter --output lib/my_app_web/components/counter.ex
 
   The command accepts literal `client_template` markup with `$click` buttons,
-  text `$input` controls, and `defclient` map updates. It rejects
+  text `$input` controls, select `$change` controls, and `defclient` map updates. It rejects
   other forms with a source location rather than generating a component with
   changed behavior. Mount the generated component in place of the old island
   after reviewing its assigns and server event handling.
@@ -233,16 +233,18 @@ defmodule Mix.Tasks.LiveLift.Migrate do
     end
 
     input? = Enum.any?(attrs, fn {name, _, _} -> name == "$input" end)
+    change? = Enum.any?(attrs, fn {name, _, _} -> name == "$change" end)
 
-    if input? do
+    if input? or change? do
       type =
         Enum.find_value(attrs, fn
           {"type", {:string, value, _}, _} -> value
           _ -> nil
         end)
 
-      unless tag == "input" and type in [nil, "text"] do
-        Mix.raise("#{file}:1: $input migration requires a text input")
+      unless (input? and ((tag == "input" and type in [nil, "text"]) or tag == "textarea")) or
+               (change? and tag == "select") do
+        Mix.raise("#{file}:1: $input/$change migration requires a text input, textarea or select")
       end
 
       case Enum.find(attrs, fn {name, _, _} -> name == "name" end) do
@@ -253,19 +255,19 @@ defmodule Mix.Tasks.LiveLift.Migrate do
           :ok
 
         {"name", _, meta} ->
-          Mix.raise("#{file}:#{meta.line}: $input requires name=\"value\" for migration")
+          Mix.raise("#{file}:#{meta.line}: $input/$change requires name=\"value\" for migration")
       end
     end
 
     rendered = Enum.map_join(attrs, &render_attr(&1, file, actions))
 
     target =
-      if Enum.any?(attrs, fn {name, _, _} -> name in ["$click", "$input"] end),
+      if Enum.any?(attrs, fn {name, _, _} -> name in ["$click", "$input", "$change"] end),
         do: " phx-target={@myself}",
         else: ""
 
     input_name =
-      if input? and not Enum.any?(attrs, fn {name, _, _} -> name == "name" end),
+      if (input? or change?) and not Enum.any?(attrs, fn {name, _, _} -> name == "name" end),
         do: " name=\"value\"",
         else: ""
 
@@ -285,6 +287,17 @@ defmodule Mix.Tasks.LiveLift.Migrate do
 
     " phx-change=\"#{event}\""
   end
+
+  defp render_attr({"$change", {:string, event, _}, meta}, file, actions) do
+    unless Enum.any?(actions, fn {name, _, uses_params?} -> name == event and uses_params? end),
+      do: Mix.raise("#{file}:#{meta.line}: $change requires a two-argument action #{event}")
+
+    " phx-change=\"#{event}\""
+  end
+
+  defp render_attr({name, {:expr, source, _}, _meta}, _file, _actions)
+       when name in ["checked", "selected"],
+       do: " #{name}={#{source}}"
 
   defp render_attr({name, {:string, value, _}, meta}, file, _names) do
     if String.starts_with?(name, ["$", ":"]) do

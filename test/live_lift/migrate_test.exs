@@ -141,6 +141,55 @@ defmodule LiveLift.MigrateTest do
     end
   end
 
+  test "migrates select changes and textarea input with browser parity" do
+    root = temp_root()
+    source = Path.join(root, "legacy.ex")
+    target = Path.join(root, "form.ex")
+    script = Path.join(root, "form.mjs")
+    module = "MigratedForm#{System.unique_integer([:positive])}"
+
+    File.write!(source, """
+    defmodule LegacyForm do
+      use LiveLift.Client
+      client_template("<select $change='choose'><option value='a' selected={@first}>A</option><option value='b' selected={@second}>B</option></select><textarea $input='edit'>{@note}</textarea>")
+      defclient choose(state, event), do: %{state | first: event.value == "a", second: event.value == "b"}
+      defclient edit(state, event), do: %{state | note: event.value}
+    end
+    """)
+
+    try do
+      Mix.Tasks.LiveLift.Migrate.run([source, "--module", module, "--output", target])
+      output = File.read!(target)
+      assert output =~ "phx-change=\"choose\""
+      assert output =~ "phx-change=\"edit\""
+      assert output =~ "selected={@first}"
+
+      [{compiled, _}] = Code.compile_file(target)
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{id: "form", first: true, second: false, note: "A", __changed__: %{}}
+      }
+
+      assert {:reply, %{state: %{first: false, second: true, note: "A"}}, _} =
+               compiled.handle_event("choose", %{"value" => "b"}, socket)
+
+      File.write!(
+        script,
+        LiveLift.Client.Compiler.compile_module(compiled) <>
+          "\nconsole.log(JSON.stringify({choose: actions.choose({first: true, second: false, note: 'A'}, {params: {value: 'b'}}), edit: actions.edit({first: true, second: false, note: 'A'}, {params: {value: 'B'}})}));\n"
+      )
+
+      {result, 0} = System.cmd("node", [script])
+
+      assert Jason.decode!(result) == %{
+               "choose" => %{"first" => false, "second" => true, "note" => "A"},
+               "edit" => %{"first" => true, "second" => false, "note" => "B"}
+             }
+    after
+      File.rm_rf!(root)
+    end
+  end
+
   defp temp_root do
     root = Path.join(System.tmp_dir!(), "live_lift_migrate_#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
