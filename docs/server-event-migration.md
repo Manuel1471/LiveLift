@@ -37,3 +37,6 @@ The demo's native counter has a server-only `save` handler after a marked
 optimistic `inc` handler. Its server-only counterpart has the same markup and
 handler bodies. The browser test exercises both modes in Chromium, Firefox,
 and WebKit and verifies that `save` reads the authoritative count.
+Run `sh test/integration/phoenix_consumer.sh` from the LiveLift repository to
+repeat the local integration check in a fresh Phoenix app. The script uses a
+temporary path dependency because the Hex release is published separately.

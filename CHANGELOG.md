@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Verify the local installer, `$server` migration boundary, server-authoritative save, parity task, and both asset aliases in a fresh Phoenix consumer app.
 - Show a server-authoritative save after an optimistic native action in the demo, tested in both component modes across three browsers.
 - Document why legacy `$server` cannot be replaced by `phx-click` alone and give a source-located migration error and manual guide.
 - Migrate bounded nested legacy `$submit` form names when `event.params` reads the matching nested path; reject mismatched paths before writing.
