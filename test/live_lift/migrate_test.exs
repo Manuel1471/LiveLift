@@ -101,6 +101,46 @@ defmodule LiveLift.MigrateTest do
     end
   end
 
+  test "migrates a text input event with flat value params" do
+    root = temp_root()
+    source = Path.join(root, "legacy.ex")
+    target = Path.join(root, "draft.ex")
+    script = Path.join(root, "draft.mjs")
+    module = "MigratedDraft#{System.unique_integer([:positive])}"
+
+    File.write!(source, """
+    defmodule LegacyDraft do
+      use LiveLift.Client
+      client_template("<input type='text' value='{@draft}' $input='set_draft' /><output>{@draft}</output>")
+      defclient set_draft(state, event), do: %{state | draft: event.value}
+    end
+    """)
+
+    try do
+      Mix.Tasks.LiveLift.Migrate.run([source, "--module", module, "--output", target])
+      output = File.read!(target)
+      assert output =~ "phx-change=\"set_draft\""
+      assert output =~ "name=\"value\" phx-target={@myself}"
+
+      [{compiled, _}] = Code.compile_file(target)
+      socket = %Phoenix.LiveView.Socket{assigns: %{id: "draft", draft: "", __changed__: %{}}}
+
+      assert {:reply, %{state: %{draft: "Hi"}}, _} =
+               compiled.handle_event("set_draft", %{"value" => "Hi"}, socket)
+
+      File.write!(
+        script,
+        LiveLift.Client.Compiler.compile_module(compiled) <>
+          "\nconsole.log(JSON.stringify(actions.set_draft({draft: ''}, {params: {value: 'Hi'}})));\n"
+      )
+
+      {result, 0} = System.cmd("node", [script])
+      assert Jason.decode!(result) == %{"draft" => "Hi"}
+    after
+      File.rm_rf!(root)
+    end
+  end
+
   defp temp_root do
     root = Path.join(System.tmp_dir!(), "live_lift_migrate_#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)

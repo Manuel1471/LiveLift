@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Migrate legacy text `$input` actions using `event.value` to native `phx-change` with flat `params["value"]`, with Elixir/Node parity coverage.
 - Add a bounded HEEx template parser fallback when LiveView's private parser is unavailable or changes its result shape; compare its nodes against the current parser on demo templates.
 - Report an actionable source-located error when a LiveView upgrade removes or changes the private HEEx parser contract.
 - Make the Phoenix asset installer repair partially wired aliases and reject an unsupported hook layout before changing any files.

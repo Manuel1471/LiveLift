@@ -5,8 +5,8 @@ defmodule Mix.Tasks.LiveLift.Migrate do
       mix live_lift.migrate lib/my_app/counter_view.ex \
         --module MyAppWeb.Counter --output lib/my_app_web/components/counter.ex
 
-  The command accepts literal `client_template` markup with `$click` buttons
-  and one-argument `defclient` actions that update map fields. It rejects
+  The command accepts literal `client_template` markup with `$click` buttons,
+  text `$input` controls, and `defclient` map updates. It rejects
   other forms with a source location rather than generating a component with
   changed behavior. Mount the generated component in place of the old island
   after reviewing its assigns and server event handling.
@@ -61,7 +61,7 @@ defmodule Mix.Tasks.LiveLift.Migrate do
     heex =
       template
       |> Parser.parse!(source_file)
-      |> Enum.map_join(&render_node(&1, source_file, names))
+      |> Enum.map_join(&render_node(&1, source_file, actions))
 
     LiveLift.Template.compile_liveview(heex, source_file, names)
 
@@ -138,16 +138,33 @@ defmodule Mix.Tasks.LiveLift.Migrate do
 
   defp action({:defclient, meta, [{name, _, [{state, _, _}]}, [do: body]]}, file)
        when is_atom(name) and is_atom(state) do
+    map_action(name, state, nil, body, file, meta[:line])
+  end
+
+  defp action({:defclient, meta, [{name, _, [{state, _, _}, {event, _, _}]}, [do: body]]}, file)
+       when is_atom(name) and is_atom(state) and is_atom(event) do
+    map_action(name, state, event, body, file, meta[:line])
+  end
+
+  defp action({:defclient, meta, _}, file),
+    do:
+      Mix.raise(
+        "#{file}:#{meta[:line]}: defclient requires one state argument and optional event argument for automatic migration"
+      )
+
+  defp action(_other, _file), do: []
+
+  defp map_action(name, state, event, body, file, line) do
     case body do
       {:%{}, _, [{:|, _, [{^state, _, _}, updates]}]} when is_list(updates) ->
         unless updates != [] and Enum.all?(updates, fn {field, _} -> is_atom(field) end) do
-          Mix.raise("#{file}:#{meta[:line]}: #{name} requires literal atom fields")
+          Mix.raise("#{file}:#{line}: #{name} requires literal atom fields")
         end
 
         fields = Enum.map(updates, &elem(&1, 0))
 
         if length(fields) != length(Enum.uniq(fields)),
-          do: Mix.raise("#{file}:#{meta[:line]}: #{name} updates the same field twice")
+          do: Mix.raise("#{file}:#{line}: #{name} updates the same field twice")
 
         socket = {:socket, [], nil}
 
@@ -159,6 +176,9 @@ defmodule Mix.Tasks.LiveLift.Migrate do
                   {{:., dot_meta, [{{:., [], [socket, :assigns]}, [no_parens: true], []}, key]},
                    call_meta, []}
 
+                {{:., _, [{^event, _, _}, :value]}, _, []} when not is_nil(event) ->
+                  Code.string_to_quoted!(~s(params["value"]))
+
                 node ->
                   node
               end)
@@ -166,67 +186,104 @@ defmodule Mix.Tasks.LiveLift.Migrate do
             {:assign, [], [source, field, rewritten]}
           end)
 
+        if event != nil and variable_used?(assignment, event) do
+          Mix.raise(
+            "#{file}:#{line}: #{name} uses event data other than event.value; migrate this action manually"
+          )
+        end
+
+        params = if event != nil, do: {:params, [], nil}, else: {:_params, [], nil}
+
         LiveLift.Component.Compiler.action!(
           Atom.to_string(name),
-          {:_params, [], nil},
+          params,
           socket,
           [do: {:{}, [], [:noreply, assignment]}],
           file,
-          meta[:line]
+          line
         )
 
-        [{Atom.to_string(name), assignment}]
+        [{Atom.to_string(name), assignment, event != nil}]
 
       _ ->
         Mix.raise(
-          "#{file}:#{meta[:line]}: #{name} must return a map update of state; migrate this action manually"
+          "#{file}:#{line}: #{name} must return a map update of state; migrate this action manually"
         )
     end
   end
 
-  defp action({:defclient, meta, _}, file),
-    do:
-      Mix.raise(
-        "#{file}:#{meta[:line]}: defclient requires one state argument for automatic migration"
-      )
+  defp render_node({:text, value, _}, _file, _actions), do: value
+  defp render_node({:body_expr, source, _}, _file, _actions), do: "{#{source}}"
 
-  defp action(_other, _file), do: []
-
-  defp render_node({:text, value, _}, _file, _names), do: value
-  defp render_node({:body_expr, source, _}, _file, _names), do: "{#{source}}"
-
-  defp render_node({:block, :tag, tag, attrs, children, _meta, _close}, file, names) do
-    open = render_open(tag, attrs, file, names)
-    open <> Enum.map_join(children, &render_node(&1, file, names)) <> "</#{tag}>"
+  defp render_node({:block, :tag, tag, attrs, children, _meta, _close}, file, actions) do
+    open = render_open(tag, attrs, file, actions)
+    open <> Enum.map_join(children, &render_node(&1, file, actions)) <> "</#{tag}>"
   end
 
-  defp render_node({:self_close, :tag, tag, attrs, _meta}, file, names),
-    do: render_open(tag, attrs, file, names, true)
+  defp render_node({:self_close, :tag, tag, attrs, _meta}, file, actions),
+    do: render_open(tag, attrs, file, actions, true)
 
   defp render_node(node, file, _names),
     do:
       Mix.raise("#{file}:1: unsupported legacy template node #{inspect(node)}; migrate manually")
 
-  defp render_open(tag, attrs, file, names, self_close \\ false) do
+  defp render_open(tag, attrs, file, actions, self_close \\ false) do
     if Enum.any?(attrs, fn {name, _, _} -> name == "$click" end) and tag != "button" do
       Mix.raise("#{file}:1: $click migration requires a button")
     end
 
-    rendered = Enum.map_join(attrs, &render_attr(&1, file, names))
+    input? = Enum.any?(attrs, fn {name, _, _} -> name == "$input" end)
+
+    if input? do
+      type =
+        Enum.find_value(attrs, fn
+          {"type", {:string, value, _}, _} -> value
+          _ -> nil
+        end)
+
+      unless tag == "input" and type in [nil, "text"] do
+        Mix.raise("#{file}:1: $input migration requires a text input")
+      end
+
+      case Enum.find(attrs, fn {name, _, _} -> name == "name" end) do
+        nil ->
+          :ok
+
+        {"name", {:string, "value", _}, _} ->
+          :ok
+
+        {"name", _, meta} ->
+          Mix.raise("#{file}:#{meta.line}: $input requires name=\"value\" for migration")
+      end
+    end
+
+    rendered = Enum.map_join(attrs, &render_attr(&1, file, actions))
 
     target =
-      if Enum.any?(attrs, fn {name, _, _} -> name == "$click" end),
+      if Enum.any?(attrs, fn {name, _, _} -> name in ["$click", "$input"] end),
         do: " phx-target={@myself}",
         else: ""
 
-    "<#{tag}#{rendered}#{target}" <> if(self_close, do: " />", else: ">")
+    input_name =
+      if input? and not Enum.any?(attrs, fn {name, _, _} -> name == "name" end),
+        do: " name=\"value\"",
+        else: ""
+
+    "<#{tag}#{rendered}#{input_name}#{target}" <> if(self_close, do: " />", else: ">")
   end
 
-  defp render_attr({"$click", {:string, event, _}, meta}, file, names) do
-    unless event in names,
-      do: Mix.raise("#{file}:#{meta.line}: $click references missing action #{event}")
+  defp render_attr({"$click", {:string, event, _}, meta}, file, actions) do
+    unless Enum.any?(actions, fn {name, _, uses_params?} -> name == event and not uses_params? end),
+           do: Mix.raise("#{file}:#{meta.line}: $click requires a one-argument action #{event}")
 
     " phx-click=\"#{event}\""
+  end
+
+  defp render_attr({"$input", {:string, event, _}, meta}, file, actions) do
+    unless Enum.any?(actions, fn {name, _, uses_params?} -> name == event and uses_params? end),
+      do: Mix.raise("#{file}:#{meta.line}: $input requires a two-argument action #{event}")
+
+    " phx-change=\"#{event}\""
   end
 
   defp render_attr({name, {:string, value, _}, meta}, file, _names) do
@@ -249,14 +306,29 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   defp render_attr({name, _value, meta}, file, _names),
     do: Mix.raise("#{file}:#{meta.line}: #{name} needs manual migration")
 
-  defp handler({name, assignment}) do
+  defp handler({name, assignment, uses_params?}) do
+    params = if uses_params?, do: "params", else: "_params"
+
     """
     @client true
-    def handle_event(#{inspect(name)}, _params, socket) do
+    def handle_event(#{inspect(name)}, #{params}, socket) do
       {:noreply, #{Macro.to_string(assignment)}}
     end
     """
     |> String.trim_trailing()
+  end
+
+  defp variable_used?(ast, name) do
+    {_ast, found} =
+      Macro.prewalk(ast, false, fn
+        {^name, _, context} = node, _found when is_atom(context) or is_nil(context) ->
+          {node, true}
+
+        node, found ->
+          {node, found}
+      end)
+
+    found
   end
 
   defp indent(string, count) do
