@@ -2,7 +2,7 @@ defmodule LiveLiftDemoWeb.NativeFormLive do
   use LiveLiftDemoWeb, :live_view
 
   def mount(_params, _session, socket),
-    do: {:ok, assign(socket, draft: nil, saved: "", active: false)}
+    do: {:ok, assign(socket, draft: nil, saved: "", active: false, invalid: false)}
 
   def render(assigns) do
     ~H"""
@@ -14,6 +14,7 @@ defmodule LiveLiftDemoWeb.NativeFormLive do
         draft={@draft}
         saved={@saved}
         active={@active}
+        invalid={@invalid}
       />
     </main>
     """

@@ -11,10 +11,11 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
     >
       <label>Draft <input name="value" value={@draft} phx-change="draft" phx-target={@myself} /></label>
       <output aria-live="polite">{@draft}</output>
-      <form phx-submit="save" phx-target={@myself}>
+      <form phx-change="validate" phx-submit="save" phx-target={@myself}>
         <label>Note <input name="profile[note]" /></label>
         <button type="submit">Save note</button>
       </form>
+      <p :if={@invalid} id="note-error" role="alert">Note must have at least 3 characters.</p>
       <p>Saved: {@saved}</p>
     </section>
     """
@@ -26,7 +27,33 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
   end
 
   @client true
+  def handle_event("validate", params, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :invalid,
+       String.length(String.trim(params["profile"]["note"])) < 3
+     )}
+  end
+
+  @client true
   def handle_event("save", params, socket) do
-    {:noreply, socket |> assign(:saved, params["profile"]["note"]) |> assign(:active, true)}
+    {:noreply,
+     socket
+     |> assign(:invalid, String.length(String.trim(params["profile"]["note"])) < 3)
+     |> assign(
+       :saved,
+       if(String.length(String.trim(params["profile"]["note"])) < 3,
+         do: socket.assigns.saved,
+         else: params["profile"]["note"]
+       )
+     )
+     |> assign(
+       :active,
+       if(String.length(String.trim(params["profile"]["note"])) < 3,
+         do: socket.assigns.active,
+         else: true
+       )
+     )}
   end
 end

@@ -87,6 +87,11 @@ Marked forms accept unique, safe map names such as `profile[note]`, with at most
 four segments. Arrays (`items[]`), conflicting names (`profile` alongside
 `profile[note]`), dynamic names, checkbox, radio and file
 change events remain server only until their value semantics are covered.
+The demo's native form uses `phx-change="validate"` and `phx-submit="save"` on
+the same form. Both handlers read `params["profile"]["note"]`; the change
+handler shows a local error immediately and the save handler enforces the same
+three-grapheme minimum on the server. The browser keeps the input value and
+reconciles with the authoritative reply.
 The browser caps pending marked actions at 100 and rejects unsafe parameter
 names before changing local state. While disconnected, it keeps up to 100 new
 actions in memory for at most 30 seconds. It replays those actions in order

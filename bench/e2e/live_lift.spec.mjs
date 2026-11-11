@@ -291,12 +291,33 @@ test("native phx-change and phx-submit use the same params on client and server"
   await expect(root.getByRole("textbox", {name: "Draft"})).toHaveAttribute("value", "Client draft");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await root.getByRole("textbox", {name: "Note"}).fill("Saved locally");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
   await root.getByRole("button", {name: "Save note"}).click();
   await expect(root.locator("p")).toHaveText("Saved: Saved locally", {timeout: 200});
   await expect(root.locator("section")).toHaveAttribute("class", "native-form has-saved Client draft");
-  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
   await expect(root.locator("p")).toHaveText("Saved: Saved locally");
   await expect(root.locator("section")).toHaveAttribute("title", "Saved locally");
+});
+
+test("native form validates a nested field locally and on the server", async ({page}) => {
+  await page.goto("/native-form");
+  const root = page.locator("#native-form");
+  const note = root.getByRole("textbox", {name: "Note"});
+  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+
+  await note.fill("é");
+  await expect(root.getByRole("alert")).toHaveText("Note must have at least 3 characters.", {timeout: 200});
+  await root.getByRole("button", {name: "Save note"}).click();
+  await expect(root.locator("p").last()).toHaveText("Saved: ");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+
+  await note.fill("  Validé  ");
+  await expect(root.getByRole("alert")).toHaveCount(0, {timeout: 200});
+  await expect(note).toHaveValue("  Validé  ");
+  await root.getByRole("button", {name: "Save note"}).click();
+  await expect(root.locator("p").last()).toHaveText("Saved:   Validé  ");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "4");
 });
 
 test("100 opted-in islands keep their state and events isolated", async ({page}) => {
