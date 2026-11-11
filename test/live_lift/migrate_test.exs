@@ -190,6 +190,68 @@ defmodule LiveLift.MigrateTest do
     end
   end
 
+  test "migrates a flat submit form and rejects nested form names" do
+    root = temp_root()
+    source = Path.join(root, "legacy.ex")
+    target = Path.join(root, "submit.ex")
+    script = Path.join(root, "submit.mjs")
+    module = "MigratedSubmit#{System.unique_integer([:positive])}"
+
+    File.write!(source, """
+    defmodule LegacySubmit do
+      use LiveLift.Client
+      client_template("<form $submit='save'><input name='note' /><button type='submit'>Save</button></form><output>{@saved}</output>")
+      defclient save(state, event), do: %{state | saved: event.params.note}
+    end
+    """)
+
+    try do
+      Mix.Tasks.LiveLift.Migrate.run([source, "--module", module, "--output", target])
+      output = File.read!(target)
+      assert output =~ "phx-submit=\"save\" phx-target={@myself}"
+      assert output =~ ~s(params["note"])
+
+      [{compiled, _}] = Code.compile_file(target)
+      socket = %Phoenix.LiveView.Socket{assigns: %{id: "submit", saved: "", __changed__: %{}}}
+
+      assert {:reply, %{state: %{saved: "Hi"}}, _} =
+               compiled.handle_event("save", %{"note" => "Hi"}, socket)
+
+      File.write!(
+        script,
+        LiveLift.Client.Compiler.compile_module(compiled) <>
+          "\nconsole.log(JSON.stringify(actions.save({saved: ''}, {params: {note: 'Hi'}})));\n"
+      )
+
+      {result, 0} = System.cmd("node", [script])
+      assert Jason.decode!(result) == %{"saved" => "Hi"}
+
+      File.write!(source, """
+      defmodule LegacySubmit do
+        use LiveLift.Client
+        client_template("<form $submit='save'><input name='user[note]' /></form>")
+        defclient save(state, event), do: %{state | saved: event.params.note}
+      end
+      """)
+
+      nested_target = Path.join(root, "nested.ex")
+
+      assert_raise ArgumentError, ~r/flat safe input names/, fn ->
+        Mix.Tasks.LiveLift.Migrate.run([
+          source,
+          "--module",
+          module,
+          "--output",
+          nested_target
+        ])
+      end
+
+      refute File.exists?(nested_target)
+    after
+      File.rm_rf!(root)
+    end
+  end
+
   defp temp_root do
     root = Path.join(System.tmp_dir!(), "live_lift_migrate_#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)

@@ -6,7 +6,8 @@ defmodule Mix.Tasks.LiveLift.Migrate do
         --module MyAppWeb.Counter --output lib/my_app_web/components/counter.ex
 
   The command accepts literal `client_template` markup with `$click` buttons,
-  text `$input` controls, select `$change` controls, and `defclient` map updates. It rejects
+  text `$input` controls, select `$change` controls, flat `$submit` forms, and
+  `defclient` map updates. It rejects
   other forms with a source location rather than generating a component with
   changed behavior. Mount the generated component in place of the old island
   after reviewing its assigns and server event handling.
@@ -154,6 +155,25 @@ defmodule Mix.Tasks.LiveLift.Migrate do
 
   defp action(_other, _file), do: []
 
+  defp event_modes(_expression, nil), do: []
+
+  defp event_modes(expression, event) do
+    {_expression, modes} =
+      Macro.prewalk(expression, [], fn
+        {{:., _, [{^event, _, _}, :value]}, _, []} = node, modes ->
+          {node, [:value | modes]}
+
+        {{:., _, [{{:., _, [{^event, _, _}, :params]}, _, []}, key]}, _, []} = node, modes
+        when is_atom(key) ->
+          {node, [:fields | modes]}
+
+        node, modes ->
+          {node, modes}
+      end)
+
+    modes
+  end
+
   defp map_action(name, state, event, body, file, line) do
     case body do
       {:%{}, _, [{:|, _, [{^state, _, _}, updates]}]} when is_list(updates) ->
@@ -166,6 +186,18 @@ defmodule Mix.Tasks.LiveLift.Migrate do
         if length(fields) != length(Enum.uniq(fields)),
           do: Mix.raise("#{file}:#{line}: #{name} updates the same field twice")
 
+        modes =
+          updates
+          |> Enum.flat_map(fn {_, expression} -> event_modes(expression, event) end)
+          |> Enum.uniq()
+
+        if length(modes) > 1,
+          do:
+            Mix.raise(
+              "#{file}:#{line}: #{name} mixes event.value and event.params; migrate this action manually"
+            )
+
+        mode = List.first(modes) || :none
         socket = {:socket, [], nil}
 
         assignment =
@@ -179,6 +211,10 @@ defmodule Mix.Tasks.LiveLift.Migrate do
                 {{:., _, [{^event, _, _}, :value]}, _, []} when not is_nil(event) ->
                   Code.string_to_quoted!(~s(params["value"]))
 
+                {{:., _, [{{:., _, [{^event, _, _}, :params]}, _, []}, key]}, _, []}
+                when not is_nil(event) and is_atom(key) ->
+                  Code.string_to_quoted!(~s(params[#{inspect(Atom.to_string(key))}]))
+
                 node ->
                   node
               end)
@@ -188,11 +224,11 @@ defmodule Mix.Tasks.LiveLift.Migrate do
 
         if event != nil and variable_used?(assignment, event) do
           Mix.raise(
-            "#{file}:#{line}: #{name} uses event data other than event.value; migrate this action manually"
+            "#{file}:#{line}: #{name} uses unsupported event data; migrate this action manually"
           )
         end
 
-        params = if event != nil, do: {:params, [], nil}, else: {:_params, [], nil}
+        params = if mode == :none, do: {:_params, [], nil}, else: {:params, [], nil}
 
         LiveLift.Component.Compiler.action!(
           Atom.to_string(name),
@@ -203,7 +239,7 @@ defmodule Mix.Tasks.LiveLift.Migrate do
           line
         )
 
-        [{Atom.to_string(name), assignment, event != nil}]
+        [{Atom.to_string(name), assignment, mode}]
 
       _ ->
         Mix.raise(
@@ -230,6 +266,10 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   defp render_open(tag, attrs, file, actions, self_close \\ false) do
     if Enum.any?(attrs, fn {name, _, _} -> name == "$click" end) and tag != "button" do
       Mix.raise("#{file}:1: $click migration requires a button")
+    end
+
+    if Enum.any?(attrs, fn {name, _, _} -> name == "$submit" end) and tag != "form" do
+      Mix.raise("#{file}:1: $submit migration requires a form")
     end
 
     input? = Enum.any?(attrs, fn {name, _, _} -> name == "$input" end)
@@ -262,9 +302,11 @@ defmodule Mix.Tasks.LiveLift.Migrate do
     rendered = Enum.map_join(attrs, &render_attr(&1, file, actions))
 
     target =
-      if Enum.any?(attrs, fn {name, _, _} -> name in ["$click", "$input", "$change"] end),
-        do: " phx-target={@myself}",
-        else: ""
+      if Enum.any?(attrs, fn {name, _, _} ->
+           name in ["$click", "$input", "$change", "$submit"]
+         end),
+         do: " phx-target={@myself}",
+         else: ""
 
     input_name =
       if (input? or change?) and not Enum.any?(attrs, fn {name, _, _} -> name == "name" end),
@@ -275,24 +317,34 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   end
 
   defp render_attr({"$click", {:string, event, _}, meta}, file, actions) do
-    unless Enum.any?(actions, fn {name, _, uses_params?} -> name == event and not uses_params? end),
-           do: Mix.raise("#{file}:#{meta.line}: $click requires a one-argument action #{event}")
+    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode == :none end),
+      do: Mix.raise("#{file}:#{meta.line}: $click requires a one-argument action #{event}")
 
     " phx-click=\"#{event}\""
   end
 
   defp render_attr({"$input", {:string, event, _}, meta}, file, actions) do
-    unless Enum.any?(actions, fn {name, _, uses_params?} -> name == event and uses_params? end),
-      do: Mix.raise("#{file}:#{meta.line}: $input requires a two-argument action #{event}")
+    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode in [:value, :none] end),
+           do: Mix.raise("#{file}:#{meta.line}: $input requires a two-argument action #{event}")
 
     " phx-change=\"#{event}\""
   end
 
   defp render_attr({"$change", {:string, event, _}, meta}, file, actions) do
-    unless Enum.any?(actions, fn {name, _, uses_params?} -> name == event and uses_params? end),
-      do: Mix.raise("#{file}:#{meta.line}: $change requires a two-argument action #{event}")
+    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode in [:value, :none] end),
+           do: Mix.raise("#{file}:#{meta.line}: $change requires a two-argument action #{event}")
 
     " phx-change=\"#{event}\""
+  end
+
+  defp render_attr({"$submit", {:string, event, _}, meta}, file, actions) do
+    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode in [:fields, :none] end),
+           do:
+             Mix.raise(
+               "#{file}:#{meta.line}: $submit requires an action reading event.params fields"
+             )
+
+    " phx-submit=\"#{event}\""
   end
 
   defp render_attr({name, {:expr, source, _}, _meta}, _file, _actions)
@@ -319,8 +371,8 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   defp render_attr({name, _value, meta}, file, _names),
     do: Mix.raise("#{file}:#{meta.line}: #{name} needs manual migration")
 
-  defp handler({name, assignment, uses_params?}) do
-    params = if uses_params?, do: "params", else: "_params"
+  defp handler({name, assignment, mode}) do
+    params = if mode == :none, do: "_params", else: "params"
 
     """
     @client true

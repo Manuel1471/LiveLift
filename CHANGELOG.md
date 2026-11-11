@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Migrate flat legacy `$submit` forms using `event.params.field` to native `phx-submit` handlers, rejecting nested names and mismatched event access.
 - Migrate legacy select `$change` and textarea `$input` actions to native `phx-change`, preserving selected bindings and checking Elixir/Node results.
 - Migrate legacy text `$input` actions using `event.value` to native `phx-change` with flat `params["value"]`, with Elixir/Node parity coverage.
 - Add a bounded HEEx template parser fallback when LiveView's private parser is unavailable or changes its result shape; compare its nodes against the current parser on demo templates.

@@ -130,9 +130,9 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
   al usar `LiveLift.Client` o llamar `LiveLift.View.island/1`.
 - [ ] `mix live_lift.migrate` para convertir la API anterior. Ya convierte
   plantillas literales con `$click`, `$input` de texto y textarea, `$change` de select
-  y acciones de actualización de mapa,
+  y `$submit` de formularios planos, junto con acciones de actualización de mapa,
   incluso varios campos que leen el estado original, a un componente nuevo.
-  Rechaza explícitamente el resto; faltan eventos de servidor y formularios complejos
+  Rechaza explícitamente el resto; faltan eventos de servidor y formularios anidados
   antes de cerrar esta tarea.
 - [x] Aislar el parser interno de Phoenix tras un módulo adaptador; CI contra LiveView
   `main` (fallo permitido); parser propio de respaldo para el subconjunto
