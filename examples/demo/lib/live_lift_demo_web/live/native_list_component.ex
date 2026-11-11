@@ -9,7 +9,7 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <button type="button" phx-click="reverse" phx-target={@myself}>Reverse rows</button>
       <ul>
         <li :for={item <- @items} id={item.id}>
-          <form phx-submit="edit" phx-target={@myself}>
+          <form phx-change="edit" phx-submit="edit" phx-target={@myself}>
             <input type="hidden" name="row_id" value={item.id} />
             <label>Label <input name="label" value={item.label} /></label>
             <button type="submit">Save row</button>

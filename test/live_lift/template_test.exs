@@ -141,19 +141,25 @@ defmodule LiveLift.TemplateTest do
     end
   end
 
-  test "rejects marked form phx-change before it can diverge from LiveView" do
-    assert_raise ArgumentError,
-                 ~r/form.ex:1: @client form phx-change is not supported yet; use phx-submit/,
-                 fn ->
-                   Template.compile_liveview(
-                     ~s(<form phx-change="edit"><input name="label" /></form>),
-                     "form.ex",
-                     ["edit"]
-                   )
-                 end
+  test "compiles a flat marked form phx-change for the native hook" do
+    tree =
+      Template.compile_liveview(
+        ~s(<form phx-change="edit"><input name="row_id" value={@row_id} /><input name="label" value={@label} /></form>),
+        "form.ex",
+        ["edit"]
+      )
+
+    html =
+      tree
+      |> Template.render_server(%{row_id: "row-1", label: "<&>"})
+      |> Phoenix.HTML.safe_to_string()
+
+    assert html =~ ~s(phx-change="edit")
+    assert html =~ ~s(name="row_id" value="row-1")
+    assert html =~ ~s(name="label" value="&lt;&amp;&gt;")
 
     assert_raise ArgumentError,
-                 ~r/form.ex:1: @client form phx-change is not supported yet; use phx-submit/,
+                 ~r/form.ex:1: @client input phx-change inside a form is not supported yet; put phx-change on the form/,
                  fn ->
                    Template.compile_liveview(
                      ~s(<form><input name="label" phx-change="edit" /></form>),

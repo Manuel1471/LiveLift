@@ -44,24 +44,44 @@ test("native HEEx :for keeps the same focused row across a client reorder", asyn
   const first = root.locator('#row-1 input[name="label"]');
   await expect(root.locator("li").first()).toHaveAttribute("id", "row-1");
   await first.fill("Local draft");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await page.evaluate(() => { window.__nativeRowInput = document.querySelector('#row-1 input[name="label"]'); });
   await root.getByRole("button", {name: "Reverse rows"}).evaluate((button) => button.click());
   await expect(root.locator("li").first()).toHaveAttribute("id", "row-2");
   await expect(first).toBeFocused();
   await expect(first).toHaveValue("Local draft");
   expect(await page.evaluate(() => document.querySelector('#row-1 input[name="label"]') === window.__nativeRowInput)).toBe(true);
-  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
 });
 
-test("native list saves an edited row through a normal form submit", async ({page}) => {
+test("native list validates live form changes and saves the edited row", async ({page}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   await page.goto("/native-list");
   const root = page.locator("#native-list");
   const row = root.locator("#row-1");
   await row.getByRole("textbox", {name: "Label"}).fill("Édité <&>");
-  await row.getByRole("button", {name: "Save row"}).click();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  expect(errors).toEqual([]);
+  await expect(root.locator("li")).toHaveCount(2);
+  await row.getByRole("button", {name: "Save row"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
   await expect(row.getByRole("textbox", {name: "Label"})).toHaveValue("Édité <&>");
   await expect(root.locator("#row-2").getByRole("textbox", {name: "Label"})).toHaveValue("Two");
+  expect(errors).toEqual([]);
+});
+
+test("native form handles a change event without a preceding input event", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  const input = root.locator('#row-1 input[name="label"]');
+  await input.evaluate((field) => {
+    field.value = "Change only";
+    field.dispatchEvent(new Event("change", {bubbles: true}));
+  });
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(input).toHaveValue("Change only");
 });
 
 test("native list adds and removes rows with dynamic phx-value-id", async ({page}) => {

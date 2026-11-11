@@ -402,6 +402,7 @@ export function createClientHook(views) {
       this.optimistic = this.el.dataset.liveLiftMode === "component";
       if (serverRendered && this.optimistic) hydrateKeyedRows(this.view.template, {state: this.state}, this.el);
       if (this.optimistic) {
+        this.lastTextValues = new Map();
         this.authoritativeState = this.state;
         this.pending = [];
         this.nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
@@ -600,15 +601,41 @@ export function createClientHook(views) {
         if (!this.optimistic) return;
         const control = event.target.closest("[phx-change]");
         if (!control || !this.el.contains(control)) return;
-        if (event.type === "change" && event.target.matches('input:not([type="checkbox"]):not([type="radio"]), textarea')) return;
-        if (event.type === "input" && event.target.matches('select, input[type="checkbox"], input[type="radio"]')) return;
         const eventName = control.getAttribute("phx-change");
         if (!Object.hasOwn(this.view.actions, eventName)) return;
         event.stopImmediatePropagation();
+        const textControl = event.target.matches('input:not([type="checkbox"]):not([type="radio"]), textarea');
+        const row = event.target.closest("[data-live-lift-key]");
+        const scope = row
+          ? `${row.getAttribute("data-live-lift-node-id")}:${row.getAttribute("data-live-lift-key")}`
+          : String([...this.el.querySelectorAll("[phx-change]")].indexOf(control));
+        const changeKey = JSON.stringify([eventName, scope, event.target.name || event.target.id]);
+        // Browsers fire change after input; LiveView must not receive a second event.
+        if (event.type === "change" && textControl && this.lastTextValues.get(changeKey) === event.target.value) {
+          return;
+        }
+        if (event.type === "input" && event.target.matches('select, input[type="checkbox"], input[type="radio"]')) return;
         const params = control.tagName === "FORM"
           ? flatFormParams(control)
           : {value: control.value, ...(control.name ? {[control.name]: control.value} : {})};
-        this.sendOptimistic(control, eventName, params);
+        const textValue = textControl ? event.target.value : null;
+        const previousTextValue = textControl ? this.lastTextValues.get(changeKey) : undefined;
+        // Reconciliation can blur an input and fire change before the input render returns.
+        if (textControl) this.lastTextValues.set(changeKey, textValue);
+        try {
+          this.sendOptimistic(control, eventName, params);
+        } catch (error) {
+          if (textControl) {
+            if (previousTextValue === undefined) this.lastTextValues.delete(changeKey);
+            else this.lastTextValues.set(changeKey, previousTextValue);
+          }
+          throw error;
+        }
+        if (textControl) {
+          if (this.lastTextValues.size > 10_000) {
+            this.lastTextValues.delete(this.lastTextValues.keys().next().value);
+          }
+        }
       };
 
       this.onOptimisticSubmit = (event) => {

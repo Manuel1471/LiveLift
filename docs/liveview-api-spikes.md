@@ -62,6 +62,11 @@ handler body remain unchanged. See `bench/e2e/live_lift.spec.mjs`.
 This pass does not validate arbitrary LiveComponents. The compiler currently
 supports only the documented subset of handlers and templates; nested
 components, slots, streams, and richer forms still need separate gates.
+The later flat-form spike now passes in Chromium, Firefox, and WebKit: a
+per-row `phx-change`/`phx-submit` form edits an item through the original
+`handle_event/3`, and the hook suppresses the browser's duplicate `change`
+event before LiveView sends a second request. This validates flat text
+parameters and a keyed list; it does not validate arbitrary LiveView forms.
 
 ## Decision
 

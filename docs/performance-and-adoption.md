@@ -28,6 +28,10 @@ for the LiveLift app: +5,008 gzip over Phoenix. The runtime size budget remains
 open.
 After the native attributes and bounded offline queue, the same script measured
 172,584 raw and 52,698 gzip bytes: +5,477 gzip over the Phoenix baseline.
+A November 2026 run after flat native form changes measured 174,045 raw and
+53,093 gzip bytes with LiveLift, versus 152,732 raw and 47,221 gzip for the
+Phoenix baseline: +5,872 gzip. This measures an example app and build, not a
+fixed cost for every LiveView page.
 
 Run `bench/phoenix_event.sh` for two generated apps with the same `add`
 LiveView handler. Five runs of 200 `Phoenix.LiveViewTest.render_click/1` calls
@@ -44,6 +48,9 @@ this local workload.
 The latest run measured 42 µs for Phoenix and 56 µs with one island (median
 of five runs). The ~14 µs difference is local measurement noise and work for
 this small server event, not a general Phoenix overhead estimate.
+A later isolated run measured 42 µs for Phoenix and 55 µs with one island
+(median of five runs). The 13 µs difference is a local measurement for this
+small handler; it is not a universal server cost.
 
 Run `cd examples/demo && mix assets.build`, then `cd ../../bench && npm ci &&
 npm run dom` for a DOM-model benchmark of reversing the demo's keyed list.

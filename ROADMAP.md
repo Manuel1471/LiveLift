@@ -104,8 +104,10 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 **Listo cuando:** el mismo módulo corre en modo servidor y en modo cliente con HTML
 equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.
 La API no se anuncia como lista hasta pasar S5 en el navegador.
-S5 pasó para el contador inicial; formularios, componentes anidados y handlers
-más amplios siguen pendientes antes de cerrar toda la fase 1.
+S5 pasó para el contador inicial. Los formularios planos `phx-change` y
+`phx-submit` ya tienen una prueba adicional en tres navegadores; formularios
+anidados, componentes anidados y handlers más amplios siguen pendientes antes
+de cerrar toda la fase 1.
 
 ## Fase 2: Compilador v2 (4 a 6 semanas, v0.4)
 
@@ -136,9 +138,10 @@ los slots y componentes de función siguen pendientes.
 Los eventos nativos ya admiten `phx-value-id={item.id}` y el demo añade y quita
 filas con handlers `@client true`. Una acción que quita el botón pulsado se envía
 al servidor mediante la raíz estable del componente.
-El demo ahora edita una fila con `phx-submit` y un handler `Enum.map/2`, sin
-sintaxis de componentes nueva. `phx-change` sobre formularios sigue pendiente:
-LiveView envía metadatos de formulario que aún no entran en el contrato plano.
+El demo ahora edita una fila con un formulario plano `phx-change`/`phx-submit`
+y un handler `Enum.map/2`, sin sintaxis de componentes nueva. El hook evita que
+el segundo evento `change` genere una petición nativa duplicada con `_target`.
+Los formularios con parámetros anidados y controles especiales siguen pendientes.
 `Map.take/2` ya acepta una lista literal de claves átomo; la paridad se comprueba
 con estados generados. `Map.keys/1` y `Map.values/1` siguen pendientes por el
 orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.

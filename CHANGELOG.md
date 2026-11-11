@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Support flat native `phx-change` forms by suppressing the duplicate browser change event before LiveView handles it.
 - Benchmark 1,000 native LiveComponent rows in Chromium and bound the demo's row count for reproducible performance checks.
 - Add an editable native HEEx list with per-row `phx-submit` forms and Elixir/JavaScript handler parity.
 - Support dynamic native `phx-value-*` expressions so app-owned lists can remove rows by item ID, and keep server delivery when the clicked control disappears optimistically.
