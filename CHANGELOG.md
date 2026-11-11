@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `mix live_lift.migrate` for simple legacy click views. It generates a separate native LiveComponent, validates the converted handler, and rejects unsupported legacy forms with a source location.
 - Warn when compiling the legacy `LiveLift.Client` or `LiveLift.View.island/1` API; point users to the native LiveComponent migration guide. Existing code still runs.
 - Support flat native `phx-change` forms by suppressing the duplicate browser change event before LiveView handles it.
 - Benchmark 1,000 native LiveComponent rows in Chromium and bound the demo's row count for reproducible performance checks.

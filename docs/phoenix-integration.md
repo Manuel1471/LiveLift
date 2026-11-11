@@ -35,7 +35,28 @@ browser before shipping it.
 
 ## Existing `client_template` apps
 
-The earlier API remains available. Define a view in your own app:
+The earlier API remains available and emits migration warnings. For a simple
+legacy click view, generate a separate native component:
+
+```sh
+mix live_lift.migrate lib/my_app/score_view.ex \
+  --module MyAppWeb.ScoreComponent \
+  --output lib/my_app_web/components/score_component.ex
+```
+
+The command converts a literal template with `$click` buttons and
+one-argument `defclient` actions that update exactly one state field. It parses
+the template and checks the generated handler against the native compiler
+before writing. It leaves the original file untouched and refuses to overwrite
+the destination. Review the new component, pass its initial fields as assigns,
+and replace the old `<LiveLift.View.island>` mount with `<.live_component>`.
+`$server`, input events, list directives, multiple-field actions, extra module
+declarations, and other constructs stop with a source-located error; they need
+manual migration because their state or event semantics differ. The command
+does not alter the enclosing LiveView or its server handler.
+
+The legacy API remains useful while those views migrate. Define a view in your
+own app:
 
 ```elixir
 defmodule MyAppWeb.ScoreClient do
