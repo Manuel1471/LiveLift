@@ -45,12 +45,14 @@ mix live_lift.migrate lib/my_app/score_view.ex \
 ```
 
 The command converts a literal template with `$click` buttons and
-one-argument `defclient` actions that update exactly one state field. It parses
+one-argument `defclient` actions that update state fields with a map update. It parses
 the template and checks the generated handler against the native compiler
 before writing. It leaves the original file untouched and refuses to overwrite
 the destination. Review the new component, pass its initial fields as assigns,
 and replace the old `<LiveLift.View.island>` mount with `<.live_component>`.
-`$server`, input events, list directives, multiple-field actions, extra module
+Multiple fields are converted together; each expression reads the original
+`socket.assigns`, matching a legacy map update. `$server`, input events,
+list directives, conditional action bodies, extra module
 declarations, and other constructs stop with a source-located error; they need
 manual migration because their state or event semantics differ. The command
 does not alter the enclosing LiveView or its server handler.

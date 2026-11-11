@@ -129,9 +129,10 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 - [x] Deprecar `client_template`, `defclient`, `$click` y `island` con avisos
   al usar `LiveLift.Client` o llamar `LiveLift.View.island/1`.
 - [ ] `mix live_lift.migrate` para convertir la API anterior. Ya convierte
-  plantillas literales con `$click` y acciones de un campo a un componente
-  nuevo, con rechazo explícito del resto; faltan eventos de servidor,
-  formularios y acciones de varios campos antes de cerrar esta tarea.
+  plantillas literales con `$click` y acciones de actualización de mapa,
+  incluso varios campos que leen el estado original, a un componente nuevo.
+  Rechaza explícitamente el resto; faltan eventos de servidor y formularios
+  antes de cerrar esta tarea.
 - [ ] Aislar el parser interno de Phoenix tras un módulo adaptador; CI contra LiveView
   `main` (fallo permitido); plan B de tokenizador propio. (Adaptador y CI listos;
   tokenizador de respaldo pendiente.)

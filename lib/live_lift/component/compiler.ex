@@ -88,6 +88,8 @@ defmodule LiveLift.Component.Compiler do
       Macro.prewalk(expression, fn
         {{:., _, [{{:., _, [{^socket_name, _, _}, :assigns]}, _, []}, key]}, _, []}
         when is_atom(key) ->
+          # The lexical `socket` is the original function argument even after
+          # an earlier assign in the pipe. Read from the original client state.
           {{:., [], [{:state, [], nil}, key]}, [], []}
 
         other ->

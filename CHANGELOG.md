@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Migrate legacy actions that update multiple map fields while preserving reads from the original state; verify generated handlers against Elixir and Node.
 - Add `mix live_lift.migrate` for simple legacy click views. It generates a separate native LiveComponent, validates the converted handler, and rejects unsupported legacy forms with a source location.
 - Warn when compiling the legacy `LiveLift.Client` or `LiveLift.View.island/1` API; point users to the native LiveComponent migration guide. Existing code still runs.
 - Support flat native `phx-change` forms by suppressing the duplicate browser change event before LiveView handles it.

@@ -6,7 +6,7 @@ defmodule Mix.Tasks.LiveLift.Migrate do
         --module MyAppWeb.Counter --output lib/my_app_web/components/counter.ex
 
   The command accepts literal `client_template` markup with `$click` buttons
-  and one-argument `defclient` actions that update one map field. It rejects
+  and one-argument `defclient` actions that update map fields. It rejects
   other forms with a source location rather than generating a component with
   changed behavior. Mount the generated component in place of the old island
   after reviewing its assigns and server event handling.
@@ -139,21 +139,32 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   defp action({:defclient, meta, [{name, _, [{state, _, _}]}, [do: body]]}, file)
        when is_atom(name) and is_atom(state) do
     case body do
-      {:%{}, _, [{:|, _, [{^state, _, _}, [{field, expression}]]}]}
-      when is_atom(field) ->
-        rewritten =
-          Macro.prewalk(expression, fn
-            {{:., dot_meta, [{^state, _, _}, key]}, call_meta, []} ->
-              {{:., dot_meta,
-                [{{:., [], [{:socket, [], nil}, :assigns]}, [no_parens: true], []}, key]},
-               call_meta, []}
+      {:%{}, _, [{:|, _, [{^state, _, _}, updates]}]} when is_list(updates) ->
+        unless updates != [] and Enum.all?(updates, fn {field, _} -> is_atom(field) end) do
+          Mix.raise("#{file}:#{meta[:line]}: #{name} requires literal atom fields")
+        end
 
-            node ->
-              node
-          end)
+        fields = Enum.map(updates, &elem(&1, 0))
+
+        if length(fields) != length(Enum.uniq(fields)),
+          do: Mix.raise("#{file}:#{meta[:line]}: #{name} updates the same field twice")
 
         socket = {:socket, [], nil}
-        assignment = {:assign, [], [socket, field, rewritten]}
+
+        assignment =
+          Enum.reduce(updates, socket, fn {field, expression}, source ->
+            rewritten =
+              Macro.prewalk(expression, fn
+                {{:., dot_meta, [{^state, _, _}, key]}, call_meta, []} ->
+                  {{:., dot_meta, [{{:., [], [socket, :assigns]}, [no_parens: true], []}, key]},
+                   call_meta, []}
+
+                node ->
+                  node
+              end)
+
+            {:assign, [], [source, field, rewritten]}
+          end)
 
         LiveLift.Component.Compiler.action!(
           Atom.to_string(name),
@@ -164,11 +175,11 @@ defmodule Mix.Tasks.LiveLift.Migrate do
           meta[:line]
         )
 
-        [{Atom.to_string(name), field, rewritten}]
+        [{Atom.to_string(name), assignment}]
 
       _ ->
         Mix.raise(
-          "#{file}:#{meta[:line]}: #{name} must update exactly one state field; migrate this action manually"
+          "#{file}:#{meta[:line]}: #{name} must return a map update of state; migrate this action manually"
         )
     end
   end
@@ -238,11 +249,11 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   defp render_attr({name, _value, meta}, file, _names),
     do: Mix.raise("#{file}:#{meta.line}: #{name} needs manual migration")
 
-  defp handler({name, field, expression}) do
+  defp handler({name, assignment}) do
     """
     @client true
     def handle_event(#{inspect(name)}, _params, socket) do
-      {:noreply, assign(socket, #{inspect(field)}, #{Macro.to_string(expression)})}
+      {:noreply, #{Macro.to_string(assignment)}}
     end
     """
     |> String.trim_trailing()
