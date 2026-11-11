@@ -47,7 +47,7 @@ mix live_lift.test --cases test/live_lift_cases.json
 ```
 
 The task runs the original server handler and the generated action once with
-the supplied state and flat string parameters, then compares their returned
+the supplied state and string parameters (including bounded nested maps), then compares their returned
 client fields. A cases file is a JSON array such as:
 
 ```json
@@ -65,8 +65,9 @@ prove parity for every input or replace browser tests.
 This path currently accepts a literal `~H` render and a marked
 `handle_event/3` whose body returns `{:noreply, assign(socket, field, expr)}`
 or `{:noreply, update(socket, field, &expr)}`. The expression must fit the
-[client language subset](language.md). Marked handlers can read flat string
-keys with `params["name"]` or `Map.get(params, "name")`. The template supports
+[client language subset](language.md). Marked handlers can read string
+keys with `params["name"]`, `Map.get(params, "name")`, or nested paths such as
+`params["profile"]["note"]`. The template supports
 static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
 `phx-target={@myself}`. Native expression attributes `class={@tone}`,
 `title={@title}`, `aria-label={@label}`, `value={@value}`, and `id={item.id}` are supported.
@@ -76,13 +77,15 @@ the server-rendered row and its focused input when an unchanged item moves.
 Missing, duplicate, or invalid IDs fail instead of falling back to index keys.
 `class={["base", @active && "active"]}` also works, including `false` and
 `nil` values. Dynamic URLs and other expression attributes remain server only.
-A handler may bind flat params with
-`%{"name" => name}` and chain `socket |> assign(...) |> update(...)` operations.
-Direct nested `assign/update` calls are also accepted. Nested form params and other LiveView features remain
+A handler may bind params with
+`%{"name" => name}` or `%{"profile" => %{"note" => note}}` and chain `socket |> assign(...) |> update(...)` operations.
+Direct nested `assign/update` calls are also accepted. Other LiveView features remain
 server only. Unsupported
 forms fail during compilation with a source location and a suggestion to keep
 that handler on the server.
-Marked forms require unique, flat, safe input names; checkbox, radio and file
+Marked forms accept unique, safe map names such as `profile[note]`, with at most
+four segments. Arrays (`items[]`), conflicting names (`profile` alongside
+`profile[note]`), dynamic names, checkbox, radio and file
 change events remain server only until their value semantics are covered.
 The browser caps pending marked actions at 100 and rejects unsafe parameter
 names before changing local state. While disconnected, it keeps up to 100 new
@@ -93,7 +96,8 @@ reached the server.
 The server records the last acknowledged action sequence on the component
 socket and returns the current snapshot for duplicate deliveries without
 running the marked handler twice.
-Optimistic events accept at most 64 flat string parameters and 64 KiB of
+Optimistic events accept at most 64 string leaf parameters, nested to four
+segments, and 64 KiB of
 combined UTF-8 key/value content. The browser checks before predicting; the
 server checks before invoking the marked handler. State limits are documented
 in [the language contract](language.md).

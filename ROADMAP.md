@@ -17,8 +17,8 @@ posteriores queda registrado abajo y no cambia este orden.
 | Paso | Puerta de aceptación | Estado | Próximo bloqueo |
 |---|---|---|---|
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
-| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Abierta | Migración de formularios y eventos de servidor; respaldo del parser |
-| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | En espera de 1 | Formularios anidados, componentes de función y lenguaje del compilador |
+| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Abierta | Migración de formularios anidados y eventos de servidor |
+| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | En espera de 1 | Componentes de función y lenguaje del compilador |
 | 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
 | 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
 | 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
@@ -32,7 +32,7 @@ siendo válida como evidencia, pero la puerta permanece abierta hasta verificar
 su conjunto completo.
 
 **Registro de trabajo adelantado:** la fase 2 ya tiene listas nativas con clave,
-eventos dinámicos y formularios planos; la fase 3 tiene snapshots y reconexión
+eventos dinámicos y formularios con mapas anidados acotados; la fase 3 tiene snapshots y reconexión
 básica; la fase 4 tiene benchmarks de 1,000 filas; las fases 6 y 7 tienen tareas
 de auditoría, paridad, pruebas de accesibilidad y límites. Los detalles y las
 limitaciones están en cada fase y en `docs/liveview-api-spikes.md`. Ninguno de
@@ -142,10 +142,11 @@ Resultados y límites de los spikes: `docs/liveview-api-spikes.md`.
 **Listo cuando:** el mismo módulo corre en modo servidor y en modo cliente con HTML
 equivalente, y el diff entre ambas versiones es `use LiveLift` y `@client true`.
 La API no se anuncia como lista hasta pasar S5 en el navegador.
-S5 pasó para el contador inicial. Los formularios planos `phx-change` y
-`phx-submit` ya tienen una prueba adicional en tres navegadores; formularios
-anidados, componentes anidados y handlers más amplios siguen pendientes antes
-de cerrar toda la fase 1.
+S5 pasó para el contador inicial. Los formularios `phx-change` y
+`phx-submit` con mapas anidados acotados tienen paridad Elixir/JavaScript y
+una prueba en Chromium, Firefox y WebKit. La migración automática de formularios
+anidados y `$server` sigue pendiente; los componentes anidados y handlers más
+amplios pertenecen al cierre del subconjunto de la fase 2.
 
 ## Fase 2: Compilador v2 (4 a 6 semanas, v0.4)
 
@@ -165,9 +166,11 @@ Orden de funcionalidades:
 7. `String`: `trim`, `length`, `downcase`, `contains?`, `split`, `replace`.
 8. `Map` y `List`: `merge`, `delete`, `take`, `keys`, `values`.
 
-El subconjunto inicial ya acepta un patrón plano `%{"name" => name}` y cadenas
-de `assign/update`, tanto por pipe como por llamadas anidadas. Faltan patrones
-anidados, `assign_new` y las demás operaciones de esta fase; por eso sigue abierta.
+El subconjunto inicial ya acepta patrones anidados como
+`%{"profile" => %{"note" => note}}` y cadenas
+de `assign/update`, tanto por pipe como por llamadas anidadas. Los patrones
+generales, `assign_new` y las demás operaciones de esta fase siguen
+pendientes; por eso sigue abierta.
 La plantilla nativa ya admite atributos `class`, `title`, `aria-label` y
 `value` con expresiones de asignaciones, y listas de clase con `&&` condicional.
 También acepta `:for` nativo con `id={item.id}` como clave estable y conserva
@@ -179,7 +182,8 @@ al servidor mediante la raíz estable del componente.
 El demo ahora edita una fila con un formulario plano `phx-change`/`phx-submit`
 y un handler `Enum.map/2`, sin sintaxis de componentes nueva. El hook evita que
 el segundo evento `change` genere una petición nativa duplicada con `_target`.
-Los formularios con parámetros anidados y controles especiales siguen pendientes.
+Los formularios con parámetros de mapa anidados hasta cuatro segmentos ya pasan
+paridad y navegador; los arrays y controles especiales siguen pendientes.
 `Map.take/2` ya acepta una lista literal de claves átomo; la paridad se comprueba
 con estados generados. `Map.keys/1` y `Map.values/1` siguen pendientes por el
 orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.

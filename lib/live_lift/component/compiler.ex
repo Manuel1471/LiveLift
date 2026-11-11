@@ -117,29 +117,16 @@ defmodule LiveLift.Component.Compiler do
 
   defp rewrite_params(body, {name, _, _}) when is_atom(name) and name != :%{} do
     Macro.prewalk(body, false, fn
-      {{:., _, [Access, :get]}, _, [{^name, _, _}, key]}, _used when is_binary(key) ->
-        {event_param(key), true}
-
-      {{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [{^name, _, _}, key]}, _used
-      when is_binary(key) ->
-        {event_param(key), true}
-
       node, used ->
-        {node, used}
+        case params_path(node, name) do
+          {:ok, [_ | _] = path} -> {event_param(path), true}
+          _ -> {node, used}
+        end
     end)
   end
 
   defp rewrite_params(body, {:%{}, _, fields}) when is_list(fields) do
-    bindings =
-      Enum.map(fields, fn
-        {key, {name, _, context}}
-        when is_binary(key) and is_atom(name) and (is_atom(context) or is_nil(context)) ->
-          {name, key}
-
-        _ ->
-          raise ArgumentError,
-                "@client supports flat string-key event patterns; move nested patterns to a server handler"
-      end)
+    bindings = pattern_bindings(fields, [])
 
     if length(bindings) != length(Enum.uniq_by(bindings, &elem(&1, 0))) do
       raise ArgumentError, "@client event pattern binds the same variable twice"
@@ -149,7 +136,7 @@ defmodule LiveLift.Component.Compiler do
       {name, _, context} = node, used
       when is_atom(name) and (is_atom(context) or is_nil(context)) ->
         case List.keyfind(bindings, name, 0) do
-          {_, key} -> {event_param(key), true}
+          {_, path} -> {event_param(path), true}
           nil -> {node, used}
         end
 
@@ -160,13 +147,58 @@ defmodule LiveLift.Component.Compiler do
 
   defp rewrite_params(body, _params), do: {body, false}
 
-  defp event_param(key) do
-    unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
-             key not in ~w(__proto__ constructor prototype _live_lift_seq) do
-      raise ArgumentError, "unsupported @client event parameter: #{key}"
+  defp params_path({var, _, context}, name)
+       when var == name and (is_atom(context) or is_nil(context)),
+       do: {:ok, []}
+
+  defp params_path({{:., _, [Access, :get]}, _, [source, key]}, name) when is_binary(key),
+    do: append_param_path(source, name, key)
+
+  defp params_path(
+         {{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [source, key]},
+         name
+       )
+       when is_binary(key),
+       do: append_param_path(source, name, key)
+
+  defp params_path(_node, _name), do: :error
+
+  defp append_param_path(source, name, key) do
+    case params_path(source, name) do
+      {:ok, path} -> {:ok, path ++ [key]}
+      _ -> :error
+    end
+  end
+
+  defp pattern_bindings(fields, prefix) do
+    Enum.flat_map(fields, fn
+      {key, {name, _, context}}
+      when is_binary(key) and is_atom(name) and (is_atom(context) or is_nil(context)) ->
+        [{name, prefix ++ [key]}]
+
+      {key, {:%{}, _, nested}} when is_binary(key) and is_list(nested) and nested != [] ->
+        pattern_bindings(nested, prefix ++ [key])
+
+      _ ->
+        raise ArgumentError,
+              "@client supports string-key event map patterns up to four segments; move other patterns to a server handler"
+    end)
+  end
+
+  defp event_param(path) when is_list(path) do
+    unless length(path) in 1..4 and
+             Enum.all?(path, fn key ->
+               Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
+                 key not in ~w(__proto__ constructor prototype _live_lift_seq)
+             end) do
+      raise ArgumentError, "unsupported @client event parameter path: #{Enum.join(path, ".")}"
     end
 
-    {{:., [], [{{:., [], [{:event, [], nil}, :params]}, [], []}, String.to_atom(key)]}, [], []}
+    root = {{:., [], [{:event, [], nil}, :params]}, [], []}
+
+    Enum.reduce(path, root, fn key, source ->
+      {{:., [], [source, String.to_atom(key)]}, [], []}
+    end)
   end
 
   defp used_variable?({name, _, context}, ast)

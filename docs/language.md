@@ -6,7 +6,7 @@ presentation component inside a view. Both define a literal `client_template`.
 Unsupported syntax raises an error during compilation with a source location.
 The native LiveComponent opt-in currently translates literal `~H`, static
 `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`,
-`phx-target={@myself}`, flat `params["name"]` reads, and one `assign/3` or
+`phx-target={@myself}`, bounded nested `params["name"]` reads, and one `assign/3` or
 `update/3` inside a marked `handle_event/3`. See
 [the component guide](native-livecomponent.md).
 The native template path also accepts expression attributes for `class`,
@@ -17,10 +17,15 @@ The ID must read a field of the loop item and evaluate to a unique string or
 safe integer. Lists without a stable item ID remain server only.
 `phx-value-id={item.id}` passes a scalar item value as a string event parameter;
 the parameter name must be safe and cannot be `_live_lift_seq`.
-Marked `phx-change` works on flat forms with unique, safe text field names.
-The native hook sends those fields to the marked handler on input; unsupported
-controls and nested names must stay on the server. Put `phx-change` on the
-form, not on one of its child inputs.
+Marked `phx-change` and `phx-submit` forms accept unique map field names up to
+four segments, for example `profile[note]`. Handler reads use
+`params["profile"]["note"]`; nested string-key map patterns are also accepted.
+The hook sends a nested map to the original server handler and the generated
+client action. Direct control `phx-change` still requires a flat name.
+Arrays, repeated names, prefix conflicts, dynamic names, checkbox, radio,
+file, and multiple-select controls remain server only. At most 64 string
+leaves and 64 KiB of UTF-8 keys and values may cross the boundary. Put
+`phx-change` on the form to read nested fields.
 
 ## Template bindings
 

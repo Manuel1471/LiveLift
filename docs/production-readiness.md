@@ -11,10 +11,10 @@ An optional CI lane tests LiveView `main` without blocking releases. It passed
 locally on 2026-11-06 after installing the property harness dependencies;
 that is an early compatibility signal, not a supported version claim.
 The `use LiveLift` / `@client true` LiveComponent API currently covers simple
-click, change and submit handlers with chained `assign/3` and `update/3`, flat event
+click, change and submit handlers with chained `assign/3` and `update/3`, bounded nested event
 params and a literal `~H` template. It has real browser tests for optimistic
 events, server replies, an unmarked server handler and reconnect. It does not
-yet cover nested form params, nested components, streams, durable offline actions or
+yet cover form arrays, nested components, streams, durable offline actions or
 arbitrary Elixir handlers.
 The [security model](security.md) documents the trust boundaries and internal
 XSS review. The legacy `$server` bridge passes proposed client values to the

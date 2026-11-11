@@ -32,6 +32,11 @@ A November 2026 run after flat native form changes measured 174,045 raw and
 53,093 gzip bytes with LiveLift, versus 152,732 raw and 47,221 gzip for the
 Phoenix baseline: +5,872 gzip. This measures an example app and build, not a
 fixed cost for every LiveView page.
+After bounded nested map form parameters, the same script measured 174,851
+raw and 53,302 gzip bytes with LiveLift, versus 152,732 raw and 47,221 gzip
+for Phoenix: +6,081 gzip. The increase from the preceding run is 209 gzip
+bytes. This is a small example app, so apps with different generated actions
+will have different bundles.
 
 Run `bench/phoenix_event.sh` for two generated apps with the same `add`
 LiveView handler. Five runs of 200 `Phoenix.LiveViewTest.render_click/1` calls

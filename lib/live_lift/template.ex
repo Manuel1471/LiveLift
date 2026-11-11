@@ -38,7 +38,7 @@ defmodule LiveLift.Template do
     end
 
     if tag == "form" and marked_event?(attrs, events) do
-      validate_flat_form!(children, file, meta.line)
+      validate_form!(children, file, meta.line)
     end
 
     {:block, type, tag, attrs |> native_loop_key(file) |> adapt_liveview_attrs(file, events),
@@ -114,7 +114,8 @@ defmodule LiveLift.Template do
     end)
   end
 
-  defp validate_change_control!("input", attrs, file, line, events) do
+  defp validate_change_control!(tag, attrs, file, line, events)
+       when tag in ~w(input select textarea) do
     if Enum.any?(attrs, fn
          {"phx-change", {:string, event, _}, _} -> event in events
          _ -> false
@@ -129,38 +130,77 @@ defmodule LiveLift.Template do
         raise ArgumentError,
               "#{file}:#{line}: @client phx-change does not support #{type} inputs yet; keep this event on the server"
       end
+
+      Enum.each(attrs, fn
+        {"name", {:string, name, _}, _} ->
+          unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) and
+                   name not in ~w(__proto__ constructor prototype _live_lift_seq) do
+            raise ArgumentError,
+                  "#{file}:#{line}: @client direct phx-change requires a flat safe input name; put phx-change on the form for nested map names"
+          end
+
+        {"name", _, _} ->
+          raise ArgumentError,
+                "#{file}:#{line}: @client direct phx-change requires a static input name; move this event to the server"
+
+        _ ->
+          :ok
+      end)
     end
   end
 
   defp validate_change_control!(_tag, _attrs, _file, _line, _events), do: :ok
 
-  defp validate_flat_form!(children, file, line) do
-    names = flat_form_names(children)
+  defp validate_form!(children, file, line) do
+    names = form_names(children, file)
 
     if unsupported_form_control?(children) do
       raise ArgumentError,
             "#{file}:#{line}: @client form has a checkbox, radio, file or multiple-select control; keep this event on the server"
     end
 
-    for name <- names do
-      unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) and
-               name not in ~w(__proto__ constructor prototype _live_lift_seq) do
-        raise ArgumentError,
-              "#{file}:#{line}: @client form requires flat safe input names; move nested forms to a server handler"
-      end
-    end
+    paths =
+      for name <- names do
+        unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*(\[[a-zA-Z_][a-zA-Z0-9_]*\]){0,3}$/, name) do
+          raise ArgumentError,
+                "#{file}:#{line}: @client form requires safe map input names with at most four segments; keep arrays or deeper forms on the server"
+        end
 
-    if length(names) != length(Enum.uniq(names)) do
+        path = Regex.scan(~r/[a-zA-Z_][a-zA-Z0-9_]*/, name) |> List.flatten()
+
+        if Enum.any?(path, &(&1 in ~w(__proto__ constructor prototype _live_lift_seq))) do
+          raise ArgumentError,
+                "#{file}:#{line}: @client form has an unsafe input name; use safe map keys"
+        end
+
+        path
+      end
+
+    if length(paths) != length(Enum.uniq(paths)) do
       raise ArgumentError,
             "#{file}:#{line}: @client form has duplicate input names; move this event to a server handler"
     end
+
+    if Enum.any?(paths, fn path ->
+         Enum.any?(paths, fn other ->
+           path != other and Enum.take(other, length(path)) == path
+         end)
+       end) do
+      raise ArgumentError,
+            "#{file}:#{line}: @client form has conflicting map input names; keep this event on the server"
+    end
   end
 
-  defp flat_form_names(nodes) do
+  defp form_names(nodes, file) do
     Enum.flat_map(nodes, fn
-      {:block, :tag, _tag, attrs, children, _, _} -> form_name(attrs) ++ flat_form_names(children)
-      {:self_close, :tag, _tag, attrs, _} -> form_name(attrs)
-      _ -> []
+      {:block, :tag, _tag, attrs, children, meta, _} ->
+        form_name(attrs, file, meta.line) ++ form_names(children, file)
+
+      {:self_close, :tag, _tag, attrs, meta} ->
+        form_name(attrs, file, meta.line)
+
+      _ ->
+        []
     end)
   end
 
@@ -189,10 +229,17 @@ defmodule LiveLift.Template do
 
   defp unsupported_control?(_tag, _attrs), do: false
 
-  defp form_name(attrs) do
+  defp form_name(attrs, file, line) do
     Enum.flat_map(attrs, fn
-      {"name", {:string, value, _}, _} -> [value]
-      _ -> []
+      {"name", {:string, value, _}, _} ->
+        [value]
+
+      {"name", _, _} ->
+        raise ArgumentError,
+              "#{file}:#{line}: @client form requires static input names; move this event to the server"
+
+      _ ->
+        []
     end)
   end
 

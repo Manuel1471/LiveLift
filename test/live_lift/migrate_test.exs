@@ -236,7 +236,7 @@ defmodule LiveLift.MigrateTest do
 
       nested_target = Path.join(root, "nested.ex")
 
-      assert_raise ArgumentError, ~r/flat safe input names/, fn ->
+      assert_raise Mix.Error, ~r/flat safe input names/, fn ->
         Mix.Tasks.LiveLift.Migrate.run([
           source,
           "--module",

@@ -44,7 +44,7 @@ State validation rejects unsafe map keys (`__proto__`, `constructor`, and
 `prototype`), unsupported values, integers outside JavaScript's safe range,
 more than 16 levels of nesting, lists over 10,000 elements, maps over 1,024
 fields, trees over 50,000 nodes, and over 1 MiB of UTF-8 string content.
-Optimistic events accept at most 64 flat string params and 64 KiB of combined
+Optimistic events accept at most 64 string leaves in a map up to four segments deep and 64 KiB of combined
 key/value content; the browser caps pending marked actions at 100. Both
 Elixir and JavaScript enforce the state and event limits. These caps reduce
 accidental or malicious resource use but do not replace LiveView's request

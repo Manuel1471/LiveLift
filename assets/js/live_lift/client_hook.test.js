@@ -336,6 +336,32 @@ test("native component rejects unsafe event parameters", () => {
   assert.equal(hook.state.count, 1);
 });
 
+test("native component accepts bounded nested event parameters", () => {
+  const el = element({count: 1, step: 1});
+  el.dataset.liveLiftMode = "component";
+  let sent;
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state, event) => ({...state, count: state.count + event.params.profile.note.length})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_target, _name, params) => { sent = params; },
+  };
+  hook.mounted();
+  hook.sendOptimistic(el.controls.advance, "advance", {profile: {note: "é"}});
+  assert.equal(hook.state.count, 2);
+  assert.deepEqual(sent, {profile: {note: "é"}, _live_lift_seq: 1});
+  for (const params of [
+    {profile: {}},
+    {profile: Object.fromEntries([["__proto__", "x"]])},
+    {a: {b: {c: {d: {e: "x"}}}}},
+  ]) {
+    assert.throws(() => hook.sendOptimistic(el.controls.advance, "advance", params), /LiveLift event parameter/);
+  }
+  assert.equal(hook.state.count, 2);
+});
+
 test("native component rejects oversized event parameters before prediction", () => {
   const el = element({count: 1, step: 1});
   el.dataset.liveLiftMode = "component";

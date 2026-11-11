@@ -144,14 +144,58 @@ function pathLabel(expr) {
   return (expr.root === "state" ? expr.fields : [expr.root, ...expr.fields]).join(".");
 }
 
-function flatFormParams(form) {
+function formParams(form) {
   const params = Object.create(null);
-  for (const [key, value] of new FormData(form)) {
-    if (Object.hasOwn(params, key)) throw new Error(`Duplicate LiveLift form parameter: ${key}`);
-    if (typeof value !== "string") throw new Error(`Unsupported LiveLift form value: ${key}`);
-    params[key] = value;
+  for (const [name, value] of new FormData(form)) {
+    if (typeof value !== "string") throw new Error(`Unsupported LiveLift form value: ${name}`);
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*(\[[a-zA-Z_][a-zA-Z0-9_]*\]){0,3}$/.test(name)) {
+      throw new Error(`Unsupported LiveLift form name: ${name}`);
+    }
+    const path = name.match(/[a-zA-Z_][a-zA-Z0-9_]*/g);
+    let current = params;
+    path.forEach((key, index) => {
+      if (RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
+        throw new Error(`Unsafe LiveLift form name: ${name}`);
+      }
+      const leaf = index === path.length - 1;
+      if (leaf) {
+        if (Object.hasOwn(current, key)) throw new Error(`Duplicate LiveLift form parameter: ${name}`);
+        current[key] = value;
+      } else {
+        if (!Object.hasOwn(current, key)) current[key] = Object.create(null);
+        if (!current[key] || typeof current[key] !== "object" || Array.isArray(current[key])) {
+          throw new Error(`Conflicting LiveLift form parameter: ${name}`);
+        }
+        current = current[key];
+      }
+    });
   }
   return params;
+}
+
+function validateEventParams(params, depth = 0, budget = {fields: 0, bytes: 0}) {
+  if (!params || typeof params !== "object" || Array.isArray(params)) {
+    throw new Error("LiveLift event params must be a map");
+  }
+  if (depth > 0 && Object.keys(params).length === 0) {
+    throw new Error("Unsupported empty LiveLift event parameter map");
+  }
+  for (const [key, value] of Object.entries(params)) {
+    if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
+      throw new Error(`Unsafe LiveLift event parameter: ${key}`);
+    }
+    budget.bytes += encoder.encode(key).length;
+    if (typeof value === "string") {
+      budget.fields += 1;
+      budget.bytes += encoder.encode(value).length;
+    } else if (value && typeof value === "object" && !Array.isArray(value) && depth < 3) {
+      validateEventParams(value, depth + 1, budget);
+    } else {
+      throw new Error(`Unsupported LiveLift event parameter: ${key}`);
+    }
+    if (budget.fields > MAX_EVENT_FIELDS) throw new Error("LiveLift event parameter limit exceeded");
+    if (budget.bytes > MAX_EVENT_BYTES) throw new Error("LiveLift event parameter size limit exceeded");
+  }
 }
 
 function itemExpression(expr, variable) {
@@ -544,17 +588,7 @@ export function createClientHook(views) {
           throw new Error("LiveLift pending action limit reached");
         }
         if (!Number.isSafeInteger(this.nextSequence)) throw new Error("LiveLift event sequence overflow");
-        const entries = Object.entries(params);
-        if (entries.length > MAX_EVENT_FIELDS) throw new Error("LiveLift event parameter limit exceeded");
-        let bytes = 0;
-        for (const [key, value] of entries) {
-          if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
-            throw new Error(`Unsafe LiveLift event parameter: ${key}`);
-          }
-          if (typeof value !== "string") throw new Error(`Unsupported LiveLift event parameter: ${key}`);
-          bytes += encoder.encode(key).length + encoder.encode(value).length;
-          if (bytes > MAX_EVENT_BYTES) throw new Error("LiveLift event parameter size limit exceeded");
-        }
+        validateEventParams(params);
         const sequence = this.nextSequence;
         const eventData = this.runAction(eventName, control, params);
         if (this.offline) {
@@ -616,7 +650,7 @@ export function createClientHook(views) {
         }
         if (event.type === "input" && event.target.matches('select, input[type="checkbox"], input[type="radio"]')) return;
         const params = control.tagName === "FORM"
-          ? flatFormParams(control)
+          ? formParams(control)
           : {value: control.value, ...(control.name ? {[control.name]: control.value} : {})};
         const textValue = textControl ? event.target.value : null;
         const previousTextValue = textControl ? this.lastTextValues.get(changeKey) : undefined;
@@ -646,7 +680,7 @@ export function createClientHook(views) {
         if (!Object.hasOwn(this.view.actions, eventName)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        this.sendOptimistic(form, eventName, flatFormParams(form));
+        this.sendOptimistic(form, eventName, formParams(form));
       };
 
       this.onInput = (event) => {

@@ -242,25 +242,7 @@ defmodule LiveLift.Component do
   @doc false
   def sequence!(params) when is_map(params) do
     event_params = Map.delete(params, "_live_lift_seq")
-
-    if map_size(event_params) > 64,
-      do: raise(ArgumentError, "LiveLift event parameter limit exceeded")
-
-    bytes =
-      Enum.reduce(event_params, 0, fn {key, value}, total ->
-        unless is_binary(key) and Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
-                 key not in ~w(__proto__ constructor prototype) do
-          raise ArgumentError, "unsafe LiveLift event parameter: #{inspect(key)}"
-        end
-
-        unless is_binary(value) and String.valid?(value),
-          do: raise(ArgumentError, "unsupported LiveLift event parameter: #{key}")
-
-        total + byte_size(key) + byte_size(value)
-      end)
-
-    if bytes > 65_536,
-      do: raise(ArgumentError, "LiveLift event parameter size limit exceeded")
+    validate_event_params!(event_params, 0, {0, 0})
 
     seq = Map.get(params, "_live_lift_seq", 0)
 
@@ -272,6 +254,40 @@ defmodule LiveLift.Component do
   end
 
   def sequence!(_params), do: raise(ArgumentError, "LiveLift event params must be a map")
+
+  defp validate_event_params!(params, depth, budget) do
+    if depth > 0 and map_size(params) == 0,
+      do: raise(ArgumentError, "unsupported empty LiveLift event parameter map")
+
+    Enum.reduce(params, budget, fn {key, value}, {fields, bytes} ->
+      unless is_binary(key) and Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
+               key not in ~w(__proto__ constructor prototype _live_lift_seq) do
+        raise ArgumentError, "unsafe LiveLift event parameter: #{inspect(key)}"
+      end
+
+      bytes = bytes + byte_size(key)
+
+      {fields, bytes} =
+        cond do
+          is_binary(value) and String.valid?(value) ->
+            {fields + 1, bytes + byte_size(value)}
+
+          is_map(value) and depth < 3 ->
+            validate_event_params!(value, depth + 1, {fields, bytes})
+
+          true ->
+            raise ArgumentError, "unsupported LiveLift event parameter: #{key}"
+        end
+
+      if fields > 64,
+        do: raise(ArgumentError, "LiveLift event parameter limit exceeded")
+
+      if bytes > 65_536,
+        do: raise(ArgumentError, "LiveLift event parameter size limit exceeded")
+
+      {fields, bytes}
+    end)
+  end
 
   @doc false
   def reply!({:noreply, socket}, seq, fields) do

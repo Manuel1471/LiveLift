@@ -194,6 +194,17 @@ defmodule LiveLift.ComponentTest do
         Counter.handle_event("inc", %{key => "x"}, socket)
       end
     end
+
+    assert {:reply, %{state: %{count: 2}}, _} =
+             Counter.handle_event("inc", %{"profile" => %{"note" => "é"}}, socket)
+
+    for params <- [
+          %{"profile" => %{}},
+          %{"profile" => %{"__proto__" => "x"}},
+          %{"a" => %{"b" => %{"c" => %{"d" => %{"e" => "x"}}}}}
+        ] do
+      assert_raise ArgumentError, fn -> Counter.handle_event("inc", params, socket) end
+    end
   end
 
   test "assign and update actions agree with generated JavaScript" do
@@ -367,14 +378,40 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
-  test "rejects nested or duplicate native form names" do
-    assert_raise ArgumentError, ~r/form.ex:1: @client form requires flat safe input names/, fn ->
+  test "accepts bounded nested native form names and rejects invalid paths" do
+    assert LiveLift.Template.compile_liveview(
+             ~s(<form phx-submit="save"><input name="user[name]" /></form>),
+             "form.ex",
+             ["save"]
+           )
+
+    for name <- ["user[]", "user[name][]", "user[a][b][c][d]", "user[__proto__]"] do
+      assert_raise ArgumentError, ~r/form.ex:1: @client form/, fn ->
+        LiveLift.Template.compile_liveview(
+          ~s(<form phx-submit="save"><input name="#{name}" /></form>),
+          "form.ex",
+          ["save"]
+        )
+      end
+    end
+
+    assert_raise ArgumentError, ~r/form.ex:1: @client form has conflicting map input names/, fn ->
       LiveLift.Template.compile_liveview(
-        ~s(<form phx-submit="save"><input name="user[name]" /></form>),
+        ~s(<form phx-submit="save"><input name="user" /><input name="user[name]" /></form>),
         "form.ex",
         ["save"]
       )
     end
+
+    assert_raise ArgumentError,
+                 ~r/direct.ex:1: @client direct phx-change requires a flat safe input name/,
+                 fn ->
+                   LiveLift.Template.compile_liveview(
+                     ~s(<input name="profile[note]" phx-change="save" />),
+                     "direct.ex",
+                     ["save"]
+                   )
+                 end
 
     assert_raise ArgumentError, ~r/form.ex:1: @client form has duplicate input names/, fn ->
       LiveLift.Template.compile_liveview(
@@ -390,6 +427,40 @@ defmodule LiveLift.ComponentTest do
         "form.ex",
         ["save"]
       )
+    end
+  end
+
+  test "nested map pattern gives the same server and browser result" do
+    source = """
+    defmodule LiveLift.ComponentTest.NestedPattern do
+      use Phoenix.LiveComponent
+      use LiveLift
+      def render(assigns), do: ~H'<form phx-submit="save"><input name="profile[note]" /><button>Save</button></form><p>{@saved}</p>'
+      @client true
+      def handle_event("save", %{"profile" => %{"note" => note}}, socket), do: {:noreply, assign(socket, :saved, note)}
+    end
+    """
+
+    [{module, _}] = Code.compile_string(source, "nested_pattern.ex")
+    socket = %Phoenix.LiveView.Socket{assigns: %{id: "nested", saved: "", __changed__: %{}}}
+
+    assert {:reply, %{state: %{saved: "é <note>"}}, _} =
+             module.handle_event("save", %{"profile" => %{"note" => "é <note>"}}, socket)
+
+    script =
+      Path.join(System.tmp_dir!(), "live_lift_nested_#{System.unique_integer([:positive])}.mjs")
+
+    try do
+      File.write!(
+        script,
+        LiveLift.Client.Compiler.compile_module(module) <>
+          "\nconsole.log(JSON.stringify(actions.save({saved: ''}, {params: {profile: {note: 'é <note>'}}})));\n"
+      )
+
+      {output, 0} = System.cmd("node", [script])
+      assert Jason.decode!(output) == %{"saved" => "é <note>"}
+    after
+      File.rm(script)
     end
   end
 

@@ -252,6 +252,10 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   defp render_node({:body_expr, source, _}, _file, _actions), do: "{#{source}}"
 
   defp render_node({:block, :tag, tag, attrs, children, _meta, _close}, file, actions) do
+    if tag == "form" and Enum.any?(attrs, fn {name, _, _} -> name == "$submit" end) do
+      reject_nested_legacy_form_names!(children, file)
+    end
+
     open = render_open(tag, attrs, file, actions)
     open <> Enum.map_join(children, &render_node(&1, file, actions)) <> "</#{tag}>"
   end
@@ -262,6 +266,34 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   defp render_node(node, file, _names),
     do:
       Mix.raise("#{file}:1: unsupported legacy template node #{inspect(node)}; migrate manually")
+
+  defp reject_nested_legacy_form_names!(nodes, file) do
+    Enum.each(nodes, fn
+      {:block, :tag, _tag, attrs, children, _, _} ->
+        reject_nested_legacy_name!(attrs, file)
+        reject_nested_legacy_form_names!(children, file)
+
+      {:self_close, :tag, _tag, attrs, _} ->
+        reject_nested_legacy_name!(attrs, file)
+
+      _ ->
+        :ok
+    end)
+  end
+
+  defp reject_nested_legacy_name!(attrs, file) do
+    Enum.each(attrs, fn
+      {"name", {:string, name, _}, meta} ->
+        unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) do
+          Mix.raise(
+            "#{file}:#{meta.line}: $submit migration requires flat safe input names matching event.params fields; migrate this action manually"
+          )
+        end
+
+      _ ->
+        :ok
+    end)
+  end
 
   defp render_open(tag, attrs, file, actions, self_close \\ false) do
     if Enum.any?(attrs, fn {name, _, _} -> name == "$click" end) and tag != "button" do
