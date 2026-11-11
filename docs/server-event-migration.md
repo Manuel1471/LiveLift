@@ -32,3 +32,8 @@ proposed count and the revision. Its `$server` button in
 `phx-click` without changing that contract. The native opt-in component uses
 its original `handle_event/3` for marked actions, so the server socket remains
 authoritative for those actions.
+
+The demo's native counter has a server-only `save` handler after a marked
+optimistic `inc` handler. Its server-only counterpart has the same markup and
+handler bodies. The browser test exercises both modes in Chromium, Firefox,
+and WebKit and verifies that `save` reads the authoritative count.

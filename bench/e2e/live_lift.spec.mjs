@@ -185,6 +185,29 @@ test("pending native component clicks converge after server replies", async ({pa
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
 });
 
+test("an unmarked save reads authoritative component state", async ({page}) => {
+  await page.goto("/native-counter");
+  const root = page.locator("#native-counter");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(350));
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root.locator("output")).toHaveText("1", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("button", {name: "Save on server"}).click();
+  await expect(root.locator("span")).toHaveText("Saved 1");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
+test("server-only component saves the same authoritative count", async ({page}) => {
+  await page.goto("/native-counter-server");
+  const serverRoot = page.locator('section[aria-label="Native LiveComponent counter"]');
+  await expect(serverRoot.locator("output")).toHaveText("0");
+  await page.waitForFunction(() => window.liveSocket.isConnected());
+  await serverRoot.getByRole("button", {name: "Add one"}).click();
+  await expect(serverRoot.locator("output")).toHaveText("1");
+  await serverRoot.getByRole("button", {name: "Save on server"}).click();
+  await expect(serverRoot.locator("span")).toHaveText("Saved 1");
+});
+
 test("server reset interleaved with pending predictions converges", async ({page}) => {
   await page.goto("/native-counter");
   const root = page.locator("#native-counter");

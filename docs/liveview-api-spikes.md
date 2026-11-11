@@ -75,8 +75,10 @@ the current client-owned state and revision to the parent LiveView; a native
 `phx-click` sends only its event parameters. The demo's `save_score` handler
 requires both fields and rejects a missing or stale revision. The migrator
 therefore rejects `$server` with a source-located explanation and a
-[manual migration guide](server-event-migration.md). This remains a phase 1
-gate until a reproducible migration path is tested in another app.
+[manual migration guide](server-event-migration.md). A native counter now
+tests the server-authoritative alternative in both opt-in and server-only
+modes across three browsers. This remains a phase 1 gate until the manual
+path is tested in another app.
 
 ## Decision
 
