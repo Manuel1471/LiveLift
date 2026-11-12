@@ -429,8 +429,10 @@ defmodule LiveLift.Template do
   end
 
   defp convert_element(:slot, tag, _attrs, _children, meta, file) do
+    name = String.trim_leading(tag, ":")
+
     raise ArgumentError,
-          "#{file}:#{meta.line}: slot #{tag} is not supported in client function components yet; move this component to the server"
+          "#{file}:#{meta.line}: slot #{name} is not supported in client function components yet; move this component to the server"
   end
 
   defp convert_element(type, tag, attrs, children, meta, file) do
