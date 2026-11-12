@@ -7,7 +7,32 @@ capacidades parecidas a las de Hologram sin reescribir su aplicación.
 Las duraciones son estimaciones gruesas para una sola persona y son muy inciertas.
 Orden de magnitud hasta 1.0: 7 a 10 meses.
 
-## Orden de cierre
+## Estado de ejecución
+
+**Fase activa: 2, Compilador v2.** Las fases S, 0 y 1 están cerradas. No se
+inicia trabajo de alcance nuevo en las fases 3 a 7 hasta cerrar la fase 2;
+sus checks solo registran evidencia obtenida antes de establecer este orden.
+La fase 8 es opcional y posterior a 1.0. Este documento no usa el número de
+checks como porcentaje de avance.
+
+**Siguiente secuencia, en orden:**
+
+1. Cerrar `phx-debounce` en la ruta nativa con una prueba de tiempo en navegador
+   y HTML inicial equivalente. `class={[...]}` ya tiene pruebas de paridad.
+2. Cerrar el lenguaje de handlers de la fase 2. Para cada forma enumerada abajo,
+   implementarla con paridad o documentar su rechazo con archivo, línea y
+   alternativa de servidor. No marcar una forma como compatible por una prueba
+   aislada.
+3. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
+   navegador y los benchmarks afectados. Solo entonces cerrar la puerta 2 y
+   pasar a sincronización.
+
+Cada entrega termina en un commit de una funcionalidad, con pruebas y
+documentación. Si aparece una regresión o un problema de seguridad, se corrige
+antes de seguir la cola. El estado de una puerta cambia únicamente con evidencia
+reproducible, no con un commit o una casilla suelta.
+
+## Puertas de aceptación
 
 Las casillas de las fases siguientes registran trabajo individual, **no** la
 aceptación de una fase. Se cierra una puerta solo cuando se cumplen todos sus
@@ -18,7 +43,7 @@ posteriores queda registrado abajo y no cambia este orden.
 |---|---|---|---|
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
 | 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Cerrada | Ninguno |
-| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Abierta | Slots con nombre, componentes remotos y lenguaje del compilador |
+| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Abierta | `phx-debounce` y matriz del lenguaje de handlers |
 | 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
 | 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
 | 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
@@ -26,10 +51,8 @@ posteriores queda registrado abajo y no cambia este orden.
 | 7 y 1.0 | Seguridad y compatibilidad verificadas; dos apps reales; revisión cruzada; API estable | En espera de 6 | Revisión externa, apps piloto y política de versiones |
 
 **Regla de ejecución:** terminar la primera puerta abierta antes de ampliar el
-lenguaje o añadir funciones de otra fase. Las correcciones de seguridad y de
-regresiones pueden hacerse en cualquier momento. Una casilla adelantada sigue
-siendo válida como evidencia, pero la puerta permanece abierta hasta verificar
-su conjunto completo.
+alcance de otra fase. Una casilla adelantada sigue siendo válida como evidencia,
+pero la puerta permanece abierta hasta verificar su conjunto completo.
 
 **Registro de trabajo adelantado:** la fase 2 ya tiene listas nativas con clave,
 eventos dinámicos y formularios con mapas anidados acotados; la fase 3 tiene snapshots y reconexión
@@ -189,8 +212,8 @@ explícitas y `~H` literal se expanden para el cliente; el demo usa uno para
 el error de validación y otro para un botón con evento del padre. El slot
 predeterminado funciona una vez con `render_slot(@inner_block)` y contenido
 en el ámbito del llamador. Los demás casos sin ID estable quedan en el servidor;
-slots con nombre y componentes remotos
-siguen pendientes.
+slots con nombre y componentes remotos se rechazan con ubicación de origen y
+permanecen en el servidor en esta versión.
 Los eventos nativos ya admiten `phx-value-id={item.id}` y el demo añade y quita
 filas con handlers `@client true`. Una acción que quita el botón pulsado se envía
 al servidor mediante la raíz estable del componente.
@@ -218,6 +241,23 @@ decimales, representación de átomos como valores.
 
 **Listo cuando:** tres casos de aceptación compilan sin escapes: todo optimista,
 validación de formulario en vivo, lista ordenable.
+
+**Tablero de cierre de la fase 2** (se sigue de arriba abajo):
+
+| Bloque | Estado | Evidencia o salida requerida |
+|---|---|---|
+| Componentes locales con props y slot predeterminado | Verificado | Tests de compilación y formulario con slot en Chromium, Firefox y WebKit |
+| Slots con nombre y componentes remotos | Alcance decidido | Rechazo accionable con origen; quedan en LiveView servidor |
+| `class={[...]}` | Verificado | Comparación de render inicial y actualización para listas condicionales |
+| `phx-debounce` | Pendiente | Prueba de tiempo en navegador y equivalencia con LiveView |
+| Formas y funciones restantes de handlers | Pendiente | Matriz de cada entrada del orden de funcionalidades: soportada con paridad y límites, o rechazada con alternativa de servidor |
+| Tres casos completos | Verificado | Contador, formulario anidado y lista ordenable; detalles abajo |
+| Regresión final de fase | Pendiente | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
+
+"Pendiente" no implica que toda forma vaya a implementarse. Un rechazo preciso
+es una decisión de alcance válida para esta versión; la documentación debe
+explicar qué queda en el servidor. Una forma implementada requiere semántica
+publicada y prueba Elixir/JavaScript antes de cambiar su estado a "Verificado".
 
 | Caso de aceptación | Estado | Evidencia que falta |
 |---|---|---|
