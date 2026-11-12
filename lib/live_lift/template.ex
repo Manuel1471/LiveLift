@@ -74,6 +74,8 @@ defmodule LiveLift.Template do
   defp default_slot_node?(_), do: false
 
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
+    validate_native_debounce!(tag, attrs, file, meta.line)
+
     if type == :remote_component do
       raise ArgumentError,
             "#{file}:#{meta.line}: remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
@@ -93,6 +95,8 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node({:self_close, type, tag, attrs, meta}, file, events) do
+    validate_native_debounce!(tag, attrs, file, meta.line)
+
     if type == :remote_component do
       raise ArgumentError,
             "#{file}:#{meta.line}: remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
@@ -105,6 +109,26 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp validate_native_debounce!(tag, attrs, file, line) do
+    Enum.each(attrs, fn
+      {"phx-debounce", {:string, value, _}, _} ->
+        unless tag in ~w(input textarea) and
+                 (value in ["", "blur"] or
+                    (byte_size(value) <= 10 and Regex.match?(~r/^(0|[1-9][0-9]*)$/, value) and
+                       String.to_integer(value) <= 2_147_483_647)) do
+          raise ArgumentError,
+                "#{file}:#{line}: @client phx-debounce supports an input or textarea with a nonnegative millisecond value or blur; keep this event on the server"
+        end
+
+      {"phx-debounce", _, _} ->
+        raise ArgumentError,
+              "#{file}:#{line}: @client phx-debounce requires a static millisecond value or blur; keep this event on the server"
+
+      _ ->
+        :ok
+    end)
+  end
 
   defp marked_change_descendant?(nodes, events) do
     Enum.any?(nodes, fn

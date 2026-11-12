@@ -10,6 +10,7 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
       aria-label="Native LiveComponent form"
     >
       <label>Draft <input name="value" value={@draft} phx-change="draft" phx-target={@myself} /></label>
+      <label>Debounced draft <input name="value" value={@draft} phx-change="draft" phx-debounce="300" phx-target={@myself} /></label>
       <output aria-live="polite">{@draft}</output>
       <form phx-change="validate" phx-submit="save" phx-target={@myself}>
         <label>Note <input name="profile[note]" /></label>

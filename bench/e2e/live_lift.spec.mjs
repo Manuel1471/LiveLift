@@ -304,12 +304,12 @@ test("native phx-change and phx-submit use the same params on client and server"
   await page.goto("/native-form");
   const root = page.locator("#native-form");
   await expect(root.locator("section")).toHaveAttribute("class", "native-form ");
-  await expect(root.getByRole("textbox", {name: "Draft"})).not.toHaveAttribute("value");
+  await expect(root.getByRole("textbox", {name: "Draft", exact: true})).not.toHaveAttribute("value");
   await page.evaluate(() => window.liveSocket.enableLatencySim(400));
-  await root.getByRole("textbox", {name: "Draft"}).fill("Client draft");
+  await root.getByRole("textbox", {name: "Draft", exact: true}).fill("Client draft");
   await expect(root.locator("output")).toHaveText("Client draft", {timeout: 200});
   await expect(root.locator("section")).toHaveAttribute("class", "native-form Client draft");
-  await expect(root.getByRole("textbox", {name: "Draft"})).toHaveAttribute("value", "Client draft");
+  await expect(root.getByRole("textbox", {name: "Draft", exact: true})).toHaveAttribute("value", "Client draft");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await root.getByRole("textbox", {name: "Note"}).fill("Saved locally");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
@@ -340,6 +340,46 @@ test("native form validates a nested field locally and on the server", async ({p
   await root.getByRole("button", {name: "Save note"}).click();
   await expect(root.locator("p").last()).toHaveText("Saved:   Validé  ");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "4");
+});
+
+test("native phx-debounce delays prediction and flushes on blur", async ({page}) => {
+  await page.goto("/native-form");
+  const root = page.locator("#native-form");
+  const draft = root.getByRole("textbox", {name: "Debounced draft"});
+  const output = root.locator("output");
+  await expect(draft).toHaveAttribute("phx-debounce", "300");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+
+  await draft.fill("First");
+  await page.waitForTimeout(120);
+  await expect(output).toHaveText("");
+  await draft.fill("Second");
+  await page.waitForTimeout(120);
+  await expect(output).toHaveText("");
+  await expect(output).toHaveText("Second");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+
+  await draft.evaluate((input) => input.setAttribute("phx-debounce", "blur"));
+  await draft.fill("On blur");
+  await page.waitForTimeout(120);
+  await expect(output).toHaveText("Second");
+  await draft.blur();
+  await expect(output).toHaveText("On blur");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
+test("native submit cancels a pending debounced form change", async ({page}) => {
+  await page.goto("/native-form");
+  const root = page.locator("#native-form");
+  const note = root.getByRole("textbox", {name: "Note"});
+  await note.evaluate((input) => input.setAttribute("phx-debounce", "300"));
+  await note.fill("Valid note");
+  await root.locator("form").evaluate((form) => form.requestSubmit());
+
+  await expect(root.locator("p").last()).toHaveText("Saved: Valid note");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await page.waitForTimeout(450);
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
 });
 
 test("100 opted-in islands keep their state and events isolated", async ({page}) => {

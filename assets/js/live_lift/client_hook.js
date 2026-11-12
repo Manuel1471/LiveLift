@@ -447,6 +447,7 @@ export function createClientHook(views) {
       if (serverRendered && this.optimistic) hydrateKeyedRows(this.view.template, {state: this.state}, this.el);
       if (this.optimistic) {
         this.lastTextValues = new Map();
+        this.debouncedChanges = new Map();
         this.authoritativeState = this.state;
         this.pending = [];
         this.nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
@@ -649,15 +650,36 @@ export function createClientHook(views) {
           return;
         }
         if (event.type === "input" && event.target.matches('select, input[type="checkbox"], input[type="radio"]')) return;
-        const params = control.tagName === "FORM"
-          ? formParams(control)
-          : {value: control.value, ...(control.name ? {[control.name]: control.value} : {})};
         const textValue = textControl ? event.target.value : null;
         const previousTextValue = textControl ? this.lastTextValues.get(changeKey) : undefined;
         // Reconciliation can blur an input and fire change before the input render returns.
         if (textControl) this.lastTextValues.set(changeKey, textValue);
         try {
-          this.sendOptimistic(control, eventName, params);
+          const target = event.target;
+          const send = () => {
+            if (!this.el.contains(target)) return;
+            const params = control.tagName === "FORM"
+              ? formParams(control)
+              : {value: control.value, ...(control.name ? {[control.name]: control.value} : {})};
+            this.sendOptimistic(control, eventName, params);
+          };
+          const debounce = target.getAttribute("phx-debounce");
+          const previous = this.debouncedChanges.get(target);
+          if (previous) clearTimeout(previous.timer);
+          this.debouncedChanges.delete(target);
+          if (debounce === null) {
+            send();
+          } else {
+            const entry = {timer: null, send};
+            this.debouncedChanges.set(target, entry);
+            if (debounce !== "blur") {
+              entry.timer = setTimeout(() => {
+                if (this.debouncedChanges.get(target) !== entry) return;
+                this.debouncedChanges.delete(target);
+                send();
+              }, debounce === "" ? 300 : Number(debounce));
+            }
+          }
         } catch (error) {
           if (textControl) {
             if (previousTextValue === undefined) this.lastTextValues.delete(changeKey);
@@ -672,12 +694,25 @@ export function createClientHook(views) {
         }
       };
 
+      this.onOptimisticBlur = (event) => {
+        const entry = this.debouncedChanges.get(event.target);
+        if (!entry) return;
+        clearTimeout(entry.timer);
+        this.debouncedChanges.delete(event.target);
+        entry.send();
+      };
+
       this.onOptimisticSubmit = (event) => {
         if (!this.optimistic) return;
         const form = event.target.closest("form[phx-submit]");
         if (!form || !this.el.contains(form)) return;
         const eventName = form.getAttribute("phx-submit");
         if (!Object.hasOwn(this.view.actions, eventName)) return;
+        for (const [control, entry] of this.debouncedChanges) {
+          if (!form.contains(control)) continue;
+          clearTimeout(entry.timer);
+          this.debouncedChanges.delete(control);
+        }
         event.preventDefault();
         event.stopImmediatePropagation();
         this.sendOptimistic(form, eventName, formParams(form));
@@ -704,6 +739,7 @@ export function createClientHook(views) {
         this.el.addEventListener("click", this.onOptimisticClick, true);
         this.el.addEventListener("input", this.onOptimisticChange, true);
         this.el.addEventListener("change", this.onOptimisticChange, true);
+        this.el.addEventListener("blur", this.onOptimisticBlur, true);
         this.el.addEventListener("submit", this.onOptimisticSubmit, true);
       } else {
         this.el.addEventListener("click", this.onClick);
@@ -717,9 +753,12 @@ export function createClientHook(views) {
     destroyed() {
       if (this.syncRef && typeof this.removeHandleEvent === "function") this.removeHandleEvent(this.syncRef);
       if (this.optimistic) {
+        for (const entry of this.debouncedChanges.values()) clearTimeout(entry.timer);
+        this.debouncedChanges.clear();
         this.el.removeEventListener("click", this.onOptimisticClick, true);
         this.el.removeEventListener("input", this.onOptimisticChange, true);
         this.el.removeEventListener("change", this.onOptimisticChange, true);
+        this.el.removeEventListener("blur", this.onOptimisticBlur, true);
         this.el.removeEventListener("submit", this.onOptimisticSubmit, true);
       }
       this.el.removeEventListener("click", this.onClick);

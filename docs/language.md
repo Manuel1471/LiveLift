@@ -31,6 +31,10 @@ four segments, for example `profile[note]`. Handler reads use
 `params["profile"]["note"]`; nested string-key map patterns are also accepted.
 The hook sends a nested map to the original server handler and the generated
 client action. Direct control `phx-change` still requires a flat name.
+Static `phx-debounce` on an input or textarea accepts an empty value (300 ms),
+`blur`, or a nonnegative integer of milliseconds up to 2,147,483,647. The
+client delays prediction and server delivery together, reads the latest
+control or form values, flushes on blur, and cancels a pending change on submit.
 Arrays, repeated names, prefix conflicts, dynamic names, checkbox, radio,
 file, and multiple-select controls remain server only. At most 64 string
 leaves and 64 KiB of UTF-8 keys and values may cross the boundary. Put

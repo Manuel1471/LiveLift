@@ -80,6 +80,40 @@ defmodule LiveLift.TemplateTest do
            |> Phoenix.HTML.safe_to_string() == ~s(<p class="ready">Hi</p>)
   end
 
+  test "native debounce keeps the initial attribute and rejects unsupported forms" do
+    tree =
+      Template.compile_liveview(
+        ~s(<input name="value" phx-change="draft" phx-debounce="300" />),
+        "debounce.ex",
+        ["draft"]
+      )
+
+    assert tree |> Template.render_server(%{}) |> Phoenix.HTML.safe_to_string() =~
+             ~s(phx-debounce="300")
+
+    assert Template.compile_liveview(
+             ~s(<input name="value" phx-change="draft" phx-debounce="blur" />),
+             "debounce.ex",
+             ["draft"]
+           )
+
+    assert Template.compile_liveview(
+             ~s(<input name="value" phx-change="draft" phx-debounce="" />),
+             "debounce.ex",
+             ["draft"]
+           )
+
+    for source <- [
+          ~s(<form phx-change="draft" phx-debounce="300"></form>),
+          ~s(<input name="value" phx-change="draft" phx-debounce="-1" />),
+          ~s(<input name="value" phx-change="draft" phx-debounce={@delay} />)
+        ] do
+      assert_raise ArgumentError, ~r/debounce.ex:1: @client phx-debounce/, fn ->
+        Template.compile_liveview(source, "debounce.ex", ["draft"])
+      end
+    end
+  end
+
   test "native HEEx :for uses the repeated element id as its client key" do
     tree =
       Template.compile_liveview(

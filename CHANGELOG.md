@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Delay native `phx-change` prediction and delivery for numeric or `blur` `phx-debounce` on inputs and textareas; verify timing in three browsers.
 - Expand one default slot in local native function components while preserving the caller's assigns; reject named or repeated slots explicitly.
 - Compile local app-defined `~H` function components with explicit props into native client templates, including parent-owned events; reject remote components with source-located errors.
 - Add app-owned `move_to_top` list ordering with parity cases and keyed focus preservation in three browsers.

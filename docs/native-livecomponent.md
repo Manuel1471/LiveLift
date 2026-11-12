@@ -104,6 +104,13 @@ Marked forms accept unique, safe map names such as `profile[note]`, with at most
 four segments. Arrays (`items[]`), conflicting names (`profile` alongside
 `profile[note]`), dynamic names, checkbox, radio and file
 change events remain server only until their value semantics are covered.
+For a marked `phx-change`, put `phx-debounce="300"` on its input or textarea
+to delay both prediction and server delivery by 300 ms after the latest input.
+`phx-debounce="blur"` waits until the control loses focus; an empty value uses
+LiveView's 300 ms default. Blurring a timed control sends its latest value
+immediately. Submitting its form cancels a pending change and sends the submit
+with current form values. Other debounce values and placements fail at compile
+time with a source location.
 The demo's native form uses `phx-change="validate"` and `phx-submit="save"` on
 the same form. Both handlers read `params["profile"]["note"]`; the change
 handler shows a local error immediately and the save handler enforces the same
