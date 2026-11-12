@@ -94,6 +94,10 @@ After adding the app-owned `move_to_top` button, the same Chromium benchmark
 measured 10.6 ms median and 16.6 ms p95 across 25 reversals, with the input
 node preserved. This is close to the prior run; the p95 remains near one
 60 Hz frame.
+After moving that button into an app-defined local function component, a
+repeat measured 10.6 ms median and 15.4 ms p95 across 25 Chromium reversals;
+the focused input node remained the same. Compilation expands the function
+component, so this run measures equivalent row markup.
 
 The gain is interaction latency when a small pure action can finish locally
 without a server round trip. A server-backed action still needs LiveView.

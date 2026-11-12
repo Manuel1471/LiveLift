@@ -117,10 +117,13 @@ defmodule LiveLift.ParserTest do
   defp normalize({:body_expr, value, _}), do: {:body_expr, value}
 
   defp normalize({:self_close, type, tag, attrs, _}),
-    do: {:self_close, type, tag, normalize_attrs(attrs)}
+    do: {:self_close, type, normalize_tag(type, tag), normalize_attrs(attrs)}
 
   defp normalize({:block, type, tag, attrs, children, _, _}),
-    do: {:block, type, tag, normalize_attrs(attrs), normalize(children)}
+    do: {:block, type, normalize_tag(type, tag), normalize_attrs(attrs), normalize(children)}
+
+  defp normalize_tag(:local_component, tag), do: String.trim_leading(tag, ".")
+  defp normalize_tag(_type, tag), do: tag
 
   defp normalize_attrs(attrs),
     do: Enum.map(attrs, fn {name, value, _} -> {name, normalize_attr(value)} end)

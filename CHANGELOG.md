@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile local app-defined `~H` function components with explicit props into native client templates, including parent-owned events; reject slots and remote components with source-located errors.
 - Add app-owned `move_to_top` list ordering with parity cases and keyed focus preservation in three browsers.
 - Add live validation for a nested native form field, with an immediate accessible error, server-side save rule, Elixir/JavaScript parity cases, and three-browser tests.
 - Verify the local installer, `$server` migration boundary, server-authoritative save, parity task, and both asset aliases in a fresh Phoenix consumer app.

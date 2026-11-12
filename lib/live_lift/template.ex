@@ -16,22 +16,49 @@ defmodule LiveLift.Template do
   end
 
   @doc false
-  def compile_liveview(source, file, client_events) when is_binary(source) do
+  def compile_liveview(source, file, client_events, local_components \\ %{})
+      when is_binary(source) do
     source
     |> Parser.parse!(file)
-    |> compile_parsed(file, {:liveview, client_events})
+    |> compile_parsed(file, {:liveview, client_events, local_components})
   end
 
   @doc false
-  def compile_parsed(nodes, file, :legacy), do: Enum.map(nodes, &convert_node(&1, file))
+  def compile_parsed(nodes, file, :legacy) do
+    tree = Enum.map(nodes, &convert_node(&1, file))
+
+    if Enum.any?(tree, &local_component_node?/1) do
+      raise ArgumentError,
+            "#{file}: local function components require a native LiveComponent with use LiveLift"
+    end
+
+    tree
+  end
 
   def compile_parsed(nodes, file, {:liveview, events}) do
+    compile_parsed(nodes, file, {:liveview, events, %{}})
+  end
+
+  def compile_parsed(nodes, file, {:liveview, events, local_components}) do
     nodes
     |> Enum.map(&adapt_liveview_node(&1, file, events))
     |> Enum.map(&convert_node(&1, file))
+    |> expand_local_components(local_components, file, events, [])
   end
 
+  defp local_component_node?(%{type: "local_component"}), do: true
+
+  defp local_component_node?(%{type: "element", children: children}),
+    do: Enum.any?(children, &local_component_node?/1)
+
+  defp local_component_node?(_), do: false
+
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
+    if type == :remote_component do
+      raise ArgumentError,
+            "#{file}:#{meta.line}: remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
+    end
+
     if tag == "form" and marked_change_descendant?(children, events) do
       raise ArgumentError,
             "#{file}:#{meta.line}: @client input phx-change inside a form is not supported yet; put phx-change on the form or keep this event on the server"
@@ -46,6 +73,11 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node({:self_close, type, tag, attrs, meta}, file, events) do
+    if type == :remote_component do
+      raise ArgumentError,
+            "#{file}:#{meta.line}: remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
+    end
+
     validate_change_control!(tag, attrs, file, meta.line, events)
 
     {:self_close, type, tag, attrs |> native_loop_key(file) |> adapt_liveview_attrs(file, events),
@@ -309,6 +341,51 @@ defmodule LiveLift.Template do
     %{type: "component", module: tag, props: props, line: meta.line}
   end
 
+  defp convert_element(:local_component, tag, attrs, children, meta, file) do
+    if children != [] do
+      raise ArgumentError,
+            "#{file}:#{meta.line}: client function components do not support slots yet; move this component to the server"
+    end
+
+    props =
+      Enum.map(attrs, fn
+        {name, {:expr, source, expression_meta}, _} when is_binary(name) ->
+          validate_local_prop_name!(name, file, meta.line)
+          %{name: name, expr: Expression.parse(source, file, expression_meta.line)}
+
+        {name, {:string, value, _}, _} when is_binary(name) ->
+          validate_local_prop_name!(name, file, meta.line)
+
+          if Regex.match?(~r/&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]+);/, value) do
+            raise ArgumentError,
+                  "#{file}:#{meta.line}: encoded function component prop #{name} is not supported; pass an Elixir string expression instead"
+          end
+
+          %{name: name, expr: %{type: "literal", value: value}}
+
+        {name, _, _} ->
+          raise ArgumentError,
+                "#{file}:#{meta.line}: client function component prop #{name} requires a value"
+      end)
+
+    if length(props) != length(Enum.uniq_by(props, & &1.name)) do
+      raise ArgumentError, "#{file}:#{meta.line}: duplicate client function component prop"
+    end
+
+    %{
+      type: "local_component",
+      name: String.trim_leading(tag, "."),
+      props: props,
+      line: meta.line,
+      column: meta.column
+    }
+  end
+
+  defp convert_element(:slot, tag, _attrs, _children, meta, file) do
+    raise ArgumentError,
+          "#{file}:#{meta.line}: slot #{tag} is not supported in client function components yet; move this component to the server"
+  end
+
   defp convert_element(type, tag, attrs, children, meta, file) do
     unless type == :tag do
       raise ArgumentError, "#{file}:#{meta.line}: client components are not supported yet: #{tag}"
@@ -379,6 +456,133 @@ defmodule LiveLift.Template do
       node_id: if(condition || loop, do: "#{meta.line}:#{meta.column}", else: nil)
     }
   end
+
+  defp validate_local_prop_name!(name, file, line) do
+    unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) and
+             name not in ~w(__proto__ constructor prototype) do
+      raise ArgumentError,
+            "#{file}:#{line}: client function component supports named props only; move directives or slots to the server"
+    end
+  end
+
+  defp expand_local_components(nodes, components, file, events, stack) do
+    Enum.flat_map(nodes, fn
+      %{type: "local_component", name: name, props: props, line: line, column: column} ->
+        if name in stack do
+          raise ArgumentError, "#{file}:#{line}: recursive client function component .#{name}"
+        end
+
+        component =
+          Map.get(components, name) ||
+            raise(
+              ArgumentError,
+              "#{file}:#{line}: unknown client function component .#{name}; define a local function returning literal ~H or move it to the server"
+            )
+
+        props = Map.new(props, fn %{name: key, expr: expr} -> {key, expr} end)
+
+        component.source
+        |> Parser.parse!(component.file)
+        |> Enum.map(&adapt_liveview_node(&1, component.file, events))
+        |> Enum.map(&convert_node(&1, component.file))
+        |> expand_local_components(components, component.file, events, [name | stack])
+        |> Enum.map(&substitute_component_props(&1, props, file, line, "#{line}:#{column}"))
+
+      %{type: "element", children: children} = node ->
+        [%{node | children: expand_local_components(children, components, file, events, stack)}]
+
+      node ->
+        [node]
+    end)
+  end
+
+  defp substitute_component_props(
+         %{type: "binding", expr: expr} = node,
+         props,
+         file,
+         line,
+         _prefix
+       ),
+       do: %{node | expr: substitute_prop_expr(expr, props, file, line)}
+
+  defp substitute_component_props(%{type: "element"} = node, props, file, line, prefix) do
+    attrs =
+      Enum.map(node.attrs, fn
+        %{type: type, value: value} = attr
+        when type in ~w(dynamic native_dynamic boolean params) ->
+          %{attr | value: substitute_prop_expr(value, props, file, line)}
+
+        attr ->
+          attr
+      end)
+
+    node
+    |> Map.put(:attrs, attrs)
+    |> Map.update!(:children, fn children ->
+      Enum.map(children, &substitute_component_props(&1, props, file, line, prefix))
+    end)
+    |> Map.update!(:for, fn
+      nil -> nil
+      loop -> %{loop | source: substitute_prop_expr(loop.source, props, file, line)}
+    end)
+    |> Map.update!(:key, fn
+      nil -> nil
+      key -> substitute_prop_expr(key, props, file, line)
+    end)
+    |> Map.update!(:if, fn
+      nil -> nil
+      condition -> substitute_prop_expr(condition, props, file, line)
+    end)
+    |> Map.update!(:node_id, fn
+      nil -> nil
+      id -> "#{prefix}/#{id}"
+    end)
+  end
+
+  defp substitute_component_props(node, _props, _file, _line, _prefix), do: node
+
+  defp substitute_prop_expr(
+         %{type: "path", root: "state", fields: [name | rest]},
+         props,
+         file,
+         line
+       ) do
+    case Map.fetch(props, name) do
+      {:ok, %{type: "path"} = source} ->
+        %{source | fields: source.fields ++ rest}
+
+      {:ok, source} when rest == [] ->
+        source
+
+      {:ok, _source} ->
+        raise ArgumentError,
+              "#{file}:#{line}: function component prop #{name} cannot be read as a map"
+
+      :error ->
+        raise ArgumentError, "#{file}:#{line}: missing function component prop #{name}"
+    end
+  end
+
+  defp substitute_prop_expr(%{type: "map", entries: entries} = expr, props, file, line),
+    do: %{
+      expr
+      | entries:
+          Enum.map(entries, fn entry ->
+            %{entry | expr: substitute_prop_expr(entry.expr, props, file, line)}
+          end)
+    }
+
+  defp substitute_prop_expr(%{type: "list", items: items} = expr, props, file, line),
+    do: %{expr | items: Enum.map(items, &substitute_prop_expr(&1, props, file, line))}
+
+  defp substitute_prop_expr(%{type: "and", left: left, right: right} = expr, props, file, line),
+    do: %{
+      expr
+      | left: substitute_prop_expr(left, props, file, line),
+        right: substitute_prop_expr(right, props, file, line)
+    }
+
+  defp substitute_prop_expr(expr, _props, _file, _line), do: expr
 
   defp parse_directive(nil, _file), do: nil
 

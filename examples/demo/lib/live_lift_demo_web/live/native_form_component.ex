@@ -15,9 +15,17 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
         <label>Note <input name="profile[note]" /></label>
         <button type="submit">Save note</button>
       </form>
-      <p :if={@invalid} id="note-error" role="alert">Note must have at least 3 characters.</p>
+      <.validation_error invalid={@invalid} />
       <p>Saved: {@saved}</p>
     </section>
+    """
+  end
+
+  attr :invalid, :boolean, required: true
+
+  defp validation_error(assigns) do
+    ~H"""
+    <p :if={@invalid} id="note-error" role="alert">Note must have at least 3 characters.</p>
     """
   end
 

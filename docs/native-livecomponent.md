@@ -77,6 +77,15 @@ the server-rendered row and its focused input when an unchanged item moves.
 The demo's `move_to_top` handler is app code built from `Enum.filter/2`,
 `Enum.reject/2`, and `++`; repeated moves can produce any row order. It keeps
 the focused input node when that row moves.
+Local presentation function components are accepted when they return a literal
+`~H` template and receive explicit props. They use ordinary `attr` declarations.
+For example, the demo defines `<.move_button row_id={item.id} myself={@myself} />`
+inside a keyed row; the button's `phx-click` still invokes the parent's marked
+handler. A local component may use a prop in `:if`, text, or supported
+attributes. Slots, call-site directives, remote function components, and
+multiple function clauses fail at compilation with a source location. Use an
+Elixir expression such as `label={"A & B"}` for a prop containing an encoded
+HTML entity; encoded static prop strings are rejected to avoid double escaping.
 Missing, duplicate, or invalid IDs fail instead of falling back to index keys.
 `class={["base", @active && "active"]}` also works, including `false` and
 `nil` values. Dynamic URLs and other expression attributes remain server only.

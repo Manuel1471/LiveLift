@@ -15,10 +15,19 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
             <button type="submit">Save row</button>
           </form>
           <button type="button" phx-click="remove" phx-value-id={item.id} phx-target={@myself}>Remove</button>
-          <button type="button" phx-click="move_to_top" phx-value-id={item.id} phx-target={@myself}>Move to top</button>
+          <.move_button row_id={item.id} myself={@myself} />
         </li>
       </ul>
     </section>
+    """
+  end
+
+  attr :row_id, :string, required: true
+  attr :myself, :any, required: true
+
+  defp move_button(assigns) do
+    ~H"""
+    <button type="button" phx-click="move_to_top" phx-value-id={@row_id} phx-target={@myself}>Move to top</button>
     """
   end
 

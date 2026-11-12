@@ -15,6 +15,13 @@ entries. `nil` and `false` scalar attributes are omitted, as in HEEx.
 Native `:for` uses the repeated element's `id={item.id}` as its stable key.
 The ID must read a field of the loop item and evaluate to a unique string or
 safe integer. Lists without a stable item ID remain server only.
+Native `~H` may call a local function component (`<.badge label={@label} />`)
+defined in the same LiveComponent with one literal `~H` body and explicit
+props. LiveLift expands its client template at compilation; LiveView renders
+the original function on the server. Parent handlers own events emitted inside
+the function component. Slots, remote functions, default props omitted at the
+call site, and call-site directives are outside this subset and fail at build
+time. Encoded static prop strings require an Elixir string expression.
 `phx-value-id={item.id}` passes a scalar item value as a string event parameter;
 the parameter name must be safe and cannot be `_live_lift_seq`.
 Marked `phx-change` and `phx-submit` forms accept unique map field names up to

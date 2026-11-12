@@ -26,6 +26,22 @@ defmodule LiveLift.Component do
     Module.delete_attribute(env.module, :client)
   end
 
+  def on_definition(env, kind, name, [_assigns], guards, body)
+      when kind in [:def, :defp] and is_atom(name) do
+    if Module.get_attribute(env.module, :client) == true do
+      raise ArgumentError,
+            "#{env.file}:#{env.line}: @client must precede handle_event/3, not #{name}; move this handler to the server"
+    end
+
+    if guards == [] and match?([do: {:sigil_H, _, _}], body) do
+      Module.put_attribute(
+        env.module,
+        :live_lift_local_components,
+        {Atom.to_string(name), body, env.file, env.line}
+      )
+    end
+  end
+
   def on_definition(env, _kind, name, _args, _guards, _body) do
     if Module.get_attribute(env.module, :client) == true do
       raise ArgumentError,
@@ -37,6 +53,20 @@ defmodule LiveLift.Component do
     actions = env.module |> Module.get_attribute(:live_lift_marked_actions) |> Enum.reverse()
     events = Enum.map(actions, &elem(&1, 0))
     render = Module.get_attribute(env.module, :live_lift_render)
+
+    local_components =
+      env.module
+      |> Module.get_attribute(:live_lift_local_components)
+      |> Enum.reverse()
+      |> Enum.reduce(%{}, fn {name, body, file, line}, acc ->
+        if Map.has_key?(acc, name) do
+          raise ArgumentError,
+                "#{file}:#{line}: client function component .#{name} has multiple clauses; move it to the server"
+        end
+
+        {source, _} = render_source!(body, file)
+        Map.put(acc, name, %{source: source, file: file, line: line})
+      end)
 
     if Module.get_attribute(env.module, :client) == true do
       raise ArgumentError,
@@ -54,7 +84,7 @@ defmodule LiveLift.Component do
     end
 
     {source, line} = render_source!(render, env.file)
-    template = LiveLift.Template.compile_liveview(source, env.file, events)
+    template = LiveLift.Template.compile_liveview(source, env.file, events, local_components)
     action_tuples = Enum.map(actions, &elem(&1, 1))
     fields = state_fields(template, action_tuples)
 

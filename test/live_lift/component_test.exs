@@ -67,6 +67,31 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule LocalBadge do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    attr(:label, :string, required: true)
+    attr(:visible, :boolean, required: true)
+
+    defp badge(assigns) do
+      ~H"""
+      <span :if={@visible} class="badge">{@label}</span>
+      """
+    end
+
+    def render(assigns) do
+      ~H"""
+      <section><.badge label={@label} visible={@visible} /><.badge label="Ready" visible={true} /><.badge label={"A & B"} visible={true} /><button phx-click="toggle" phx-target={@myself}>Toggle</button></section>
+      """
+    end
+
+    @client true
+    def handle_event("toggle", _params, socket) do
+      {:noreply, assign(socket, :visible, !socket.assigns.visible)}
+    end
+  end
+
   defmodule ChainedCounter do
     use Phoenix.LiveComponent
     use LiveLift
@@ -461,6 +486,118 @@ defmodule LiveLift.ComponentTest do
       assert Jason.decode!(output) == %{"saved" => "é <note>"}
     after
       File.rm(script)
+    end
+  end
+
+  test "app-defined local function component expands its props for the client" do
+    tree = LocalBadge.__live_lift_client_template__()
+    state = %{label: "<Ready>", visible: true}
+    html = tree |> LiveLift.Template.render_server(state) |> Phoenix.HTML.safe_to_string()
+    assert html =~ ~s(class="badge")
+    assert html =~ "&lt;Ready&gt;"
+    assert html =~ "Ready"
+    assert html =~ "A &amp; B"
+
+    hidden =
+      tree
+      |> LiveLift.Template.render_server(%{state | visible: false})
+      |> Phoenix.HTML.safe_to_string()
+
+    refute hidden =~ "&lt;Ready&gt;"
+
+    server = render_component(LocalBadge, id: "badge", label: "<Ready>", visible: true)
+    assert server =~ "&lt;Ready&gt;"
+    assert server =~ "Ready"
+    assert server =~ "A &amp; B"
+
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{id: "badge", label: "<Ready>", visible: true, __changed__: %{}}
+    }
+
+    assert {:reply, %{state: %{visible: false}}, _} =
+             LocalBadge.handle_event("toggle", %{}, socket)
+  end
+
+  test "local function component props work inside native keyed lists" do
+    components = %{"badge" => %{source: "<span>{@label}</span>", file: "badge.ex"}}
+
+    tree =
+      LiveLift.Template.compile_liveview(
+        ~s(<ul><li :for={item <- @items} id={item.id}><.badge label={item.label} /></li></ul>),
+        "list.ex",
+        [],
+        components
+      )
+
+    html =
+      tree
+      |> LiveLift.Template.render_server(%{items: [%{id: "a", label: "<A>"}]})
+      |> Phoenix.HTML.safe_to_string()
+
+    assert html =~ ~s(data-live-lift-key="a")
+    assert html =~ "&lt;A&gt;"
+  end
+
+  test "local function component errors point to unsupported calls and props" do
+    components = %{"badge" => %{source: "<span>{@label}</span>", file: "badge.ex"}}
+
+    assert_raise ArgumentError,
+                 ~r/missing.ex:1: unknown client function component .missing/,
+                 fn ->
+                   LiveLift.Template.compile_liveview(
+                     "<.missing />",
+                     "missing.ex",
+                     [],
+                     components
+                   )
+                 end
+
+    assert_raise ArgumentError, ~r/call.ex:1: missing function component prop label/, fn ->
+      LiveLift.Template.compile_liveview("<.badge />", "call.ex", [], components)
+    end
+
+    assert_raise ArgumentError,
+                 ~r/call.ex:1: client function components do not support slots yet/,
+                 fn ->
+                   LiveLift.Template.compile_liveview(
+                     "<.badge>child</.badge>",
+                     "call.ex",
+                     [],
+                     components
+                   )
+                 end
+
+    assert_raise ArgumentError,
+                 ~r/call.ex:1: client function component supports named props only/,
+                 fn ->
+                   LiveLift.Template.compile_liveview(
+                     "<.badge :if={@show} />",
+                     "call.ex",
+                     [],
+                     components
+                   )
+                 end
+
+    assert_raise ArgumentError, ~r/encoded function component prop label is not supported/, fn ->
+      LiveLift.Template.compile_liveview(
+        ~s(<.badge label="A &amp; B" />),
+        "call.ex",
+        [],
+        components
+      )
+    end
+
+    assert_raise ArgumentError, ~r/recursive client function component/, fn ->
+      LiveLift.Template.compile_liveview(
+        "<.badge />",
+        "call.ex",
+        [],
+        %{"badge" => %{source: "<.badge />", file: "badge.ex"}}
+      )
+    end
+
+    assert_raise ArgumentError, ~r/remote function component/, fn ->
+      LiveLift.Template.compile_liveview("<Other.Badge />", "call.ex", [], components)
     end
   end
 

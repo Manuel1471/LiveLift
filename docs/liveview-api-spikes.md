@@ -82,6 +82,18 @@ generates a separate Phoenix app, checks the `$server` migration rejection,
 and tests a server-authoritative save. That closes the local migration gate;
 installing from Hex remains a later distribution gate.
 
+## S7 — local function components
+
+**Feasible for presentation components with explicit props.** The native
+compiler captures a local function's literal `~H` body, substitutes the props
+at each call, and inlines its validated client tree. LiveView continues to
+render the original function for initial HTML. The native form's validation
+message and the native list's `move_to_top` button exercise this path in three
+browsers, including a child `phx-click` handled by the parent component.
+The bounded parser and the LiveView parser agree on the normalized local tag.
+Slots, remote functions, component defaults and call-site directives still
+need their own design and remain compile-time rejections.
+
 ## Decision
 
 Proceed with the narrow `use LiveLift` implementation. Keep the current
