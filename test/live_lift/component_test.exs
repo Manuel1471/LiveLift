@@ -139,6 +139,99 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule OptionalDraft do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns) do
+      ~H"""
+      <button phx-click="init" phx-target={@myself}>Initialize</button><p :if={@ready}>{@draft}</p>
+      """
+    end
+
+    @client true
+    def handle_event("init", _params, socket) do
+      {:noreply,
+       socket
+       |> assign_new(:draft, fn -> socket.assigns.prefix <> " draft" end)
+       |> assign(:ready, true)}
+    end
+  end
+
+  defmodule OptionalLazy do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<button phx-click='init' phx-target={@myself}>Init</button>"
+
+    @client true
+    def handle_event("init", _params, socket),
+      do: {:noreply, assign_new(socket, :draft, fn -> rem(1, 0) end)}
+  end
+
+  test "assign_new adds an absent field and preserves existing nil or value" do
+    assert OptionalDraft.__live_lift_component_optional_fields__() == [:draft]
+    assert Enum.sort(OptionalDraft.__live_lift_component_fields__()) == [:draft, :prefix, :ready]
+
+    html =
+      render_component(&OptionalDraft.render/1,
+        id: "optional",
+        prefix: "fresh",
+        ready: false,
+        myself: %Phoenix.LiveComponent.CID{cid: 1}
+      )
+
+    assert html =~ ~s(&quot;prefix&quot;:&quot;fresh&quot;)
+    refute html =~ ">fresh</p>"
+
+    states = [
+      %{ready: false, prefix: "fresh"},
+      %{ready: false, prefix: "fresh", draft: nil},
+      %{ready: false, prefix: "fresh", draft: "existing"}
+    ]
+
+    expected =
+      Enum.map(states, fn state ->
+        socket = %Phoenix.LiveView.Socket{
+          assigns: Map.merge(state, %{id: "optional", __changed__: %{}})
+        }
+
+        {:reply, %{state: result}, _} =
+          OptionalDraft.handle_event("init", %{"_live_lift_seq" => 1}, socket)
+
+        result
+      end)
+
+    javascript = LiveLift.Client.Compiler.compile_module(OptionalDraft)
+
+    script =
+      javascript <>
+        "\nconsole.log(JSON.stringify(#{Jason.encode!(states)}.map(state => actions.init(state))));"
+
+    {output, 0} = System.cmd("node", ["--input-type=module", "--eval", script])
+    assert Jason.decode!(output) == Jason.decode!(Jason.encode!(expected))
+
+    assert expected == [
+             %{ready: true, prefix: "fresh", draft: "fresh draft"},
+             %{ready: true, prefix: "fresh", draft: nil},
+             %{ready: true, prefix: "fresh", draft: "existing"}
+           ]
+  end
+
+  test "assign_new does not evaluate a failing fallback when the key exists" do
+    socket = %Phoenix.LiveView.Socket{assigns: %{draft: nil, id: "lazy", __changed__: %{}}}
+
+    assert {:reply, %{state: %{draft: nil}}, _} =
+             OptionalLazy.handle_event("init", %{"_live_lift_seq" => 1}, socket)
+
+    script =
+      LiveLift.Client.Compiler.compile_module(OptionalLazy) <>
+        "\nconsole.log(JSON.stringify(actions.init({draft: null})));"
+
+    assert {"{\"draft\":null}\n", 0} =
+             System.cmd("node", ["--input-type=module", "--eval", script])
+  end
+
   test "uses the real HEEx render and compiles the marked event" do
     html =
       render_component(&Counter.render/1,
@@ -446,13 +539,13 @@ defmodule LiveLift.ComponentTest do
       def render(assigns), do: ~H"<output>{@value}</output>"
       @client true
       def handle_event("run", _params, socket) do
-        {:noreply, assign_new(socket, :value, fn -> 0 end)}
+        {:noreply, assign_new(socket, :value, fn _assigns -> 0 end)}
       end
     end
     """
 
     assert_raise ArgumentError,
-                 ~r/matrix.ex:6: @client currently supports assign\/3 and update\/3; move other handlers to the server/,
+                 ~r/matrix.ex:6: @client assign_new\/3 requires an atom key and a zero-argument function/,
                  fn -> Code.compile_string(assign_new_source, "matrix.ex") end
   end
 

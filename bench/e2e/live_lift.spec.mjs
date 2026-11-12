@@ -382,6 +382,20 @@ test("native submit cancels a pending debounced form change", async ({page}) => 
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
 });
 
+test("native assign_new reveals an initially absent field and converges", async ({page}) => {
+  await page.goto("/native-optional");
+  const root = page.locator("#native-optional");
+  await expect(root).toHaveAttribute("data-live-lift-state", /"prefix":"Fresh"/);
+  await expect(root).not.toHaveAttribute("data-live-lift-state", /"draft":/);
+  await expect(root.locator("p")).toHaveCount(0);
+  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+
+  await root.getByRole("button", {name: "Initialize draft"}).click();
+  await expect(root.locator("p")).toHaveText("Fresh draft", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(root).toHaveAttribute("data-live-lift-state", /"draft":"Fresh draft"/);
+});
+
 test("100 opted-in islands keep their state and events isolated", async ({page}) => {
   await page.goto("/many-islands?count=100");
   await expect(page.locator('#many-islands [data-live-lift-mode="component"]')).toHaveCount(100);

@@ -200,8 +200,12 @@ Orden de funcionalidades:
 El subconjunto inicial ya acepta patrones anidados como
 `%{"profile" => %{"note" => note}}` y cadenas
 de `assign/update`, tanto por pipe como por llamadas anidadas. Los patrones
-generales, `assign_new` y las demás operaciones de esta fase siguen
+generales, callbacks de un argumento en `assign_new` y las demás operaciones de esta fase siguen
 pendientes; por eso sigue abierta.
+`assign_new/3` con clave átomo y callback sin argumentos admite campos ausentes
+en el snapshot inicial. Un valor presente, incluso `nil`, evita evaluar el
+callback. El demo `/native-optional` y dos casos de paridad comprueban creación
+y conservación; tres navegadores comprueban render inicial y convergencia.
 La plantilla nativa ya admite atributos `class`, `title`, `aria-label` y
 `value` con expresiones de asignaciones, y listas de clase con `&&` condicional.
 También acepta `:for` nativo con `id={item.id}` como clave estable y conserva

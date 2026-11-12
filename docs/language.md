@@ -11,6 +11,11 @@ The native LiveComponent opt-in currently translates literal `~H`, static
 [the component guide](native-livecomponent.md).
 The exact native handler boundary is listed in the
 [handler matrix](native-handler-matrix.md); unmarked handlers stay on LiveView.
+Native `assign_new(socket, :field, fn -> expression end)` accepts a safe atom
+field and a zero-argument callback. The initial client state may omit that
+field; an existing value, including `nil`, is preserved without evaluating
+the callback. The callback may read the original `socket.assigns` and must
+use supported client expressions. One-argument callbacks stay on the server.
 The native template path also accepts expression attributes for `class`,
 `title`, `aria-label`, `value`, and `id`; class lists can use `&&` for conditional
 entries. `nil` and `false` scalar attributes are omitted, as in HEEx.

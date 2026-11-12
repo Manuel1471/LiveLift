@@ -142,16 +142,33 @@ defmodule Mix.Tasks.LiveLift.Test do
     end
 
     fields = module.__live_lift_component_fields__()
-    expected_keys = MapSet.new(fields, &Atom.to_string/1)
 
-    if MapSet.new(Map.keys(state)) != expected_keys do
-      Mix.raise("state keys must be exactly: #{Enum.map_join(fields, ", ", &Atom.to_string/1)}")
+    optional =
+      if function_exported?(module, :__live_lift_component_optional_fields__, 0),
+        do: module.__live_lift_component_optional_fields__(),
+        else: []
+
+    expected_keys = MapSet.new(fields, &Atom.to_string/1)
+    required_keys = MapSet.new(fields -- optional, &Atom.to_string/1)
+    actual_keys = MapSet.new(Map.keys(state))
+
+    unless MapSet.subset?(required_keys, actual_keys) and
+             MapSet.subset?(actual_keys, expected_keys) do
+      if optional == [] do
+        Mix.raise("state keys must be exactly: #{Enum.map_join(fields, ", ", &Atom.to_string/1)}")
+      else
+        Mix.raise(
+          "state keys must include #{Enum.map_join(fields -- optional, ", ", &Atom.to_string/1)} and may include #{Enum.map_join(optional, ", ", &Atom.to_string/1)}"
+        )
+      end
     end
 
     LiveLift.Component.sequence!(Map.put(params, "_live_lift_seq", 1))
 
     client_state =
-      Map.new(fields, fn field ->
+      fields
+      |> Enum.filter(&Map.has_key?(state, Atom.to_string(&1)))
+      |> Map.new(fn field ->
         {field, state |> Map.fetch!(Atom.to_string(field)) |> restore_state_keys!()}
       end)
 

@@ -87,6 +87,7 @@ defmodule LiveLift.Component do
     template = LiveLift.Template.compile_liveview(source, env.file, events, local_components)
     action_tuples = Enum.map(actions, &elem(&1, 1))
     fields = state_fields(template, action_tuples)
+    optional_fields = optional_state_fields(action_tuples)
 
     quote do
       @doc false
@@ -101,13 +102,21 @@ defmodule LiveLift.Component do
       @doc false
       def __live_lift_component_fields__, do: unquote(fields)
 
+      @doc false
+      def __live_lift_component_optional_fields__, do: unquote(optional_fields)
+
       defoverridable render: 1
 
       def render(var!(assigns)) do
         inner = super(var!(assigns))
 
         if LiveLift.Component.enabled?(__MODULE__) do
-          state = LiveLift.Component.state!(var!(assigns), __live_lift_component_fields__())
+          state =
+            LiveLift.Component.state!(
+              var!(assigns),
+              __live_lift_component_fields__(),
+              __live_lift_component_optional_fields__()
+            )
 
           var!(assigns) =
             var!(assigns)
@@ -154,6 +163,7 @@ defmodule LiveLift.Component do
             __MODULE__,
             unquote(events),
             __live_lift_component_fields__(),
+            __live_lift_component_optional_fields__(),
             fn -> super(event, params, socket) end
           )
         end
@@ -162,7 +172,16 @@ defmodule LiveLift.Component do
   end
 
   @doc false
-  def handle_marked_or_server(event, params, socket, component, events, fields, original) do
+  def handle_marked_or_server(
+        event,
+        params,
+        socket,
+        component,
+        events,
+        fields,
+        optional,
+        original
+      ) do
     marked? = event in events
     started = System.monotonic_time()
 
@@ -173,14 +192,14 @@ defmodule LiveLift.Component do
           previous = Map.get(socket.assigns, :__live_lift_ack_seq, 0)
 
           if sequence > 0 and sequence <= previous do
-            {LiveLift.Component.acknowledge_duplicate(socket, fields), :duplicate}
+            {LiveLift.Component.acknowledge_duplicate(socket, fields, optional), :duplicate}
           else
             result = original.()
-            {LiveLift.Component.reply!(result, sequence, fields), :ok}
+            {LiveLift.Component.reply!(result, sequence, fields, optional), :ok}
           end
         else
           result = original.()
-          {LiveLift.Component.sync_unmarked(result, socket, fields), :ok}
+          {LiveLift.Component.sync_unmarked(result, socket, fields, optional), :ok}
         end
 
       emit_event(started, component, event, marked?, outcome)
@@ -248,9 +267,29 @@ defmodule LiveLift.Component do
       end)
 
     tree
-    |> collect_fields(action_fields)
+    |> collect_fields(
+      action_fields ++ Enum.map(optional_state_fields(actions), &Atom.to_string/1)
+    )
     |> Enum.uniq()
     |> Enum.map(&String.to_atom/1)
+  end
+
+  defp optional_state_fields(actions) do
+    actions
+    |> Enum.flat_map(fn {_name, _arg, body} ->
+      {_body, fields} =
+        Macro.prewalk(body, [], fn
+          {:__live_lift_assign_new__, _, [_source, field, _fallback]} = node, acc
+          when is_atom(field) ->
+            {node, [field | acc]}
+
+          node, acc ->
+            {node, acc}
+        end)
+
+      fields
+    end)
+    |> Enum.uniq()
   end
 
   defp collect_fields(%{type: "path", root: "state", fields: [field | _]}, acc),
@@ -264,8 +303,15 @@ defmodule LiveLift.Component do
   defp collect_fields(_value, acc), do: acc
 
   @doc false
-  def state!(assigns, fields) do
-    state = Map.new(fields, fn field -> {field, Map.fetch!(assigns, field)} end)
+  def state!(assigns, fields, optional \\ []) do
+    state =
+      Enum.reduce(fields, %{}, fn field, acc ->
+        case Map.fetch(assigns, field) do
+          {:ok, value} -> Map.put(acc, field, value)
+          :error -> if field in optional, do: acc, else: Map.fetch!(assigns, field)
+        end
+      end)
+
     LiveLift.State.validate!(state)
   end
 
@@ -320,7 +366,9 @@ defmodule LiveLift.Component do
   end
 
   @doc false
-  def reply!({:noreply, socket}, seq, fields) do
+  def reply!(result, seq, fields, optional \\ [])
+
+  def reply!({:noreply, socket}, seq, fields, optional) do
     revision = Map.get(socket.assigns, :__live_lift_revision, 0) + 1
 
     socket =
@@ -328,17 +376,17 @@ defmodule LiveLift.Component do
       |> Phoenix.Component.assign(:__live_lift_revision, revision)
       |> Phoenix.Component.assign(:__live_lift_ack_seq, seq)
 
-    state = state!(socket.assigns, fields)
+    state = state!(socket.assigns, fields, optional)
     {:reply, %{revision: revision, ack_seq: seq, state: state}, socket}
   end
 
-  def reply!(_result, _seq, _fields) do
+  def reply!(_result, _seq, _fields, _optional) do
     raise ArgumentError, "@client handle_event/3 must return {:noreply, socket}"
   end
 
   @doc false
-  def acknowledge_duplicate(socket, fields) do
-    state = state!(socket.assigns, fields)
+  def acknowledge_duplicate(socket, fields, optional \\ []) do
+    state = state!(socket.assigns, fields, optional)
 
     {:reply,
      %{
@@ -349,8 +397,10 @@ defmodule LiveLift.Component do
   end
 
   @doc false
-  def sync_unmarked({:noreply, next} = result, previous, fields) do
-    if state!(next.assigns, fields) == state!(previous.assigns, fields) do
+  def sync_unmarked(result, previous, fields, optional \\ [])
+
+  def sync_unmarked({:noreply, next} = result, previous, fields, optional) do
+    if state!(next.assigns, fields, optional) == state!(previous.assigns, fields, optional) do
       result
     else
       revision = Map.get(next.assigns, :__live_lift_revision, 0) + 1
@@ -358,5 +408,5 @@ defmodule LiveLift.Component do
     end
   end
 
-  def sync_unmarked(result, _previous, _fields), do: result
+  def sync_unmarked(result, _previous, _fields, _optional), do: result
 end

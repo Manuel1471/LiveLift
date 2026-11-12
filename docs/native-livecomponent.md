@@ -100,6 +100,11 @@ Direct nested `assign/update` calls are also accepted. Other LiveView features r
 server only. Unsupported
 forms fail during compilation with a source location and a suggestion to keep
 that handler on the server.
+`assign_new(socket, :draft, fn -> socket.assigns.prefix <> " draft" end)` also
+works in a marked handler. A field absent on the first render is omitted from
+the client snapshot, then added by the click; an existing field is kept, even
+when its value is `nil`. The demo shows this at `/native-optional`. The callback
+must take no arguments and use the supported client expression subset.
 Marked forms accept unique, safe map names such as `profile[note]`, with at most
 four segments. Arrays (`items[]`), conflicting names (`profile` alongside
 `profile[note]`), dynamic names, checkbox, radio and file

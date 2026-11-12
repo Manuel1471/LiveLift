@@ -52,8 +52,25 @@ defmodule LiveLift.Component.Compiler do
          file,
          line
        )
-       when operation in [:assign, :update] and is_list(args) do
+       when operation in [:assign, :update, :assign_new] and is_list(args) do
     update_to_state!({operation, meta, [source | args]}, socket_arg, file, line)
+  end
+
+  defp update_to_state!(
+         {:assign_new, meta, [source, field, {:fn, _, [{:->, _, [[], fallback]}]}]},
+         socket_arg,
+         file,
+         line
+       )
+       when is_atom(field) do
+    state = state_source!(source, socket_arg, file, line)
+    fallback = rewrite_original_socket_assigns(fallback, socket_arg)
+    {:__live_lift_assign_new__, meta, [state, field, fallback]}
+  end
+
+  defp update_to_state!({:assign_new, _, _}, _socket_arg, file, line) do
+    raise ArgumentError,
+          "#{file}:#{line}: @client assign_new/3 requires an atom key and a zero-argument function; keep other callbacks on the server"
   end
 
   defp update_to_state!(
@@ -84,17 +101,7 @@ defmodule LiveLift.Component.Compiler do
        when is_atom(field) do
     state = state_source!(source, socket_arg, file, line)
 
-    expression =
-      Macro.prewalk(expression, fn
-        {{:., _, [{{:., _, [{^socket_name, _, _}, :assigns]}, _, []}, key]}, _, []}
-        when is_atom(key) ->
-          # The lexical `socket` is the original function argument even after
-          # an earlier assign in the pipe. Read from the original client state.
-          {{:., [], [{:state, [], nil}, key]}, [], []}
-
-        other ->
-          other
-      end)
+    expression = rewrite_original_socket_assigns(expression, {socket_name, [], nil})
 
     map_update(state, field, expression, meta)
   end
@@ -113,6 +120,18 @@ defmodule LiveLift.Component.Compiler do
 
   defp map_update(state, field, expression, meta) do
     {:%{}, meta, [{:|, meta, [state, [{field, expression}]]}]}
+  end
+
+  defp rewrite_original_socket_assigns(expression, {socket_name, _, _}) do
+    Macro.prewalk(expression, fn
+      {{:., _, [{{:., _, [{^socket_name, _, _}, :assigns]}, _, []}, key]}, _, []}
+      when is_atom(key) ->
+        # The lexical socket remains the original argument after an earlier pipe step.
+        {{:., [], [{:state, [], nil}, key]}, [], []}
+
+      other ->
+        other
+    end)
   end
 
   defp rewrite_params(body, {name, _, _}) when is_atom(name) and name != :%{} do

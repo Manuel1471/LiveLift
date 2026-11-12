@@ -8,6 +8,8 @@
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"validate","state":{"draft":"","saved":"","active":false,"invalid":true},"params":{"profile":{"note":"  Validé  "}}},
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"save","state":{"draft":"é","saved":"","active":false,"invalid":false},"params":{"profile":{"note":"<&>"}}},
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"save","state":{"draft":"","saved":"Previous","active":true,"invalid":false},"params":{"profile":{"note":" x "}}},
+  {"module":"LiveLiftDemoWeb.NativeOptionalComponent","event":"initialize","state":{"ready":false,"prefix":"Fresh"}},
+  {"module":"LiveLiftDemoWeb.NativeOptionalComponent","event":"initialize","state":{"ready":false,"prefix":"Fresh","draft":"Existing"}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"add","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"reverse","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"edit","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3},"params":{"row_id":"row-1","label":"Édité <&>"}},

@@ -9,7 +9,7 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | Roadmap form | Client status | Boundary |
 | --- | --- | --- |
 | Handler header and event params | Supported subset | One literal event name, one clause, no guard; `_params`, flat or nested string-key map pattern, or `params["key"]` / `Map.get(params, "key")` through four safe segments. Other patterns stay on the server. |
-| `socket`, `assign/3`, `update/3`, pipe | Supported subset | Return `{:noreply, socket}` after `assign` or `update`; chains of those operations work with `|>`. `assign_new`, other socket operations, and general expression pipes stay on the server. |
+| `socket`, `assign/3`, `update/3`, `assign_new/3`, pipe | Supported subset | Return `{:noreply, socket}` after these operations; chains work with `|>`. `assign_new` accepts an atom key and a zero-argument callback whose expression is in the client language. A present key, including `nil`, skips the callback. One-argument callbacks, other socket operations, and general expression pipes stay on the server. |
 | Integers and decimals | Safe integers only | Arithmetic and comparison require integers within JavaScript's safe range. Decimal literals and floating point operations stay on the server until a numeric model is specified. |
 | `if`, `case`, `cond`, `defp` | `if` only | `if` with optional `else` uses Elixir truthiness. `case`, `cond`, and calls to local helpers are rejected for marked handlers; leave those handlers unmarked. |
 | `Enum.find/reduce/sort_by/count/join/flat_map/with_index` | Server only | These operations are rejected with source location. |

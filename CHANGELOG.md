@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile native `assign_new/3` with a zero-argument callback, optional initial fields, lazy fallback, and Elixir/JavaScript plus browser parity.
 - Record the bounded native handler matrix and test 18 source-located rejections for forms outside the published client language.
 - Delay native `phx-change` prediction and delivery for numeric or `blur` `phx-debounce` on inputs and textareas; verify timing in three browsers.
 - Expand one default slot in local native function components while preserving the caller's assigns; reject named or repeated slots explicitly.

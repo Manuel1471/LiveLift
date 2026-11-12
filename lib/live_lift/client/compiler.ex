@@ -47,6 +47,10 @@ defmodule LiveLift.Client.Compiler do
     }
     return {...map, ...updates};
   }
+  function __liveLiftAssignNew(map, key, fallback) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    return Object.hasOwn(map, key) ? map : {...map, [key]: fallback()};
+  }
   function __liveLiftMapGet(map, key, fallback) {
     if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
     return Object.hasOwn(map, key) ? map[key] : fallback;
@@ -280,6 +284,11 @@ defmodule LiveLift.Client.Compiler do
       end)
 
     "__liveLiftMapUpdate(#{compile_expr(map, arg)}, {#{Enum.join(entries, ", ")}})"
+  end
+
+  defp compile_expr({:__live_lift_assign_new__, _, [map, field, fallback]}, arg)
+       when is_atom(field) do
+    "__liveLiftAssignNew(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(field))}, () => #{compile_expr(fallback, arg)})"
   end
 
   defp compile_expr({:%{}, _, fields}, arg) when is_list(fields) do
