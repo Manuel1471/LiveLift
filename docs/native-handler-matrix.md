@@ -1,9 +1,9 @@
 # Native `@client` handler matrix
 
-This is the bounded v0.4 surface of a marked `handle_event/3`. An unmarked
-handler remains a normal LiveView server handler. Every listed client form runs
-through the original Elixir handler on the server and generated JavaScript for
-prediction; app parity cases exercise both. Source locations and alternatives
+This is the current experimental surface of a marked `handle_event/3`. An unmarked
+handler remains a normal LiveView server handler. A marked handler runs its
+original Elixir body on the server and generated JavaScript for prediction.
+The seeded language corpus and app parity cases compare those paths. Source locations and alternatives
 for unsupported forms are tested in `test/live_lift/component_test.exs`.
 
 | Roadmap form | Client status | Boundary |
@@ -19,10 +19,11 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | `Map.keys/values` and `List` module operations | Server only | Map iteration order differs between Elixir and JavaScript. These operations are rejected. |
 | Other `Map` operations | Supported subset | Atom-keyed `put/get/delete`, shallow `merge`, and `take` with a literal atom-key list. |
 
-The server remains the right place for unsupported forms. Remove `@client true`
+The server remains the right place for unsupported forms today. Remove `@client true`
 from that handler; its `~H` and `phx-*` code continue to use LiveView. This
 matrix does not imply support for arbitrary Elixir, macros, structs, or
-processes.
+processes. The phase 2 roadmap calls for broader support than this snapshot;
+the rejected cells remain tracked work.
 
 Before changing a server-only cell to supported, define its exact semantics in
 `language.md`, add Elixir/JavaScript parity cases including failures and limits,
