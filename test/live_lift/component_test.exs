@@ -400,6 +400,62 @@ defmodule LiveLift.ComponentTest do
                  end
   end
 
+  test "unpublished handler forms fail at their source before generating JavaScript" do
+    expressions = [
+      "1.5",
+      "case socket.assigns.value do nil -> 0; other -> other end",
+      "cond do socket.assigns.value -> 1; true -> 0 end",
+      "Enum.find(socket.assigns.items, fn item -> item.keep end)",
+      "Enum.reduce(socket.assigns.items, 0, fn item, acc -> item + acc end)",
+      "Enum.sort_by(socket.assigns.items, fn item -> item.id end)",
+      "Enum.count(socket.assigns.items)",
+      "Enum.join(socket.assigns.items, \",\")",
+      "Enum.flat_map(socket.assigns.items, fn item -> [item] end)",
+      "Enum.with_index(socket.assigns.items)",
+      "String.downcase(socket.assigns.value)",
+      "String.split(socket.assigns.value, \",\")",
+      "String.replace(socket.assigns.value, \"a\", \"b\")",
+      "Map.keys(socket.assigns.value)",
+      "Map.values(socket.assigns.value)",
+      "List.delete(socket.assigns.items, 1)",
+      "socket.assigns.items |> Enum.reverse()"
+    ]
+
+    for {expression, index} <- Enum.with_index(expressions) do
+      source = """
+      defmodule LiveLift.ComponentTest.UnsupportedMatrix#{index} do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@value}</output>"
+        @client true
+        def handle_event("run", _params, socket) do
+          {:noreply, assign(socket, :value, #{expression})}
+        end
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/matrix.ex:6: unsupported @client handler: unsupported client expression:.*move it to a server handler/s,
+                   fn -> Code.compile_string(source, "matrix.ex") end
+    end
+
+    assign_new_source = """
+    defmodule LiveLift.ComponentTest.UnsupportedAssignNew do
+      use Phoenix.LiveComponent
+      use LiveLift
+      def render(assigns), do: ~H"<output>{@value}</output>"
+      @client true
+      def handle_event("run", _params, socket) do
+        {:noreply, assign_new(socket, :value, fn -> 0 end)}
+      end
+    end
+    """
+
+    assert_raise ArgumentError,
+                 ~r/matrix.ex:6: @client currently supports assign\/3 and update\/3; move other handlers to the server/,
+                 fn -> Code.compile_string(assign_new_source, "matrix.ex") end
+  end
+
   test "rejects unsafe native event parameter names at compilation" do
     for key <- ~w(__proto__ constructor prototype) do
       assert_raise ArgumentError, ~r/unsafe.ex:1: unsafe phx-value parameter/, fn ->

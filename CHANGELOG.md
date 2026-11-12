@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Record the bounded native handler matrix and test 18 source-located rejections for forms outside the published client language.
 - Delay native `phx-change` prediction and delivery for numeric or `blur` `phx-debounce` on inputs and textareas; verify timing in three browsers.
 - Expand one default slot in local native function components while preserving the caller's assigns; reject named or repeated slots explicitly.
 - Compile local app-defined `~H` function components with explicit props into native client templates, including parent-owned events; reject remote components with source-located errors.

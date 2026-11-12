@@ -9,6 +9,8 @@ The native LiveComponent opt-in currently translates literal `~H`, static
 `phx-target={@myself}`, bounded nested `params["name"]` reads, and one `assign/3` or
 `update/3` inside a marked `handle_event/3`. See
 [the component guide](native-livecomponent.md).
+The exact native handler boundary is listed in the
+[handler matrix](native-handler-matrix.md); unmarked handlers stay on LiveView.
 The native template path also accepts expression attributes for `class`,
 `title`, `aria-label`, `value`, and `id`; class lists can use `&&` for conditional
 entries. `nil` and `false` scalar attributes are omitted, as in HEEx.

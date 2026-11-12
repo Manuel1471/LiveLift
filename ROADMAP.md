@@ -17,10 +17,9 @@ checks como porcentaje de avance.
 
 **Siguiente secuencia, en orden:**
 
-1. Cerrar el lenguaje de handlers de la fase 2. Para cada forma enumerada abajo,
-   implementarla con paridad o documentar su rechazo con archivo, línea y
-   alternativa de servidor. No marcar una forma como compatible por una prueba
-   aislada.
+1. Revisar la matriz de handlers frente a cada caso de paridad publicado y
+   completar cualquier hueco de cobertura. La matriz y los rechazos de las
+   formas pendientes ya están en `docs/native-handler-matrix.md`.
 2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
    navegador y los benchmarks afectados. Solo entonces cerrar la puerta 2 y
    pasar a sincronización.
@@ -41,7 +40,7 @@ posteriores queda registrado abajo y no cambia este orden.
 |---|---|---|---|
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
 | 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Cerrada | Ninguno |
-| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Abierta | Matriz del lenguaje de handlers y regresión final |
+| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Abierta | Auditoría de cobertura de paridad y regresión final |
 | 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
 | 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
 | 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
@@ -248,7 +247,7 @@ validación de formulario en vivo, lista ordenable.
 | Slots con nombre y componentes remotos | Alcance decidido | Rechazo accionable con origen; quedan en LiveView servidor |
 | `class={[...]}` | Verificado | Comparación de render inicial y actualización para listas condicionales |
 | `phx-debounce` | Verificado para input/textarea | HTML inicial, temporizador y `blur` en tres navegadores; otras formas se rechazan |
-| Formas y funciones restantes de handlers | Pendiente | Matriz de cada entrada del orden de funcionalidades: soportada con paridad y límites, o rechazada con alternativa de servidor |
+| Formas y funciones restantes de handlers | Alcance decidido | `docs/native-handler-matrix.md`; 18 rechazos de funciones y formas no admitidas con ubicación de origen |
 | Tres casos completos | Verificado | Contador, formulario anidado y lista ordenable; detalles abajo |
 | Regresión final de fase | Pendiente | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
 
