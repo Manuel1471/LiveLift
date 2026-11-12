@@ -17,12 +17,13 @@ checks como porcentaje de avance.
 
 **Siguiente secuencia, en orden:**
 
-1. Implementar las formas ausentes de la fase 2 en el orden de su lista:
-   comenzar por `assign_new`, decidir el modelo decimal y continuar con
-   `case`/`cond`, funciones locales y operaciones de `Enum`, `String`, `Map`
-   y `List`. Cada forma nueva exige semántica, paridad y rechazo de variantes
-   cercanas. `docs/native-handler-matrix.md` registra el estado actual.
-2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
+1. Implementar el modelo decimal definido en `docs/decimal-model-spike.md` y
+   demostrar paridad de bits, formato, operaciones y render. `assign_new` ya
+   pasó paridad y navegador.
+2. Continuar con `case`/`cond`, funciones locales y las operaciones de `Enum`,
+   `String`, `Map` y `List` enumeradas en esta fase. Cada forma nueva exige
+   semántica, paridad y rechazo de variantes cercanas.
+3. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
    navegador y los benchmarks afectados. Solo entonces revisar la puerta 2.
 
 Cada entrega termina en un commit de una funcionalidad, con pruebas y
@@ -202,6 +203,10 @@ El subconjunto inicial ya acepta patrones anidados como
 de `assign/update`, tanto por pipe como por llamadas anidadas. Los patrones
 generales, callbacks de un argumento en `assign_new` y las demás operaciones de esta fase siguen
 pendientes; por eso sigue abierta.
+El modelo para literales decimales ya se decidió en
+`docs/decimal-model-spike.md`: floats binarios finitos con un escalar etiquetado
+en el protocolo de estado. La sintaxis decimal sigue rechazada hasta pasar sus
+pruebas de bits, formato, paridad, render y costo.
 `assign_new/3` con clave átomo y callback sin argumentos admite campos ausentes
 en el snapshot inicial. Un valor presente, incluso `nil`, evita evaluar el
 callback. El demo `/native-optional` y dos casos de paridad comprueban creación
