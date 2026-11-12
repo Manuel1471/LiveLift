@@ -329,6 +329,7 @@ test("native form validates a nested field locally and on the server", async ({p
 
   await note.fill("é");
   await expect(root.getByRole("alert")).toHaveText("Note must have at least 3 characters.", {timeout: 200});
+  await expect(root.locator(".form-feedback")).toContainText("Note must have at least 3 characters.");
   await root.getByRole("button", {name: "Save note"}).click();
   await expect(root.locator("p").last()).toHaveText("Saved: ");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");

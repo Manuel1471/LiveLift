@@ -82,10 +82,15 @@ Local presentation function components are accepted when they return a literal
 For example, the demo defines `<.move_button row_id={item.id} myself={@myself} />`
 inside a keyed row; the button's `phx-click` still invokes the parent's marked
 handler. A local component may use a prop in `:if`, text, or supported
-attributes. Slots, call-site directives, remote function components, and
+attributes. Call-site directives, remote function components, and
 multiple function clauses fail at compilation with a source location. Use an
 Elixir expression such as `label={"A & B"}` for a prop containing an encoded
 HTML entity; encoded static prop strings are rejected to avoid double escaping.
+The default slot works through `{render_slot(@inner_block)}` once per local
+function component. The demo's `<.feedback>` wraps its validation message this
+way. Slot content keeps the caller's assigns and may contain other local
+components. Named slots and repeated rendering of the default slot remain
+server only.
 Missing, duplicate, or invalid IDs fail instead of falling back to index keys.
 `class={["base", @active && "active"]}` also works, including `false` and
 `nil` values. Dynamic URLs and other expression attributes remain server only.

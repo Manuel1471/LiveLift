@@ -18,7 +18,7 @@ posteriores queda registrado abajo y no cambia este orden.
 |---|---|---|---|
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
 | 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Cerrada | Ninguno |
-| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Abierta | Slots, componentes remotos y lenguaje del compilador |
+| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Abierta | Slots con nombre, componentes remotos y lenguaje del compilador |
 | 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
 | 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
 | 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
@@ -186,8 +186,10 @@ La plantilla nativa ya admite atributos `class`, `title`, `aria-label` y
 También acepta `:for` nativo con `id={item.id}` como clave estable y conserva
 la fila enfocada al reordenarla. Los componentes de función locales con props
 explícitas y `~H` literal se expanden para el cliente; el demo usa uno para
-el error de validación y otro para un botón con evento del padre. Los demás
-casos sin ID estable quedan en el servidor; slots y componentes remotos
+el error de validación y otro para un botón con evento del padre. El slot
+predeterminado funciona una vez con `render_slot(@inner_block)` y contenido
+en el ámbito del llamador. Los demás casos sin ID estable quedan en el servidor;
+slots con nombre y componentes remotos
 siguen pendientes.
 Los eventos nativos ya admiten `phx-value-id={item.id}` y el demo añade y quita
 filas con handlers `@client true`. Una acción que quita el botón pulsado se envía

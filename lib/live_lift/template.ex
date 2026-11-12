@@ -32,6 +32,11 @@ defmodule LiveLift.Template do
             "#{file}: local function components require a native LiveComponent with use LiveLift"
     end
 
+    if Enum.any?(tree, &default_slot_node?/1) do
+      raise ArgumentError,
+            "#{file}: render_slot(@inner_block) requires a native local function component"
+    end
+
     tree
   end
 
@@ -40,10 +45,18 @@ defmodule LiveLift.Template do
   end
 
   def compile_parsed(nodes, file, {:liveview, events, local_components}) do
-    nodes
-    |> Enum.map(&adapt_liveview_node(&1, file, events))
-    |> Enum.map(&convert_node(&1, file))
-    |> expand_local_components(local_components, file, events, [])
+    tree =
+      nodes
+      |> Enum.map(&adapt_liveview_node(&1, file, events))
+      |> Enum.map(&convert_node(&1, file))
+      |> expand_local_components(local_components, file, events, [])
+
+    if Enum.any?(tree, &default_slot_node?/1) do
+      raise ArgumentError,
+            "#{file}: render_slot(@inner_block) requires a local function component call; move this expression to the server"
+    end
+
+    tree
   end
 
   defp local_component_node?(%{type: "local_component"}), do: true
@@ -52,6 +65,13 @@ defmodule LiveLift.Template do
     do: Enum.any?(children, &local_component_node?/1)
 
   defp local_component_node?(_), do: false
+
+  defp default_slot_node?(%{type: "default_slot"}), do: true
+
+  defp default_slot_node?(%{type: "element", children: children}),
+    do: Enum.any?(children, &default_slot_node?/1)
+
+  defp default_slot_node?(_), do: false
 
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
     if type == :remote_component do
@@ -311,8 +331,15 @@ defmodule LiveLift.Template do
 
   defp convert_node({:text, text, _meta}, _file), do: %{type: "text", value: text}
 
-  defp convert_node({:body_expr, source, meta}, file),
-    do: %{type: "binding", expr: Expression.parse(source, file, meta.line)}
+  defp convert_node({:body_expr, source, meta}, file) do
+    case Code.string_to_quoted(source, file: file, line: meta.line) do
+      {:ok, {:render_slot, _, [{:@, _, [{:inner_block, _, _}]}]}} ->
+        %{type: "default_slot", line: meta.line}
+
+      _ ->
+        %{type: "binding", expr: Expression.parse(source, file, meta.line)}
+    end
+  end
 
   defp convert_node({:block, type, tag, attrs, children, meta, _close}, file),
     do: convert_element(type, tag, attrs, children, meta, file)
@@ -342,11 +369,6 @@ defmodule LiveLift.Template do
   end
 
   defp convert_element(:local_component, tag, attrs, children, meta, file) do
-    if children != [] do
-      raise ArgumentError,
-            "#{file}:#{meta.line}: client function components do not support slots yet; move this component to the server"
-    end
-
     props =
       Enum.map(attrs, fn
         {name, {:expr, source, expression_meta}, _} when is_binary(name) ->
@@ -376,6 +398,7 @@ defmodule LiveLift.Template do
       type: "local_component",
       name: String.trim_leading(tag, "."),
       props: props,
+      children: Enum.map(children, &convert_node(&1, file)),
       line: meta.line,
       column: meta.column
     }
@@ -467,7 +490,14 @@ defmodule LiveLift.Template do
 
   defp expand_local_components(nodes, components, file, events, stack) do
     Enum.flat_map(nodes, fn
-      %{type: "local_component", name: name, props: props, line: line, column: column} ->
+      %{
+        type: "local_component",
+        name: name,
+        props: props,
+        children: children,
+        line: line,
+        column: column
+      } ->
         if name in stack do
           raise ArgumentError, "#{file}:#{line}: recursive client function component .#{name}"
         end
@@ -480,13 +510,31 @@ defmodule LiveLift.Template do
             )
 
         props = Map.new(props, fn %{name: key, expr: expr} -> {key, expr} end)
+        children = expand_local_components(children, components, file, events, stack)
 
-        component.source
-        |> Parser.parse!(component.file)
-        |> Enum.map(&adapt_liveview_node(&1, component.file, events))
-        |> Enum.map(&convert_node(&1, component.file))
-        |> expand_local_components(components, component.file, events, [name | stack])
+        body =
+          component.source
+          |> Parser.parse!(component.file)
+          |> Enum.map(&adapt_liveview_node(&1, component.file, events))
+          |> Enum.map(&convert_node(&1, component.file))
+          |> expand_local_components(components, component.file, events, [name | stack])
+
+        slot_count = Enum.sum(Enum.map(body, &count_default_slots/1))
+
+        if slot_count > 1 do
+          raise ArgumentError,
+                "#{component.file}:#{component.line}: client function component .#{name} may render its default slot once; move repeated slots to the server"
+        end
+
+        if children != [] and slot_count == 0 do
+          raise ArgumentError,
+                "#{file}:#{line}: client function component .#{name} does not render its default slot; remove children or add render_slot(@inner_block)"
+        end
+
+        body
+        |> Enum.map(&wrap_default_slot(&1, children))
         |> Enum.map(&substitute_component_props(&1, props, file, line, "#{line}:#{column}"))
+        |> flatten_slot_scopes()
 
       %{type: "element", children: children} = node ->
         [%{node | children: expand_local_components(children, components, file, events, stack)}]
@@ -495,6 +543,37 @@ defmodule LiveLift.Template do
         [node]
     end)
   end
+
+  defp count_default_slots(%{type: "default_slot"}), do: 1
+
+  defp count_default_slots(%{type: "element", children: children}),
+    do: Enum.sum(Enum.map(children, &count_default_slots/1))
+
+  defp count_default_slots(_), do: 0
+
+  defp wrap_default_slot(%{type: "default_slot"}, children),
+    do: %{type: "slot_scope", children: children}
+
+  defp wrap_default_slot(%{type: "element", children: children} = node, slot),
+    do: %{node | children: Enum.map(children, &wrap_default_slot(&1, slot))}
+
+  defp wrap_default_slot(node, _children), do: node
+
+  defp flatten_slot_scopes(nodes) do
+    Enum.flat_map(nodes, fn
+      %{type: "slot_scope", children: children} ->
+        children
+
+      %{type: "element", children: children} = node ->
+        [%{node | children: flatten_slot_scopes(children)}]
+
+      node ->
+        [node]
+    end)
+  end
+
+  defp substitute_component_props(%{type: "slot_scope"} = node, _props, _file, _line, _prefix),
+    do: node
 
   defp substitute_component_props(
          %{type: "binding", expr: expr} = node,

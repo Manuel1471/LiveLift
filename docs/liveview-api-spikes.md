@@ -91,8 +91,10 @@ render the original function for initial HTML. The native form's validation
 message and the native list's `move_to_top` button exercise this path in three
 browsers, including a child `phx-click` handled by the parent component.
 The bounded parser and the LiveView parser agree on the normalized local tag.
-Slots, remote functions, component defaults and call-site directives still
-need their own design and remain compile-time rejections.
+The default `render_slot(@inner_block)` now passes a browser test with content
+containing another local component. Named slots, remote functions, component
+defaults and call-site directives still need their own design and remain
+compile-time rejections.
 
 ## Decision
 

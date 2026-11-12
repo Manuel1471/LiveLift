@@ -80,9 +80,18 @@ defmodule LiveLift.ComponentTest do
       """
     end
 
+    attr(:label, :string, required: true)
+    slot(:inner_block, required: true)
+
+    defp card(assigns) do
+      ~H"""
+      <div class="card" title={@label}>{render_slot(@inner_block)}</div>
+      """
+    end
+
     def render(assigns) do
       ~H"""
-      <section><.badge label={@label} visible={@visible} /><.badge label="Ready" visible={true} /><.badge label={"A & B"} visible={true} /><button phx-click="toggle" phx-target={@myself}>Toggle</button></section>
+      <section><.card label="Card"><.badge label={@label} visible={@visible} /></.card><.badge label="Ready" visible={true} /><.badge label={"A & B"} visible={true} /><button phx-click="toggle" phx-target={@myself}>Toggle</button></section>
       """
     end
 
@@ -494,6 +503,8 @@ defmodule LiveLift.ComponentTest do
     state = %{label: "<Ready>", visible: true}
     html = tree |> LiveLift.Template.render_server(state) |> Phoenix.HTML.safe_to_string()
     assert html =~ ~s(class="badge")
+    assert html =~ ~s(class="card")
+    assert html =~ ~s(title="Card")
     assert html =~ "&lt;Ready&gt;"
     assert html =~ "Ready"
     assert html =~ "A &amp; B"
@@ -557,7 +568,7 @@ defmodule LiveLift.ComponentTest do
     end
 
     assert_raise ArgumentError,
-                 ~r/call.ex:1: client function components do not support slots yet/,
+                 ~r/call.ex:1: client function component .badge does not render its default slot/,
                  fn ->
                    LiveLift.Template.compile_liveview(
                      "<.badge>child</.badge>",
@@ -584,6 +595,30 @@ defmodule LiveLift.ComponentTest do
         "call.ex",
         [],
         components
+      )
+    end
+
+    assert_raise ArgumentError, ~r/slot header is not supported/, fn ->
+      LiveLift.Template.compile_liveview(
+        "<.badge><:header>Header</:header></.badge>",
+        "call.ex",
+        [],
+        components
+      )
+    end
+
+    assert_raise ArgumentError, ~r/may render its default slot once/, fn ->
+      LiveLift.Template.compile_liveview(
+        "<.card>content</.card>",
+        "call.ex",
+        [],
+        %{
+          "card" => %{
+            source: "<div>{render_slot(@inner_block)}{render_slot(@inner_block)}</div>",
+            file: "card.ex",
+            line: 1
+          }
+        }
       )
     end
 
