@@ -7,6 +7,8 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
     <section aria-label="Native LiveComponent list">
       <button type="button" phx-click="add" phx-target={@myself}>Add row</button>
       <button type="button" phx-click="reverse" phx-target={@myself}>Reverse rows</button>
+      <button type="button" phx-click="find_new" phx-target={@myself}>Find new row</button>
+      <output aria-label="First new row">{@first_match}</output>
       <ul>
         <li :for={item <- @items} id={item.id}>
           <form phx-change="edit" phx-submit="edit" phx-target={@myself}>
@@ -46,6 +48,18 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
   @client true
   def handle_event("reverse", _params, socket) do
     {:noreply, update(socket, :items, &Enum.reverse(&1))}
+  end
+
+  @client true
+  def handle_event("find_new", _params, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :first_match,
+       Enum.find(socket.assigns.items, %{id: "none", label: "None"}, fn item ->
+         item.label == "New"
+       end).label
+     )}
   end
 
   @client true

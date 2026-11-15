@@ -497,7 +497,7 @@ defmodule LiveLift.ComponentTest do
     expressions = [
       "Float.round(1.5, 1)",
       "cond do String.downcase(socket.assigns.value) -> 1; true -> 0 end",
-      "Enum.find(socket.assigns.items, fn item -> item.keep end)",
+      "Enum.find(socket.assigns.items, fn item, _index -> item.keep end)",
       "Enum.reduce(socket.assigns.items, 0, fn item, acc -> item + acc end)",
       "Enum.sort_by(socket.assigns.items, fn item -> item.id end)",
       "Enum.count(socket.assigns.items)",

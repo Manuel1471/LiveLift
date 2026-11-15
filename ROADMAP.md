@@ -282,8 +282,11 @@ en el corpus probado, incluidos espacios Unicode y grafemas complejos. La
 segmentación de grafemas depende de `Intl.Segmenter` y de la versión Unicode del
 navegador; las demás funciones de `String` de esta fase siguen pendientes.
 `Enum.take/2`, `Enum.drop/2` y `Enum.uniq/1` también tienen paridad para listas
-seguras; `find`, `reduce`, `sort_by`, `count`, `join`, `flat_map` y `with_index`
-siguen pendientes.
+seguras. `Enum.find/2,3` ya tiene paridad con 1,000 estados y un handler nativo
+que converge en tres navegadores. El paquete de referencia, que no usa esta
+operación, mide `54,049` bytes gzip; los benchmarks de render, evento Phoenix
+y DOM se ejecutaron de nuevo. `reduce`, `sort_by`, `count`, `join`,
+`flat_map` y `with_index` siguen pendientes, en ese orden.
 `Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las otras
 operaciones de `Map` y `List` de esta fase siguen pendientes.
 

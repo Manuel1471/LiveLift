@@ -92,7 +92,9 @@ numeric `+`, `-`, `*`, integer-only `rem/2`, and numeric comparisons; `==`, `!=`
 short-circuit `&&` and `||`; `cond` and bounded `case`;
 string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
 `Enum.reject/2`, `Enum.any?/2`, `Enum.all?/2` with one-argument anonymous
-functions; `Enum.member?/2`; `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
+functions; `Enum.find/2,3` with a one-argument anonymous predicate, returning
+the first matching item or `nil`/the explicit default; `Enum.member?/2`;
+`Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
 `Map.take/2` with a literal list of atom keys (missing keys are omitted);

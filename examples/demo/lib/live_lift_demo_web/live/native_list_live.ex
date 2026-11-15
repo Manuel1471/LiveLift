@@ -23,7 +23,8 @@ defmodule LiveLiftDemoWeb.NativeListLive do
     {:ok,
      assign(socket,
        items: items,
-       next_id: count + 1
+       next_id: count + 1,
+       first_match: "None"
      )}
   end
 
@@ -36,6 +37,7 @@ defmodule LiveLiftDemoWeb.NativeListLive do
         id="native-list"
         items={@items}
         next_id={@next_id}
+        first_match={@first_match}
       />
     </main>
     """

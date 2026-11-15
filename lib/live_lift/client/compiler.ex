@@ -200,6 +200,12 @@ defmodule LiveLift.Client.Compiler do
   function __liveLiftMember(list, value) {
     return __liveLiftList(list).some((item) => __liveLiftEqual(item, value));
   }
+  function __liveLiftFind(list, fallback, predicate) {
+    for (const item of __liveLiftList(list)) {
+      if (__liveLiftTruthy(predicate(item))) return item;
+    }
+    return fallback;
+  }
   function __liveLiftTake(list, count) {
     list = __liveLiftList(list);
     count = __liveLiftInt(count);
@@ -506,6 +512,24 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftMember(#{compile_expr(list, arg)}, #{compile_expr(value, arg)})"
   end
 
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :find]}, _,
+          [list, {:fn, _, [{:->, _, [[{variable, _, context}], body]}]}]},
+         args
+       )
+       when is_atom(variable) and (is_atom(context) or is_nil(context)) do
+    compile_find(list, nil, variable, body, args)
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :find]}, _,
+          [list, fallback, {:fn, _, [{:->, _, [[{variable, _, context}], body]}]}]},
+         args
+       )
+       when is_atom(variable) and (is_atom(context) or is_nil(context)) do
+    compile_find(list, fallback, variable, body, args)
+  end
+
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)
        when operation in [:take, :drop] do
     helper = if operation == :take, do: "__liveLiftTake", else: "__liveLiftDrop"
@@ -619,6 +643,13 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr(other, _arg) do
     raise ArgumentError, "unsupported client expression: #{Macro.to_string(other)}"
+  end
+
+  defp compile_find(list, fallback, variable, body, args) do
+    name = identifier!(variable)
+    predicate = compile_expr(body, List.wrap(args) ++ [variable])
+
+    "__liveLiftFind(#{compile_expr(list, args)}, #{compile_expr(fallback, args)}, (#{name}) => #{predicate})"
   end
 
   defp compile_case_pattern(pattern) do

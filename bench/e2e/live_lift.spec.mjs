@@ -119,6 +119,21 @@ test("native list adds and removes rows with dynamic phx-value-id", async ({page
   await expect(root.locator("li")).toHaveCount(2);
 });
 
+test("native Enum.find predicts the first matching row and converges", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  const match = root.getByRole("status", {name: "First new row"});
+  await expect(match).toHaveText("None");
+  await root.getByRole("button", {name: "Find new row"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(match).toHaveText("None");
+  await root.getByRole("button", {name: "Add row"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await root.getByRole("button", {name: "Find new row"}).click();
+  await expect(match).toHaveText("New");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
