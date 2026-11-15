@@ -105,6 +105,8 @@ predicate using Elixir truthiness;
 `Enum.join/1,2` for lists with a string separator;
 `Enum.flat_map/2` for lists with a one-argument anonymous callback that returns
 a list for every item;
+`Enum.with_index/2` with a two-argument anonymous callback that returns safe
+state values;
 `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
@@ -144,6 +146,11 @@ budget.
 string, or map callback result is outside the client subset and raises. The
 browser stops when the flattened list exceeds 10,000 elements; the server
 result is subject to the same state limit before delivery.
+`Enum.with_index(list, fn item, index -> result end)` starts indexes at zero
+and invokes the callback once per item, in order. The callback's two parameter
+names must differ. `Enum.with_index/1` and the integer-offset form of `/2`
+return tuples, which cannot cross LiveLift's state boundary; keep them on the
+server or use the callback form to return a map or another safe value.
 
 State and action results must be maps with safe atom keys. Values may be safe
 integers, finite binary64 floats, strings, booleans, `nil`, lists, or nested maps to a maximum depth

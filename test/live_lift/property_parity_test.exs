@@ -67,6 +67,8 @@ defmodule LiveLift.PropertyParityTest do
         flat_doubled: Enum.flat_map(state.items, fn item -> [item, item] end),
         flat_kept:
           Enum.flat_map(state.items, fn item -> if item.keep, do: [item.id], else: [] end),
+        indexed_items:
+          Enum.with_index(state.items, fn item, index -> %{id: item.id, index: index} end),
         member: Enum.member?(state.items, state.target),
         taken: Enum.take(state.items, state.amount),
         dropped: Enum.drop(state.items, state.amount),

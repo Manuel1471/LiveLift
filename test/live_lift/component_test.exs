@@ -504,7 +504,6 @@ defmodule LiveLift.ComponentTest do
       "Enum.count(socket.assigns.items, fn item, _index -> item.keep end)",
       "Enum.join(socket.assigns.items, :separator)",
       "Enum.flat_map(socket.assigns.items, fn item, _index -> [item] end)",
-      "Enum.with_index(socket.assigns.items)",
       "String.downcase(socket.assigns.value)",
       "String.split(socket.assigns.value, \",\")",
       "String.replace(socket.assigns.value, \"a\", \"b\")",
@@ -529,6 +528,28 @@ defmodule LiveLift.ComponentTest do
 
       assert_raise ArgumentError,
                    ~r/matrix.ex:6: unsupported @client handler: unsupported client expression:.*move it to a server handler/s,
+                   fn -> Code.compile_string(source, "matrix.ex") end
+    end
+
+    for {expression, index} <-
+          Enum.with_index([
+            "Enum.with_index(socket.assigns.items)",
+            "Enum.with_index(socket.assigns.items, 1)"
+          ]) do
+      source = """
+      defmodule LiveLift.ComponentTest.UnsupportedTupleIndex#{index} do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@value}</output>"
+        @client true
+        def handle_event("run", _params, socket) do
+          {:noreply, assign(socket, :value, #{expression})}
+        end
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/matrix.ex:6: unsupported @client handler: unsupported client Enum.with_index tuple output; use Enum.with_index\(list, fn item, index ->/,
                    fn -> Code.compile_string(source, "matrix.ex") end
     end
 

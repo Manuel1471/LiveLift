@@ -315,10 +315,17 @@ benchmarks de render, evento Phoenix y DOM.
 `Enum.flat_map/2` compila callbacks anónimos que devuelven listas. El corpus
 de 1,000 estados prueba expansión, filtrado y lista vacía; los resultados
 escalares se rechazan y la salida se limita a 10,000 elementos. El demo
-expande etiquetas de filas propias de la app. Solo `with_index` sigue pendiente
-en el bloque de `Enum`. El paquete de referencia, que no usa `flat_map`, midió
+expande etiquetas de filas propias de la app. El paquete de referencia, que no usa `flat_map`, midió
 `54,049` bytes gzip; se repitieron los benchmarks de render, evento Phoenix y
 DOM.
+`Enum.with_index/2` con callback anónimo compila y pasa el corpus de 1,000
+estados; el demo numera etiquetas sin cambiar la sintaxis de LiveView. Las
+variantes que devuelven tuplas (`/1` y `/2` con offset) fallan al compilar con
+una alternativa explícita porque el estado de LiveLift no admite tuplas. Con
+esta decisión, el bloque `Enum` de la fase queda resuelto; la puerta 2 sigue
+abierta por `String`, `Map`/`List` y la regresión final. El paquete de referencia,
+que no usa `with_index`, midió `54,049` bytes gzip; se repitieron los benchmarks
+de render, evento Phoenix y DOM.
 `Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las otras
 operaciones de `Map` y `List` de esta fase siguen pendientes.
 

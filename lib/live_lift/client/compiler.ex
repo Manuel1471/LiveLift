@@ -306,6 +306,9 @@ defmodule LiveLift.Client.Compiler do
     }
     return result;
   }
+  function __liveLiftWithIndex(list, callback) {
+    return __liveLiftList(list).map((item, index) => callback(item, index));
+  }
   function __liveLiftTake(list, count) {
     list = __liveLiftList(list);
     count = __liveLiftInt(count);
@@ -699,6 +702,29 @@ defmodule LiveLift.Client.Compiler do
     name = identifier!(variable)
     projection = compile_expr(body, List.wrap(args) ++ [variable])
     "__liveLiftFlatMap(#{compile_expr(list, args)}, (#{name}) => #{projection})"
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :with_index]}, _,
+          [
+            list,
+            {:fn, _, [{:->, _, [[{item, _, item_context}, {index, _, index_context}], body]}]}
+          ]},
+         args
+       )
+       when is_atom(item) and is_atom(index) and item != index and
+              (is_atom(item_context) or is_nil(item_context)) and
+              (is_atom(index_context) or is_nil(index_context)) do
+    item_name = identifier!(item)
+    index_name = identifier!(index)
+    result = compile_expr(body, List.wrap(args) ++ [item, index])
+    "__liveLiftWithIndex(#{compile_expr(list, args)}, (#{item_name}, #{index_name}) => #{result})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :with_index]}, _, args}, _context)
+       when is_list(args) and length(args) in [1, 2] do
+    raise ArgumentError,
+          "unsupported client Enum.with_index tuple output; use Enum.with_index(list, fn item, index -> %{item: item, index: index} end) or move this handler to the server"
   end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)
