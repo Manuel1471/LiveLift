@@ -294,8 +294,14 @@ El paquete de referencia, que tampoco usa `reduce`, conservó `54,049` bytes
 gzip; se repitieron los benchmarks de render, evento Phoenix y DOM. La
 mediana DOM de inversión de 1,000 filas fue 55.4 ms en linkedom; este
 benchmark no mide `reduce` directamente.
-`sort_by`, `count`, `join`, `flat_map` y `with_index` siguen pendientes, en ese
-orden.
+El spike `docs/sort-by-spike.md` confirma el orden de términos para valores
+seguros y la diferencia UTF-8/UTF-16. `Enum.sort_by/2` ya pasa 1,000 listas
+mixtas y 302 listas numéricas con floats etiquetados; el demo verifica orden,
+foco y convergencia en tres navegadores. `count`, `join`, `flat_map` y
+`with_index` siguen pendientes, en ese orden. En 25 inversiones y ordenamientos
+locales de 1,000 filas, Chromium midió mediana de 10.9 ms y p95 de 18.3 ms:
+el p95 supera el presupuesto de un frame. El bundle de referencia, que no usa
+`sort_by`, midió `54,050` bytes gzip con LiveLift y `47,221` sin él.
 `Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las otras
 operaciones de `Map` y `List` de esta fase siguen pendientes.
 
@@ -378,6 +384,9 @@ por `requestAnimationFrame`.
 La lista nativa con formularios por fila midió 10.5 ms de mediana y 15.8 ms p95
 en 25 inversiones locales de 1,000 filas en Chromium. Está cerca del presupuesto
 de un frame; el benchmark reproduce el caso con `/native-list?rows=1000`.
+El ordenamiento nativo de esas filas midió 10.9 ms de mediana y 18.3 ms p95
+en 25 ciclos; el p95 ya excede un frame de 16.7 ms. La puerta de rendimiento
+sigue abierta.
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.

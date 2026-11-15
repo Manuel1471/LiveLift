@@ -215,6 +215,57 @@ defmodule LiveLift.Client.Compiler do
     }
     return accumulator;
   }
+  function __liveLiftStringCompare(left, right) {
+    const a = Array.from(left, (character) => character.codePointAt(0));
+    const b = Array.from(right, (character) => character.codePointAt(0));
+    for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+      if (a[index] !== b[index]) return a[index] < b[index] ? -1 : 1;
+    }
+    return Math.sign(a.length - b.length);
+  }
+  function __liveLiftTermRank(value) {
+    if (typeof value === "number" || __liveLiftIsFloat(value)) return 0;
+    if (value === null || typeof value === "boolean") return 1;
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) return 2;
+    if (Array.isArray(value)) return 3;
+    if (typeof value === "string") return 4;
+    throw new Error("LiveLift expected a sortable state value");
+  }
+  function __liveLiftTermCompare(left, right) {
+    const leftRank = __liveLiftTermRank(left);
+    const rightRank = __liveLiftTermRank(right);
+    if (leftRank !== rightRank) return Math.sign(leftRank - rightRank);
+    if (leftRank === 0) return Math.sign(__liveLiftNumber(left) - __liveLiftNumber(right));
+    if (leftRank === 1) {
+      const name = (value) => value === null ? "nil" : String(value);
+      return __liveLiftStringCompare(name(left), name(right));
+    }
+    if (leftRank === 4) return __liveLiftStringCompare(left, right);
+    if (leftRank === 3) {
+      for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+        const order = __liveLiftTermCompare(left[index], right[index]);
+        if (order !== 0) return order;
+      }
+      return Math.sign(left.length - right.length);
+    }
+    const leftKeys = Object.keys(left).sort(__liveLiftStringCompare);
+    const rightKeys = Object.keys(right).sort(__liveLiftStringCompare);
+    if (leftKeys.length !== rightKeys.length) return Math.sign(leftKeys.length - rightKeys.length);
+    for (let index = 0; index < leftKeys.length; index += 1) {
+      const order = __liveLiftStringCompare(leftKeys[index], rightKeys[index]);
+      if (order !== 0) return order;
+    }
+    for (const key of leftKeys) {
+      const order = __liveLiftTermCompare(left[key], right[key]);
+      if (order !== 0) return order;
+    }
+    return 0;
+  }
+  function __liveLiftSortBy(list, mapper) {
+    const projected = __liveLiftList(list).map((item, index) => ({item, index, key: mapper(item)}));
+    projected.sort((left, right) => __liveLiftTermCompare(left.key, right.key) || left.index - right.index);
+    return projected.map(({item}) => item);
+  }
   function __liveLiftTake(list, count) {
     list = __liveLiftList(list);
     count = __liveLiftInt(count);
@@ -563,6 +614,17 @@ defmodule LiveLift.Client.Compiler do
               (is_atom(item_context) or is_nil(item_context)) and
               (is_atom(acc_context) or is_nil(acc_context)) do
     compile_reduce(list, initial, body, item, acc, args, true)
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :sort_by]}, _,
+          [list, {:fn, _, [{:->, _, [[{variable, _, context}], body]}]}]},
+         args
+       )
+       when is_atom(variable) and (is_atom(context) or is_nil(context)) do
+    name = identifier!(variable)
+    key = compile_expr(body, List.wrap(args) ++ [variable])
+    "__liveLiftSortBy(#{compile_expr(list, args)}, (#{name}) => #{key})"
   end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)

@@ -99,6 +99,7 @@ the first matching item or `nil`/the explicit default; `Enum.member?/2`;
 The callback receives each item before the accumulator, in list order.
 `reduce/2` uses the first item as its accumulator and raises on an empty list;
 `reduce/3` returns its initial value for an empty list. Also supported:
+`Enum.sort_by/2` on lists with a one-argument anonymous key function;
 `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
@@ -120,6 +121,14 @@ calls fail at compile time. Integer-only browser arithmetic fails if it would
 leave JavaScript's safe integer range. Float results must remain finite. A
 float operand produces a float result, and `1 == 1.0` is true, including inside
 maps and lists. Map and list equality is structural.
+`Enum.sort_by/2` computes each key once and keeps the original order when
+keys compare equal. Sort keys may be any safe state value: numbers, `nil`,
+booleans, maps, lists, or strings. Their order follows Elixir term order for
+these types: numbers, then `false`/`nil`/`true`, maps, lists, and strings.
+Maps compare by size, sorted atom keys, then values; lists compare
+lexicographically. Strings compare by UTF-8 byte order, which differs from
+JavaScript's default UTF-16 string order for some Unicode characters. Custom
+sorters (`Enum.sort_by/3`) remain server only.
 
 State and action results must be maps with safe atom keys. Values may be safe
 integers, finite binary64 floats, strings, booleans, `nil`, lists, or nested maps to a maximum depth

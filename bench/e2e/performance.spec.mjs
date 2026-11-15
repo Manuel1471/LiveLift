@@ -145,6 +145,38 @@ test("benchmark 1,000 native LiveComponent row reversals in Chromium", async ({p
   console.log(JSON.stringify({browser: "Chromium", samples: 25, nativeKeyedReverse: result}, null, 2));
 });
 
+test("benchmark 1,000 native LiveComponent row sorts in Chromium", async ({page, browserName}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
+  test.setTimeout(120_000);
+  await page.goto("/native-list?rows=1000");
+  await page.waitForFunction(() => window.liveSocket?.isConnected());
+  const root = page.locator("#native-list");
+  await expect(root.locator("li")).toHaveCount(1_000);
+  await page.evaluate(() => window.liveSocket.disconnect());
+
+  const result = await root.evaluate((component) => {
+    const sort = component.querySelector('button[phx-click="sort_labels"]');
+    const reverse = component.querySelector('button[phx-click="reverse"]');
+    const input = component.querySelector('#row-1000 input[name="label"]');
+    const values = [];
+    for (let index = 0; index < 25; index += 1) {
+      reverse.click();
+      const start = performance.now();
+      sort.click();
+      values.push(performance.now() - start);
+    }
+    values.sort((a, b) => a - b);
+    return {
+      medianMs: values[12], p95Ms: values[23],
+      rows: component.querySelectorAll("li").length,
+      preservedInput: component.querySelector('#row-1000 input[name="label"]') === input,
+    };
+  });
+  expect(result.rows).toBe(1_000);
+  expect(result.preservedInput).toBe(true);
+  console.log(JSON.stringify({browser: "Chromium", samples: 25, nativeKeyedSort: result}, null, 2));
+});
+
 test("benchmark navigation and mount with 100 islands", async ({page, browserName}) => {
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);

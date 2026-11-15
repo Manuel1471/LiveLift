@@ -18,6 +18,10 @@ defmodule LiveLift.FloatParityTest do
         nested_equal: state.items == state.other
       }
     )
+
+    defclient(sort_numbers(state),
+      do: %{items: Enum.sort_by(state.items, fn item -> item end)}
+    )
   end
 
   test "tagged floats preserve type and negative zero through nested state" do
@@ -98,6 +102,38 @@ defmodule LiveLift.FloatParityTest do
       run_node!(
         Compiler.compile_module(Actions) <>
           "\nconsole.log(JSON.stringify(#{Jason.encode!(input)}.map((state) => actions.calculate(state))));\n"
+      )
+
+    assert Jason.decode!(actual) == expected |> Jason.encode!() |> Jason.decode!()
+  end
+
+  test "sort_by preserves mixed numeric order and float wire types" do
+    values = [
+      -1.7976931348623157e308,
+      -1.0,
+      -0.0,
+      0,
+      0.0,
+      5.0e-324,
+      1,
+      1.0,
+      9_007_199_254_740_991,
+      1.7976931348623157e308
+    ]
+
+    generated =
+      StreamData.list_of(StreamData.member_of(values), max_length: 10)
+      |> StreamData.seeded(20_261_115)
+      |> Enum.take(300)
+
+    cases = Enum.map([values, Enum.reverse(values) | generated], &%{items: &1})
+    Enum.each(cases, &LiveLift.State.validate!/1)
+    expected = cases |> Enum.map(&Actions.sort_numbers/1) |> FloatWire.encode()
+
+    actual =
+      run_node!(
+        Compiler.compile_module(Actions) <>
+          "\nconsole.log(JSON.stringify(#{cases |> FloatWire.encode() |> Jason.encode!()}.map((state) => actions.sort_numbers(state))));\n"
       )
 
     assert Jason.decode!(actual) == expected |> Jason.encode!() |> Jason.decode!()

@@ -51,6 +51,8 @@ defmodule LiveLift.PropertyParityTest do
               if item.keep, do: item, else: previous
             end)
           end,
+        sorted_values: Enum.sort_by(state.sortable, fn value -> value end),
+        sorted_items: Enum.sort_by(state.items, fn item -> item.id end),
         member: Enum.member?(state.items, state.target),
         taken: Enum.take(state.items, state.amount),
         dropped: Enum.drop(state.items, state.amount),
@@ -93,6 +95,30 @@ defmodule LiveLift.PropertyParityTest do
     item = StreamData.fixed_map(%{id: StreamData.integer(-100..100), keep: StreamData.boolean()})
     items = StreamData.list_of(item, max_length: 6)
 
+    sortable =
+      StreamData.list_of(
+        StreamData.member_of([
+          nil,
+          false,
+          true,
+          -2,
+          0,
+          2,
+          "",
+          "a",
+          "\uE000",
+          "\u{10000}",
+          [],
+          [1],
+          [1, 2],
+          %{},
+          %{a: 1},
+          %{b: 0},
+          %{a: 1, b: 2}
+        ]),
+        max_length: 8
+      )
+
     label =
       StreamData.list_of(
         StreamData.member_of([
@@ -131,6 +157,7 @@ defmodule LiveLift.PropertyParityTest do
         count: StreamData.integer(-1_000..1_000),
         step: StreamData.integer(-1_000..1_000),
         items: items,
+        sortable: sortable,
         amount: StreamData.integer(-12..12),
         other: items,
         target: item,
@@ -155,6 +182,7 @@ defmodule LiveLift.PropertyParityTest do
           count: 0,
           step: 0,
           items: [],
+          sortable: ["\u{10000}", "\uE000", nil, false, true],
           amount: -1,
           other: [],
           target: %{id: 1, keep: false},
@@ -167,6 +195,7 @@ defmodule LiveLift.PropertyParityTest do
           count: 1,
           step: -1,
           items: [%{id: 1, keep: false}],
+          sortable: [%{b: 0}, %{a: 1}, %{}, [], "a"],
           amount: -12,
           other: [%{id: 1, keep: false}],
           target: %{id: 1, keep: false},
@@ -179,6 +208,7 @@ defmodule LiveLift.PropertyParityTest do
           count: 0,
           step: 1,
           items: [%{id: 1, keep: true}, %{id: 1, keep: true}],
+          sortable: [[1, 2], [1], 2, 0, -2],
           amount: 12,
           other: [],
           target: %{id: 0, keep: true},
@@ -193,6 +223,7 @@ defmodule LiveLift.PropertyParityTest do
             count: count,
             step: 0,
             items: [],
+            sortable: [],
             amount: 0,
             other: [],
             target: %{id: 0, keep: false},

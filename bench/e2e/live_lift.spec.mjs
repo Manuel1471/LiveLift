@@ -148,6 +148,19 @@ test("native Enum.reduce combines app-owned rows and converges", async ({page}) 
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
 });
 
+test("native Enum.sort_by preserves keyed focus and server order", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  await root.getByRole("button", {name: "Add row"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  const focused = root.locator('#row-2 input[name="label"]');
+  await focused.focus();
+  await root.getByRole("button", {name: "Sort labels"}).evaluate((button) => button.click());
+  await expect(root.locator("li").first()).toHaveAttribute("id", "row-3");
+  await expect(focused).toBeFocused();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
