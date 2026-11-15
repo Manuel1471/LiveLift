@@ -9,6 +9,8 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <button type="button" phx-click="reverse" phx-target={@myself}>Reverse rows</button>
       <button type="button" phx-click="find_new" phx-target={@myself}>Find new row</button>
       <output aria-label="First new row">{@first_match}</output>
+      <button type="button" phx-click="combine_labels" phx-target={@myself}>Combine labels</button>
+      <output aria-label="Combined labels">{@combined_labels}</output>
       <ul>
         <li :for={item <- @items} id={item.id}>
           <form phx-change="edit" phx-submit="edit" phx-target={@myself}>
@@ -59,6 +61,16 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
        Enum.find(socket.assigns.items, %{id: "none", label: "None"}, fn item ->
          item.label == "New"
        end).label
+     )}
+  end
+
+  @client true
+  def handle_event("combine_labels", _params, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :combined_labels,
+       Enum.reduce(socket.assigns.items, "", fn item, labels -> labels <> item.label end)
      )}
   end
 

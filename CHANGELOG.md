@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile `Enum.reduce/2,3` for lists and two-argument anonymous callbacks, with empty-list behavior, seeded parity, and native browser coverage.
 - Compile `Enum.find/2,3` for list inputs and one-argument anonymous predicates, with seeded Elixir/JavaScript parity and rejection of unsupported callback shapes.
 - Compile expression pipes into supported calls and same-component helpers, with seeded parity, source-located invalid-target rejection, and three-browser native coverage.
 - Compile same-component multi-clause `defp` calls in marked handlers, including later definitions and calls between helpers, through bounded case matching; reject guards and recursion with source locations.

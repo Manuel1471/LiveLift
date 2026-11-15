@@ -24,7 +24,8 @@ defmodule LiveLiftDemoWeb.NativeListLive do
      assign(socket,
        items: items,
        next_id: count + 1,
-       first_match: "None"
+       first_match: "None",
+       combined_labels: ""
      )}
   end
 
@@ -38,6 +39,7 @@ defmodule LiveLiftDemoWeb.NativeListLive do
         items={@items}
         next_id={@next_id}
         first_match={@first_match}
+        combined_labels={@combined_labels}
       />
     </main>
     """

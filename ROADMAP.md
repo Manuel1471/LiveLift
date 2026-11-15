@@ -285,8 +285,17 @@ navegador; las demás funciones de `String` de esta fase siguen pendientes.
 seguras. `Enum.find/2,3` ya tiene paridad con 1,000 estados y un handler nativo
 que converge en tres navegadores. El paquete de referencia, que no usa esta
 operación, mide `54,049` bytes gzip; los benchmarks de render, evento Phoenix
-y DOM se ejecutaron de nuevo. `reduce`, `sort_by`, `count`, `join`,
-`flat_map` y `with_index` siguen pendientes, en ese orden.
+y DOM se ejecutaron de nuevo.
+`Enum.reduce/2,3` compila con callback anónimo de dos argumentos. El corpus de
+1,000 estados cubre acumuladores numéricos, `nil`, `false` y listas vacías;
+`reduce/2` vacío falla en ambos runtimes. El demo concatena las etiquetas de
+filas propias de la app y converge en Chromium, Firefox y WebKit.
+El paquete de referencia, que tampoco usa `reduce`, conservó `54,049` bytes
+gzip; se repitieron los benchmarks de render, evento Phoenix y DOM. La
+mediana DOM de inversión de 1,000 filas fue 55.4 ms en linkedom; este
+benchmark no mide `reduce` directamente.
+`sort_by`, `count`, `join`, `flat_map` y `with_index` siguen pendientes, en ese
+orden.
 `Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las otras
 operaciones de `Map` y `List` de esta fase siguen pendientes.
 

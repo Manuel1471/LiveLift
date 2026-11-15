@@ -206,6 +206,15 @@ defmodule LiveLift.Client.Compiler do
     }
     return fallback;
   }
+  function __liveLiftReduce(list, initial, callback, seeded) {
+    list = __liveLiftList(list);
+    if (!seeded && list.length === 0) throw new Error("LiveLift Enum.reduce/2 requires a nonempty list");
+    let accumulator = seeded ? initial : list[0];
+    for (let index = seeded ? 0 : 1; index < list.length; index += 1) {
+      accumulator = callback(list[index], accumulator);
+    }
+    return accumulator;
+  }
   function __liveLiftTake(list, count) {
     list = __liveLiftList(list);
     count = __liveLiftInt(count);
@@ -530,6 +539,32 @@ defmodule LiveLift.Client.Compiler do
     compile_find(list, fallback, variable, body, args)
   end
 
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :reduce]}, _,
+          [list, {:fn, _, [{:->, _, [[{item, _, item_context}, {acc, _, acc_context}], body]}]}]},
+         args
+       )
+       when is_atom(item) and is_atom(acc) and item != acc and
+              (is_atom(item_context) or is_nil(item_context)) and
+              (is_atom(acc_context) or is_nil(acc_context)) do
+    compile_reduce(list, nil, body, item, acc, args, false)
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :reduce]}, _,
+          [
+            list,
+            initial,
+            {:fn, _, [{:->, _, [[{item, _, item_context}, {acc, _, acc_context}], body]}]}
+          ]},
+         args
+       )
+       when is_atom(item) and is_atom(acc) and item != acc and
+              (is_atom(item_context) or is_nil(item_context)) and
+              (is_atom(acc_context) or is_nil(acc_context)) do
+    compile_reduce(list, initial, body, item, acc, args, true)
+  end
+
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)
        when operation in [:take, :drop] do
     helper = if operation == :take, do: "__liveLiftTake", else: "__liveLiftDrop"
@@ -650,6 +685,15 @@ defmodule LiveLift.Client.Compiler do
     predicate = compile_expr(body, List.wrap(args) ++ [variable])
 
     "__liveLiftFind(#{compile_expr(list, args)}, #{compile_expr(fallback, args)}, (#{name}) => #{predicate})"
+  end
+
+  defp compile_reduce(list, initial, body, item, acc, args, seeded) do
+    item_name = identifier!(item)
+    acc_name = identifier!(acc)
+    expression = compile_expr(body, List.wrap(args) ++ [item, acc])
+
+    "__liveLiftReduce(#{compile_expr(list, args)}, #{compile_expr(initial, args)}, " <>
+      "(#{item_name}, #{acc_name}) => #{expression}, #{seeded})"
   end
 
   defp compile_case_pattern(pattern) do

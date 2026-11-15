@@ -4,6 +4,10 @@ defmodule LiveLift.PropertyParityTest do
   defmodule Actions do
     use LiveLift.Client
 
+    defclient(reduce_numbers(state),
+      do: %{value: Enum.reduce(state.items, fn item, accumulator -> item + accumulator end)}
+    )
+
     defclient(check(state),
       do: %{
         count: state.count + state.step,
@@ -34,6 +38,19 @@ defmodule LiveLift.PropertyParityTest do
         found: Enum.find(state.items, fn item -> item.keep end),
         found_or: Enum.find(state.items, %{id: -1, keep: false}, fn item -> item.keep end),
         found_truthy: Enum.find(state.items, fn item -> item.keep || state.flag end),
+        reduced_total: Enum.reduce(state.items, 0, fn item, total -> item.id + total end),
+        reduced_value:
+          Enum.reduce(state.items, state.flag, fn item, value ->
+            if item.keep, do: item.id, else: value
+          end),
+        reduced_unseeded:
+          if state.items == [] do
+            nil
+          else
+            Enum.reduce(state.items, fn item, previous ->
+              if item.keep, do: item, else: previous
+            end)
+          end,
         member: Enum.member?(state.items, state.target),
         taken: Enum.take(state.items, state.amount),
         dropped: Enum.drop(state.items, state.amount),
@@ -59,6 +76,17 @@ defmodule LiveLift.PropertyParityTest do
         integer_label: Integer.to_string(state.count)
       }
     )
+  end
+
+  test "Enum.reduce/2 rejects an empty list on both sides" do
+    assert_raise Enum.EmptyError, fn -> Actions.reduce_numbers(%{items: []}) end
+
+    javascript =
+      LiveLift.Client.Compiler.compile_module(Actions) <>
+        "try { actions.reduce_numbers({items: []}); process.exit(1); } " <>
+        "catch (error) { if (!error.message.includes('nonempty list')) process.exit(2); }"
+
+    assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", javascript])
   end
 
   test "1,000 seeded states keep Elixir and generated JavaScript equal" do

@@ -13,7 +13,8 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | Integers and decimals | Finite binary64 floats and safe integers | Mixed `+`, `-`, `*`, comparisons and `==` follow the documented subset. `Decimal` structs and arbitrary numeric functions stay on the server. |
 | `if`, `case`, `cond`, `defp` | `if`, bounded `case` and `cond`, local `defp` | `if` with optional `else` and `cond` use Elixir truthiness. `case` accepts unguarded literal, list, partial map, variable, and `_` patterns with type-strict matching. Same-module private helpers may have several unguarded clauses and call other helpers. Guards, pins, tuples, repeated bindings, and recursion remain server-only. |
 | `Enum.find/2,3` | Supported subset | List input and one-argument anonymous predicate. Returns first item with an Elixir-truthy predicate result; otherwise `nil` or the supplied default. |
-| `Enum.reduce/sort_by/count/join/flat_map/with_index` | Server only | These operations are rejected with source location. |
+| `Enum.reduce/2,3` | Supported subset | List input and two-argument anonymous callback; `/2` uses the first element as its accumulator and rejects an empty list, while `/3` returns the initial accumulator on an empty list. |
+| `Enum.sort_by/count/join/flat_map/with_index` | Server only | These operations are rejected with source location. |
 | Other `Enum` operations | Supported subset | `map/filter/reject/any?/all?` with one-argument anonymous functions, `member?/2`, `reverse/1`, `take/2`, `drop/2`, and `uniq/1`; see [language semantics](language.md). |
 | `String.downcase/split/replace` | Server only | These operations are rejected with source location. |
 | Other `String` operations | Supported subset | `trim/1`, `length/1`, `contains?/2`; see Unicode limits in [language semantics](language.md). |

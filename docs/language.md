@@ -94,6 +94,11 @@ string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
 `Enum.reject/2`, `Enum.any?/2`, `Enum.all?/2` with one-argument anonymous
 functions; `Enum.find/2,3` with a one-argument anonymous predicate, returning
 the first matching item or `nil`/the explicit default; `Enum.member?/2`;
+`Enum.reduce/2,3` for lists with a two-argument anonymous callback
+`fn item, accumulator -> result end` (the two parameter names must differ).
+The callback receives each item before the accumulator, in list order.
+`reduce/2` uses the first item as its accumulator and raises on an empty list;
+`reduce/3` returns its initial value for an empty list. Also supported:
 `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
