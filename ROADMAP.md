@@ -9,21 +9,22 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 2, Compilador v2.** Las fases S, 0 y 1 están cerradas. No se
-inicia trabajo de alcance nuevo en las fases 3 a 7 hasta cerrar la fase 2;
-sus checks solo registran evidencia obtenida antes de establecer este orden.
-La fase 8 es opcional y posterior a 1.0. Este documento no usa el número de
-checks como porcentaje de avance.
+**Fase activa: 2, Compilador v2. Próxima entrega: `String.replace`.** Las fases
+S, 0 y 1 están cerradas. La fase 8 es opcional y posterior a 1.0. Los avances
+antiguos de fases 3–7 se conservan como inventario, pero no abren esas fases.
 
-**Cola única de ejecución:** se trabaja siempre en la primera fila pendiente.
-Un check indica que la entrega tiene código, semántica documentada, paridad y
-rechazos probados; no equivale a cerrar la puerta de la fase.
+**Estados:** `Hecho` significa funcionalidad implementada, documentada y
+probada en su alcance; `En curso` es la única entrega activa; `En espera`
+depende de una entrega anterior; `Bloqueada` depende de cerrar otra fase.
+Una funcionalidad hecha no cierra su fase: la puerta de aceptación requiere
+verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 
-| Orden | Entrega | Estado | Condición para pasar a la siguiente |
+| Orden | Entrega | Estado | Para cerrarla |
 |---|---|---|---|
 | 2.1 | Spikes, superficie nativa, plantillas, decimales, `case`, `cond`, `defp` y `\|>` | Hecho | Commits y pruebas descritos en fase 2 |
-| 2.2 | `Enum.find`, `reduce`, `sort_by`, `count`, `join`, `flat_map`, `with_index` | **En curso** | Paridad y rechazos por operación |
-| 2.3 | `String.downcase`, `split`, `replace` | En espera | Paridad Unicode y límites publicados |
+| 2.2 | `Enum.find`, `reduce`, `sort_by`, `count`, `join`, `flat_map`, `with_index` | Hecho | Paridad y rechazos por operación |
+| 2.3a | `String.downcase` y `String.split` | Hecho | Paridad Unicode, demo y límites documentados |
+| 2.3b | `String.replace` | **En curso** | Semántica, paridad, rechazos, demo y benchmarks |
 | 2.4 | `Map.keys`, `Map.values` y operaciones `List` | En espera | Orden de mapas resuelto; paridad |
 | 2.5 | Regresión integral y puerta 2 | En espera | Tres casos, paridad, tres navegadores, benchmarks |
 | 3 | Sincronización | Bloqueada por 2 | Convergencia ante entrega caótica |
@@ -32,14 +33,12 @@ rechazos probados; no equivale a cerrar la puerta de la fase.
 | 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
 | 7 y 1.0 | Seguridad y operación | Bloqueada por 6 | Compatibilidad, revisión y apps reales |
 
-La fila 2.2 avanza en el orden publicado abajo; `take`, `drop` y `uniq` ya
-pasaron antes de establecer esta cola. Los checks históricos de fases 3–7
-describen evidencia adelantada, no trabajo autorizado para saltar de fase.
-
-Cada entrega termina en un commit de una funcionalidad, con pruebas y
-documentación. Si aparece una regresión o un problema de seguridad, se corrige
-antes de seguir la cola. El estado de una puerta cambia únicamente con evidencia
-reproducible, no con un commit o una casilla suelta.
+**Regla de avance:** cerrar y commitear la primera entrega activa antes de
+empezar la siguiente. Cada commit de funcionalidad incluye semántica,
+paridad, rechazo cercano y documentación. Una regresión o un problema de
+seguridad interrumpe la cola hasta corregirse. La puerta cambia de estado
+solo con evidencia reproducible. `take`, `drop` y `uniq` pasaron antes de fijar
+esta cola; los detalles de fases 3–7 son inventario adelantado.
 
 ## Puertas de aceptación
 
@@ -280,14 +279,22 @@ orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.
 `String.contains?/2`, `String.trim/1` y `String.length/1` ya tienen paridad
 en el corpus probado, incluidos espacios Unicode y grafemas complejos. La
 segmentación de grafemas depende de `Intl.Segmenter` y de la versión Unicode del
-navegador; `split` y `replace` siguen pendientes.
+navegador.
 El spike `docs/downcase-spike.md` comparó todos los valores escalares Unicode:
 1,488 cambian al bajar de caja y la conversión por carácter en JavaScript tuvo
 cero diferencias con Elixir en este toolchain. `String.downcase/1` ya compila;
 el corpus de 1,000 estados y el demo con sigma griega comprueban paridad y
 convergencia en tres navegadores. El paquete de referencia, que no usa
 `downcase`, midió `54,049` bytes gzip; se repitieron los benchmarks de render,
-evento Phoenix y DOM. `split` y `replace` siguen pendientes.
+evento Phoenix y DOM.
+El spike `docs/split-spike.md` fijó 22 caracteres de espacio para `split/1`,
+la separación por grafemas cuando el patrón es vacío, la precedencia de
+patrones solapados y las opciones `trim`/`parts`. `String.split/1,2,3` ya
+compila en ese alcance; el corpus de 1,000 estados y el demo verifican
+paridad. Los regex y las opciones dinámicas se rechazan con ubicación de
+origen. La prueba de navegador pasó en Chromium, Firefox y WebKit. El paquete
+de referencia permaneció en `54,049` bytes gzip; se repitieron los benchmarks
+de render, evento Phoenix y DOM. `replace` es la siguiente entrega.
 `Enum.take/2`, `Enum.drop/2` y `Enum.uniq/1` también tienen paridad para listas
 seguras. `Enum.find/2,3` ya tiene paridad con 1,000 estados y un handler nativo
 que converge en tres navegadores. El paquete de referencia, que no usa esta
