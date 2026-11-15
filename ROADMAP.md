@@ -17,7 +17,7 @@ checks como porcentaje de avance.
 
 **Siguiente secuencia, en orden:**
 
-1. Continuar con `|>` en expresiones y las operaciones de `Enum`,
+1. Continuar con las operaciones de `Enum`,
    `String`, `Map` y `List` enumeradas en esta fase. Cada forma nueva exige
    semántica, paridad y rechazo de variantes cercanas.
 2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
@@ -234,6 +234,11 @@ añade 2 casos de paridad y un flujo de navegador en Chromium, Firefox y WebKit.
 Recursión, guardas y expansión excesiva se rechazan con ubicación de origen.
 El paquete de referencia conservó `54,050` bytes gzip cuando no usa helpers;
 los benchmarks de render, DOM y evento Phoenix se repitieron.
+`|>` en expresiones compila hacia llamadas admitidas, incluidas funciones
+locales: el corpus de 1,000 estados ahora cubre dos cadenas y el handler
+`helper_step` del demo pasa paridad y navegador con una llamada por pipe.
+El paquete de referencia siguió en `54,050` bytes gzip; se repitieron los
+benchmarks de render, DOM y evento Phoenix.
 `assign_new/3` con clave átomo y callback sin argumentos admite campos ausentes
 en el snapshot inicial. Un valor presente, incluso `nil`, evita evaluar el
 callback. El demo `/native-optional` y dos casos de paridad comprueban creación

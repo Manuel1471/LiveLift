@@ -236,6 +236,12 @@ defmodule LiveLift.ClientTest do
     end
   end
 
+  test "rejects a pipe without a supported call target" do
+    assert_raise ArgumentError, ~r/unsupported client pipe target/, fn ->
+      Compiler.compile_action(:bad, :state, {:|>, [], [{:state, [], nil}, 1]})
+    end
+  end
+
   test "compiles primitive values and Elixir conditional truthiness" do
     assert ConditionalView.label(%{enabled: true}) == "on"
     assert ConditionalView.label(%{enabled: false}) == "off"

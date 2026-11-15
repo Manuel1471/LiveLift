@@ -79,7 +79,7 @@ defmodule LiveLift.AuditTaskTest do
         defmodule Demo.Helper do
           use Phoenix.LiveComponent
           def render(assigns), do: ~H"<output>{@label}</output>"
-          def handle_event("label", _params, socket), do: {:noreply, assign(socket, :label, label(socket.assigns.value))}
+          def handle_event("label", _params, socket), do: {:noreply, assign(socket, :label, socket.assigns.value |> label())}
           defp label(nil), do: "empty"
           defp label(value), do: Integer.to_string(value)
         end

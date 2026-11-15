@@ -10,6 +10,7 @@ defmodule LiveLift.Component.Helpers do
         {name, length(args)}
       end)
 
+    body = normalize_pipes(body)
     {expanded, _budget} = expand(body, registry, [], file, line, {0, 0})
     expanded
   end
@@ -100,6 +101,16 @@ defmodule LiveLift.Component.Helpers do
     Macro.postwalk(pattern, fn
       {{:., _, [Phoenix.Component.Declarative, :__pattern__!]}, _, [:defp, inner]} -> inner
       other -> other
+    end)
+  end
+
+  defp normalize_pipes(ast) do
+    Macro.postwalk(ast, fn
+      {:|>, _, [source, {callee, metadata, arguments}]} when is_list(arguments) ->
+        {callee, metadata, [source | arguments]}
+
+      other ->
+        other
     end)
   end
 end

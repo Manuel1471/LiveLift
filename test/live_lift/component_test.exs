@@ -510,7 +510,7 @@ defmodule LiveLift.ComponentTest do
       "Map.keys(socket.assigns.value)",
       "Map.values(socket.assigns.value)",
       "List.delete(socket.assigns.items, 1)",
-      "socket.assigns.items |> Enum.reverse()"
+      "socket.assigns.items |> Enum.sum()"
     ]
 
     for {expression, index} <- Enum.with_index(expressions) do

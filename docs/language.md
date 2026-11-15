@@ -20,6 +20,10 @@ compilation with a location. A helper call with no matching clause raises at
 runtime, as it does in Elixir. Leave unsupported handlers on the server.
 Expansion is capped at 1,000 helper calls and 50,000 visited AST nodes per
 marked handler to keep generated code bounded.
+Expression pipes into supported calls also work, including local private
+helpers: `socket.assigns.value |> String.trim() |> String.length()`. Each pipe
+passes its left value as the first argument. Socket `assign/update` chains use
+the same `|>` syntax.
 Native `assign_new(socket, :field, fn -> expression end)` accepts a safe atom
 field and a zero-argument callback. The initial client state may omit that
 field; an existing value, including `nil`, is preserved without evaluating

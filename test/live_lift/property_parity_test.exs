@@ -27,6 +27,8 @@ defmodule LiveLift.PropertyParityTest do
         filtered: Enum.filter(state.items, fn item -> item.keep end),
         rejected: Enum.reject(state.items, fn item -> item.keep end),
         reversed: Enum.reverse(state.items),
+        piped_ids: state.items |> Enum.map(fn item -> item.id end) |> Enum.reverse(),
+        piped_graphemes: state.label |> String.trim() |> String.length(),
         any: Enum.any?(state.items, fn item -> item.keep end),
         all: Enum.all?(state.items, fn item -> item.keep end),
         member: Enum.member?(state.items, state.target),

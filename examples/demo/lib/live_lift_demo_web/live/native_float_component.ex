@@ -47,7 +47,7 @@ defmodule LiveLiftDemoWeb.NativeFloatComponent do
 
   @client true
   def handle_event("helper_step", _params, socket) do
-    {:noreply, assign(socket, :value, next_value(socket.assigns.value))}
+    {:noreply, assign(socket, :value, socket.assigns.value |> next_value())}
   end
 
   defp next_value(-0.0), do: 0.5

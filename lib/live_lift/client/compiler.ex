@@ -564,6 +564,16 @@ defmodule LiveLift.Client.Compiler do
           "unsupported client cond: use a nonempty do block with one condition per clause"
   end
 
+  defp compile_expr({:|>, _, [source, {callee, metadata, arguments}]}, args)
+       when is_list(arguments) do
+    compile_expr({callee, metadata, [source | arguments]}, args)
+  end
+
+  defp compile_expr({:|>, _, _}, _args) do
+    raise ArgumentError,
+          "unsupported client pipe target: use a supported function call or move this handler to the server"
+  end
+
   defp compile_expr({:case, _, [value, [do: clauses]]}, args)
        when is_list(clauses) and clauses != [] do
     branches =
