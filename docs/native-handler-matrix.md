@@ -22,7 +22,7 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | Other `Enum` operations | Supported subset | `map/filter/reject/any?/all?` with one-argument anonymous functions, `member?/2`, `reverse/1`, `take/2`, `drop/2`, and `uniq/1`; see [language semantics](language.md). |
 | `String.downcase/1` | Supported subset | Context-free Unicode lowercase mapping; locale-specific `/2` stays on the server. |
 | `String.split/1,2,3` | Supported subset | Elixir whitespace, string or string-list patterns, and literal `trim`/`parts` options. Empty string uses grapheme boundaries. Regex and dynamic options remain server only. |
-| `String.replace` | Server only | This operation is rejected with source location. |
+| `String.replace/3,4` | Supported subset | String or string-list patterns; literal string or one-argument callback replacement; literal `global` option. Empty string uses grapheme boundaries. Regex, dynamic options, and `insert_replaced` remain server only. |
 | Other `String` operations | Supported subset | `trim/1`, `length/1`, `contains?/2`; see Unicode limits in [language semantics](language.md). |
 | `Map.keys/values` and `List` module operations | Server only | Map iteration order differs between Elixir and JavaScript. These operations are rejected. |
 | Other `Map` operations | Supported subset | Atom-keyed `put/get/delete`, shallow `merge`, and `take` with a literal atom-key list. |

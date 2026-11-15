@@ -9,7 +9,7 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 2, Compilador v2. Próxima entrega: `String.replace`.** Las fases
+**Fase activa: 2, Compilador v2. Próxima entrega: `Map.keys` y `Map.values`.** Las fases
 S, 0 y 1 están cerradas. La fase 8 es opcional y posterior a 1.0. Los avances
 antiguos de fases 3–7 se conservan como inventario, pero no abren esas fases.
 
@@ -24,8 +24,8 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.1 | Spikes, superficie nativa, plantillas, decimales, `case`, `cond`, `defp` y `\|>` | Hecho | Commits y pruebas descritos en fase 2 |
 | 2.2 | `Enum.find`, `reduce`, `sort_by`, `count`, `join`, `flat_map`, `with_index` | Hecho | Paridad y rechazos por operación |
 | 2.3a | `String.downcase` y `String.split` | Hecho | Paridad Unicode, demo y límites documentados |
-| 2.3b | `String.replace` | **En curso** | Semántica, paridad, rechazos, demo y benchmarks |
-| 2.4 | `Map.keys`, `Map.values` y operaciones `List` | En espera | Orden de mapas resuelto; paridad |
+| 2.3b | `String.replace` | Hecho | Semántica, paridad, rechazos, demo y benchmarks |
+| 2.4 | `Map.keys`, `Map.values` y operaciones `List` | **En curso** | Orden de mapas resuelto; paridad |
 | 2.5 | Regresión integral y puerta 2 | En espera | Tres casos, paridad, tres navegadores, benchmarks |
 | 3 | Sincronización | Bloqueada por 2 | Convergencia ante entrega caótica |
 | 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
@@ -294,7 +294,13 @@ compila en ese alcance; el corpus de 1,000 estados y el demo verifican
 paridad. Los regex y las opciones dinámicas se rechazan con ubicación de
 origen. La prueba de navegador pasó en Chromium, Firefox y WebKit. El paquete
 de referencia permaneció en `54,049` bytes gzip; se repitieron los benchmarks
-de render, evento Phoenix y DOM. `replace` es la siguiente entrega.
+de render, evento Phoenix y DOM.
+El spike `docs/replace-spike.md` fijó patrones solapados, reemplazo vacío por
+grafemas, callback con iodata y la opción literal `global`. `String.replace/3,4`
+pasó el corpus de 1,000 estados, casos de rechazo y el demo en Chromium,
+Firefox y WebKit. `mix assets.build` y `mix assets.deploy` pasaron. El paquete
+de referencia midió `54,050` bytes gzip, un byte más que la medición anterior;
+se repitieron los benchmarks de render, evento Phoenix y DOM. Sigue `Map`/`List`.
 `Enum.take/2`, `Enum.drop/2` y `Enum.uniq/1` también tienen paridad para listas
 seguras. `Enum.find/2,3` ya tiene paridad con 1,000 estados y un handler nativo
 que converge en tres navegadores. El paquete de referencia, que no usa esta

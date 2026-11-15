@@ -16,6 +16,14 @@ defmodule LiveLift.PropertyParityTest do
 
     defclient(split_values(state), do: %{parts: String.split(state.value, state.pattern)})
 
+    defclient(replace_values(state),
+      do: %{value: String.replace(state.value, state.pattern, state.replacement)}
+    )
+
+    defclient(replace_invalid(state),
+      do: %{value: String.replace(state.value, "a", fn _match -> nil end)}
+    )
+
     defclient(check(state),
       do: %{
         count: state.count + state.step,
@@ -84,6 +92,15 @@ defmodule LiveLift.PropertyParityTest do
         split_trim: String.split(state.label, state.split_pattern, trim: true),
         split_parts: String.split(state.label, state.split_pattern, trim: true, parts: 2),
         split_overlap: String.split("ab", ["a", "ab"]),
+        replaced: String.replace(state.label, state.replace_pattern, state.replacement),
+        replaced_once:
+          String.replace(state.label, state.replace_pattern, state.replacement, global: false),
+        replaced_callback:
+          String.replace(state.label, state.replace_pattern, fn match -> "[" <> match <> "]" end),
+        replaced_iodata:
+          String.replace(state.label, state.replace_pattern, fn match -> ["<", match, [33]] end),
+        replaced_utf8_bytes: String.replace("x", "x", fn _match -> [195, 169] end),
+        replaced_overlap: String.replace("ab", ["a", "ab"], "X"),
         graphemes: String.length(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
         cond_choice:
@@ -155,6 +172,30 @@ defmodule LiveLift.PropertyParityTest do
       LiveLift.Client.Compiler.compile_module(Actions) <>
         "try { actions.split_values({value: 'a,b', pattern: ['', ',']}); process.exit(1); } " <>
         "catch (error) { if (!error.message.includes('nonempty strings')) process.exit(2); }"
+
+    assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+  end
+
+  test "String.replace rejects an empty pattern inside a list on both sides" do
+    assert_raise ArgumentError, fn ->
+      Actions.replace_values(%{value: "a,b", pattern: ["", ","], replacement: "x"})
+    end
+
+    source =
+      LiveLift.Client.Compiler.compile_module(Actions) <>
+        "try { actions.replace_values({value: 'a,b', pattern: ['', ','], replacement: 'x'}); process.exit(1); } " <>
+        "catch (error) { if (!error.message.includes('nonempty strings')) process.exit(2); }"
+
+    assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+  end
+
+  test "String.replace rejects a callback result that is not iodata on both sides" do
+    assert_raise ArgumentError, fn -> Actions.replace_invalid(%{value: "a"}) end
+
+    source =
+      LiveLift.Client.Compiler.compile_module(Actions) <>
+        "try { actions.replace_invalid({value: 'a'}); process.exit(1); } " <>
+        "catch (error) { if (!error.message.includes('iodata')) process.exit(2); }"
 
     assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
   end
@@ -243,6 +284,8 @@ defmodule LiveLift.PropertyParityTest do
         joinables: joinables,
         separator: StreamData.member_of(["", ",", " · ", "😀"]),
         split_pattern: StreamData.member_of(["", ",", "é", "😀", [",", ";"], [], ["a", "aa"]]),
+        replace_pattern: StreamData.member_of(["", ",", "é", "😀", [",", ";"], [], ["a", "aa"]]),
+        replacement: StreamData.member_of(["", "X", "<&>", "😀", "$&", "\\0"]),
         amount: StreamData.integer(-12..12),
         other: items,
         target: item,
@@ -271,6 +314,8 @@ defmodule LiveLift.PropertyParityTest do
           joinables: [],
           separator: ",",
           split_pattern: "",
+          replace_pattern: "",
+          replacement: "X",
           amount: -1,
           other: [],
           target: %{id: 1, keep: false},
@@ -287,6 +332,8 @@ defmodule LiveLift.PropertyParityTest do
           joinables: [nil, false, 0, [65]],
           separator: " · ",
           split_pattern: [",", ";"],
+          replace_pattern: [",", ";"],
+          replacement: "<&>",
           amount: -12,
           other: [%{id: 1, keep: false}],
           target: %{id: 1, keep: false},
@@ -303,6 +350,8 @@ defmodule LiveLift.PropertyParityTest do
           joinables: ["😀", [[65], "b"], true],
           separator: "😀",
           split_pattern: "",
+          replace_pattern: ["a", "aa"],
+          replacement: "😀",
           amount: 12,
           other: [],
           target: %{id: 0, keep: true},
@@ -321,6 +370,8 @@ defmodule LiveLift.PropertyParityTest do
             joinables: [],
             separator: "",
             split_pattern: ",",
+            replace_pattern: "",
+            replacement: "X",
             amount: 0,
             other: [],
             target: %{id: 0, keep: false},

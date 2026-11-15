@@ -112,7 +112,8 @@ state values;
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
 `Map.take/2` with a literal list of atom keys (missing keys are omitted);
 `Integer.to_string/1` for safe integers;
-`String.trim/1`; `String.length/1`; `String.downcase/1`; `String.split/1,2,3`; and
+`String.trim/1`; `String.length/1`; `String.downcase/1`; `String.split/1,2,3`;
+`String.replace/3,4`; and
 `String.contains?/2` with a string or list
 of strings as the pattern. `cond` uses one condition per clause and raises
 when no condition is true. `case` accepts unguarded literal, list (including
@@ -136,6 +137,14 @@ empty parts. `String.split/3` accepts literal `trim: true/false` and positive
 and longest match wins. Regex patterns and dynamic options stay on the
 server. See the [split spike](split-spike.md) for whitespace and grapheme
 details.
+`String.replace/3,4` accepts a string or list of nonempty string patterns,
+a string replacement or a one-argument anonymous callback returning valid
+UTF-8 iodata. An empty string pattern replaces at grapheme boundaries.
+Matches choose the earliest position and then the longest pattern. `/4`
+supports a literal `global: true/false` option; the default replaces all
+matches. The replacement string is literal, including `$&` and `\\0`.
+Regex patterns, dynamic options, and deprecated `insert_replaced` stay on
+the server. See the [replace spike](replace-spike.md).
 Unsupported calls fail at compile time. Integer-only browser arithmetic fails
 if it would leave JavaScript's safe integer range. Float results must remain finite. A
 float operand produces a float result, and `1 == 1.0` is true, including inside

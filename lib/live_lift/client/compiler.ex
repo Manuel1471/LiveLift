@@ -256,6 +256,48 @@ defmodule LiveLift.Client.Compiler do
     })();
     return __liveLiftSplitFromMatches(text, matches, true, null);
   }
+  function __liveLiftReplace(text, pattern, replacement, global) {
+    text = __liveLiftString(text);
+    if (typeof pattern !== "string" &&
+        (!Array.isArray(pattern) || pattern.some((item) => typeof item !== "string" || item === ""))) {
+      throw new Error("LiveLift String.replace expects a string or list of nonempty strings");
+    }
+    if (typeof replacement !== "string" && typeof replacement !== "function") {
+      throw new Error("LiveLift String.replace expects a string or one-argument callback");
+    }
+    let output = "";
+    let cursor = 0;
+    for (const [position, length] of __liveLiftSplitPositions(text, pattern)) {
+      const matched = text.slice(position, position + length);
+      const substituted = typeof replacement === "function" ? __liveLiftReplacementIodata(replacement(matched)) : replacement;
+      output += text.slice(cursor, position) + substituted;
+      if (output.length > 1048576) throw new Error("LiveLift state size limit exceeded");
+      cursor = position + length;
+      if (!global) break;
+    }
+    output += text.slice(cursor);
+    if (output.length > 1048576) throw new Error("LiveLift state size limit exceeded");
+    return output;
+  }
+  function __liveLiftReplacementIodata(value) {
+    const bytes = [];
+    const encoder = new TextEncoder();
+    const append = (part) => {
+      if (typeof part === "string") {
+        for (const byte of encoder.encode(part)) bytes.push(byte);
+      } else if (Number.isInteger(part) && part >= 0 && part <= 255) {
+        bytes.push(part);
+      } else if (Array.isArray(part)) {
+        for (const item of part) append(item);
+      } else {
+        throw new Error("LiveLift String.replace callback expects valid iodata");
+      }
+      if (bytes.length > 1048576) throw new Error("LiveLift state size limit exceeded");
+    };
+    append(value);
+    try { return new TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array(bytes)); }
+    catch { throw new Error("LiveLift String.replace callback returned invalid UTF-8"); }
+  }
   let __liveLiftGraphemes;
   function __liveLiftStringLength(value) {
     if (typeof Intl === "undefined" || typeof Intl.Segmenter !== "function") throw new Error("LiveLift requires Intl.Segmenter for String.length/1");
@@ -847,6 +889,32 @@ defmodule LiveLift.Client.Compiler do
           "unsupported client String.split/3 options; use literal trim: true/false and positive parts: n, or move this handler to the server"
   end
 
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:String]}, :replace]}, _, [text, pattern, replacement]},
+         arg
+       ) do
+    compile_replace(text, pattern, replacement, "true", arg)
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:String]}, :replace]}, _,
+          [text, pattern, replacement, options]},
+         arg
+       )
+       when is_list(options) do
+    global = replace_options!(options)
+    compile_replace(text, pattern, replacement, global, arg)
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:String]}, :replace]}, _,
+          [_text, _pattern, _replacement, _options]},
+         _arg
+       ) do
+    raise ArgumentError,
+          "unsupported client String.replace/4 options; use literal global: true/false or move this handler to the server"
+  end
+
   defp compile_expr({{:., _, [{:__aliases__, _, [:String]}, :length]}, _, [text]}, arg) do
     "__liveLiftStringLength(#{compile_expr(text, arg)})"
   end
@@ -960,6 +1028,34 @@ defmodule LiveLift.Client.Compiler do
     end
 
     {Jason.encode!(trim), if(parts == :infinity, do: "null", else: Integer.to_string(parts))}
+  end
+
+  defp replace_options!(options) do
+    unless Keyword.keyword?(options) and Enum.all?(Keyword.keys(options), &(&1 == :global)) and
+             length(options) <= 1 and is_boolean(Keyword.get(options, :global, true)) do
+      raise ArgumentError,
+            "unsupported client String.replace/4 options; use literal global: true/false or move this handler to the server"
+    end
+
+    Jason.encode!(Keyword.get(options, :global, true))
+  end
+
+  defp compile_replace(
+         text,
+         pattern,
+         {:fn, _, [{:->, _, [[{variable, _, context}], body]}]},
+         global,
+         args
+       )
+       when is_atom(variable) and (is_atom(context) or is_nil(context)) do
+    name = identifier!(variable)
+    expression = compile_expr(body, List.wrap(args) ++ [variable])
+
+    "__liveLiftReplace(#{compile_expr(text, args)}, #{compile_expr(pattern, args)}, (#{name}) => #{expression}, #{global})"
+  end
+
+  defp compile_replace(text, pattern, replacement, global, args) do
+    "__liveLiftReplace(#{compile_expr(text, args)}, #{compile_expr(pattern, args)}, #{compile_expr(replacement, args)}, #{global})"
   end
 
   defp compile_find(list, fallback, variable, body, args) do
