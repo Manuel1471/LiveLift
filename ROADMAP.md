@@ -15,13 +15,26 @@ sus checks solo registran evidencia obtenida antes de establecer este orden.
 La fase 8 es opcional y posterior a 1.0. Este documento no usa el número de
 checks como porcentaje de avance.
 
-**Siguiente secuencia, en orden:**
+**Cola única de ejecución:** se trabaja siempre en la primera fila pendiente.
+Un check indica que la entrega tiene código, semántica documentada, paridad y
+rechazos probados; no equivale a cerrar la puerta de la fase.
 
-1. Continuar con las operaciones de `Enum`,
-   `String`, `Map` y `List` enumeradas en esta fase. Cada forma nueva exige
-   semántica, paridad y rechazo de variantes cercanas.
-2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
-   navegador y los benchmarks afectados. Solo entonces revisar la puerta 2.
+| Orden | Entrega | Estado | Condición para pasar a la siguiente |
+|---|---|---|---|
+| 2.1 | Spikes, superficie nativa, plantillas, decimales, `case`, `cond`, `defp` y `\|>` | Hecho | Commits y pruebas descritos en fase 2 |
+| 2.2 | `Enum.find`, `reduce`, `sort_by`, `count`, `join`, `flat_map`, `with_index` | **En curso** | Paridad y rechazos por operación |
+| 2.3 | `String.downcase`, `split`, `replace` | En espera | Paridad Unicode y límites publicados |
+| 2.4 | `Map.keys`, `Map.values` y operaciones `List` | En espera | Orden de mapas resuelto; paridad |
+| 2.5 | Regresión integral y puerta 2 | En espera | Tres casos, paridad, tres navegadores, benchmarks |
+| 3 | Sincronización | Bloqueada por 2 | Convergencia ante entrega caótica |
+| 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
+| 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
+| 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
+| 7 y 1.0 | Seguridad y operación | Bloqueada por 6 | Compatibilidad, revisión y apps reales |
+
+La fila 2.2 avanza en el orden publicado abajo; `take`, `drop` y `uniq` ya
+pasaron antes de establecer esta cola. Los checks históricos de fases 3–7
+describen evidencia adelantada, no trabajo autorizado para saltar de fase.
 
 Cada entrega termina en un commit de una funcionalidad, con pruebas y
 documentación. Si aparece una regresión o un problema de seguridad, se corrige
@@ -289,7 +302,7 @@ validación de formulario en vivo, lista ordenable.
 | Slots con nombre y componentes remotos | Alcance decidido | Rechazo accionable con origen; quedan en LiveView servidor |
 | `class={[...]}` | Verificado | Comparación de render inicial y actualización para listas condicionales |
 | `phx-debounce` | Verificado para input/textarea | HTML inicial, temporizador y `blur` en tres navegadores; otras formas se rechazan |
-| Formas y funciones restantes de handlers | Pendiente | `docs/native-handler-matrix.md` registra los rechazos actuales; faltan `|>` general y operaciones enumeradas arriba |
+| Formas y funciones restantes de handlers | Pendiente | `|>` ya compila en expresiones admitidas; faltan las operaciones enumeradas arriba y sus rechazos cercanos |
 | Tres casos completos | Verificado | Contador, formulario anidado y lista ordenable; detalles abajo |
 | Regresión final de fase | Pendiente | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
 
@@ -310,16 +323,16 @@ arriba. Los checks de fases posteriores no cuentan para este cierre.
 
 ## Fase 3: Sincronización optimista (4 a 6 semanas, v0.5)
 
-- [x] El evento viaja por el canal normal de LiveView; el servidor ejecuta el mismo
+- **Previo:** El evento viaja por el canal normal de LiveView; el servidor ejecuta el mismo
   `handle_event` sobre **sus propios assigns**.
-- [x] Si el resultado difiere de la predicción, parche versionado con el estado
+- **Previo:** Si el resultado difiere de la predicción, parche versionado con el estado
   autoritativo; el cliente reaplica las acciones pendientes.
-- [ ] Cola de acciones pendientes, claves de idempotencia, ordenamiento, duplicados.
-- [x] Reconexión: usar el snapshot fresco de LiveView, descartar eventos en vuelo
+- **Falta:** Cola de acciones pendientes, claves de idempotencia, ordenamiento, duplicados.
+- **Previo:** Reconexión: usar el snapshot fresco de LiveView, descartar eventos en vuelo
   y drenar en orden una cola de acciones creadas sin conexión con caducidad de 30 s.
   La cola vive solo mientras la página y el hook sigan montados.
-- [x] Límites de tamaño de estado, listas y parámetros.
-- [ ] Política de conflictos configurable.
+- **Previo:** Límites de tamaño de estado, listas y parámetros.
+- **Falta:** Política de conflictos configurable.
 
 **Listo cuando:** pruebas caóticas (corte de red, reordenamiento, duplicados) con
 Playwright y una propiedad de **convergencia**: en reposo, cliente y servidor tienen el
@@ -336,12 +349,12 @@ la cola con un error explícito y se conserva el estado autoritativo.
 
 ## Fase 4: Rendimiento (3 a 4 semanas, v0.6)
 
-- [ ] Partes estáticas y dinámicas: cada binding declara sus dependencias y solo se
+- **Falta:** Partes estáticas y dinámicas: cada binding declara sus dependencias y solo se
   actualiza lo que cambió.
-- [ ] Diff de listas con clave, omitir renders si el estado no cambió, agrupar con
+- **Falta:** Diff de listas con clave, omitir renders si el estado no cambió, agrupar con
   `requestAnimationFrame`.
-- [ ] Carga diferida de vistas por isla.
-- [x] Benchmarks en navegador real, no solo en linkedom (contador nativo en
+- **Falta:** Carga diferida de vistas por isla.
+- **Previo:** Benchmarks en navegador real, no solo en linkedom (contador nativo en
   Chromium, con latencia simulada y comandos reproducibles).
 
 La omisión de renders sin cambios ya funciona para acciones y respuestas
@@ -359,47 +372,47 @@ Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de
 
 ## Fase 5: Funciones con la sintaxis de siempre (3 a 4 semanas, v0.7)
 
-- [ ] `Process.send_after(self(), ...)` y `handle_info` en el cliente (temporizadores).
-- [ ] Validación de formularios con la forma de `Ecto.Changeset`
+- **Falta:** `Process.send_after(self(), ...)` y `handle_info` en el cliente (temporizadores).
+- **Falta:** Validación de formularios con la forma de `Ecto.Changeset`
   (`validate_required`, `validate_length`, `validate_format`), compartida entre cliente
   y servidor.
-- [ ] Comandos `JS` locales y una puerta controlada (lista permitida) hacia JavaScript.
-- [ ] Persistencia local opcional (`sessionStorage`).
+- **Falta:** Comandos `JS` locales y una puerta controlada (lista permitida) hacia JavaScript.
+- **Falta:** Persistencia local opcional (`sessionStorage`).
 
-## Fase 6: Migración y experiencia de desarrollo (continua desde v0.4)
+## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
-- [x] `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué
+- **Previo:** `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué
   (auditoría de fuente para `use Phoenix.LiveComponent` y `use AppWeb, :live_component`).
-- [ ] Telemetría de latencia y frecuencia por evento, para decidir qué migrar con datos.
+- **Falta:** Telemetría de latencia y frecuencia por evento, para decidir qué migrar con datos.
   Los componentes con `use LiveLift` ya emiten duración y resultado por evento
   marcado o no marcado. Falta medir componentes antes de optar y el tramo del
   navegador para comparar latencia completa.
-- [x] `mix live_lift.test`: ejecuta los handlers marcados en Elixir y en Node
+- **Previo:** `mix live_lift.test`: ejecuta los handlers marcados en Elixir y en Node
   con casos declarativos; exige cobertura de eventos y componentes de la app.
   El demo ejecuta casos de Unicode, `nil` y el límite de entero seguro en CI.
-- [ ] Documentación en formato diff ("versión servidor contra versión cliente"),
+- **Falta:** Documentación en formato diff ("versión servidor contra versión cliente"),
   entendible en una o dos lecturas.
-- [ ] Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de
+- **Falta:** Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de
   servidor").
-- [ ] Inspector de estado con viaje en el tiempo en desarrollo.
-- [ ] Instalador con Igniter, tipos TypeScript, paquete npm versionado, verificación de
+- **Falta:** Inspector de estado con viaje en el tiempo en desarrollo.
+- **Falta:** Instalador con Igniter, tipos TypeScript, paquete npm versionado, verificación de
   que el JavaScript generado y el runtime coinciden.
 
 ## Fase 7: Seguridad y operación (4 semanas, v0.9)
 
-- [x] Modelo de amenazas escrito: el estado va visible en el HTML (sin secretos), el
+- **Previo:** Modelo de amenazas escrito: el estado va visible en el HTML (sin secretos), el
   estado del cliente no es de fiar, compatibilidad con CSP sin `eval`.
-- [x] Auditoría interna de XSS y de los usos de `innerHTML` en el runtime.
-- [x] Pruebas de prototype pollution y fuzzing del compilador para el subconjunto
+- **Previo:** Auditoría interna de XSS y de los usos de `innerHTML` en el runtime.
+- **Previo:** Pruebas de prototype pollution y fuzzing del compilador para el subconjunto
   actual (1,000 expresiones generadas con semilla y comprobación sintáctica en Node).
-- [ ] Telemetría (`:telemetry` en servidor, reporte de errores del cliente).
-- [x] **Interruptor de emergencia** por componente y global: vuelve al servidor
+- **Falta:** Telemetría (`:telemetry` en servidor, reporte de errores del cliente).
+- **Previo:** **Interruptor de emergencia** por componente y global: vuelve al servidor
   en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
-- [x] Accesibilidad: foco al re-renderizar y axe WCAG A/AA del demo en Chromium,
+- **Previo:** Accesibilidad: foco al re-renderizar y axe WCAG A/AA del demo en Chromium,
   Firefox y WebKit. No equivale a una auditoría con lector de pantalla.
-- [ ] Política de versiones: rango de LiveView soportado, deprecaciones, changelog
+- **Falta:** Política de versiones: rango de LiveView soportado, deprecaciones, changelog
   automatizado, publicación firmada en Hex y npm.
-- [x] Pruebas de carga con 100 islas por página: eventos independientes en
+- **Previo:** Pruebas de carga con 100 islas por página: eventos independientes en
   Chromium, Firefox y WebKit, más benchmark reproducible de montaje en Chromium.
 
 La revisión interna bloquea esquemas de URL codificados con entidades y
