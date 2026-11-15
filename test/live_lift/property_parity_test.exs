@@ -76,6 +76,7 @@ defmodule LiveLift.PropertyParityTest do
         label: state.label <> "!",
         contains: String.contains?(state.label, state.query),
         trimmed: String.trim(state.label),
+        downcased: String.downcase(state.label),
         graphemes: String.length(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
         cond_choice:
@@ -179,6 +180,10 @@ defmodule LiveLift.PropertyParityTest do
           "é",
           "😀",
           "é",
+          "Σ",
+          "ΟΣ",
+          "İ",
+          "ẞ",
           "👨‍👩‍👧‍👦",
           "🇲🇽",
           "👍🏽",
@@ -273,7 +278,7 @@ defmodule LiveLift.PropertyParityTest do
           amount: 12,
           other: [],
           target: %{id: 0, keep: true},
-          label: "\u0085é\uFEFF",
+          label: "\u0085ΟΣ\uFEFF",
           query: "é",
           flag: false,
           optional: %{}

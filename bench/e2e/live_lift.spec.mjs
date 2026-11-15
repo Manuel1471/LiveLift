@@ -208,6 +208,16 @@ test("native Enum.with_index numbers app-owned labels and converges", async ({pa
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
 });
 
+test("native String.downcase follows Elixir's Greek sigma behavior", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  await root.locator('#row-1 input[name="label"]').fill("ΟΣ");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("button", {name: "Lower labels"}).click();
+  await expect(root.getByRole("status", {name: "Combined labels"})).toHaveText("οσ · two");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

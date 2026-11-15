@@ -112,7 +112,7 @@ state values;
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
 `Map.take/2` with a literal list of atom keys (missing keys are omitted);
 `Integer.to_string/1` for safe integers;
-`String.trim/1`; `String.length/1`; and
+`String.trim/1`; `String.length/1`; `String.downcase/1`; and
 `String.contains?/2` with a string or list
 of strings as the pattern. `cond` uses one condition per clause and raises
 when no condition is true. `case` accepts unguarded literal, list (including
@@ -123,9 +123,13 @@ Pinned variables, tuples, guards, string-key maps, and repeated bindings stay
 on the server. An empty pattern list returns `false`; an empty
 string pattern matches. `String.trim/1` uses Elixir's Unicode whitespace set,
 including U+0085 and excluding U+FEFF. `String.length/1` counts graphemes
-with `Intl.Segmenter`; browsers without it raise an explicit error. Unsupported
-calls fail at compile time. Integer-only browser arithmetic fails if it would
-leave JavaScript's safe integer range. Float results must remain finite. A
+with `Intl.Segmenter`; browsers without it raise an explicit error.
+`String.downcase/1` applies Elixir's context-free Unicode lowercase mapping,
+including `"ΟΣ" -> "οσ"`; JavaScript's whole-string `toLowerCase()` would
+produce `"ος"`. The [Unicode spike](downcase-spike.md) records the full scalar
+comparison on the tested runtime. Locale-specific `/2` stays on the server.
+Unsupported calls fail at compile time. Integer-only browser arithmetic fails
+if it would leave JavaScript's safe integer range. Float results must remain finite. A
 float operand produces a float result, and `1 == 1.0` is true, including inside
 maps and lists. Map and list equality is structural.
 `Enum.sort_by/2` computes each key once and keeps the original order when

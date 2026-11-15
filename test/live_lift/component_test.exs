@@ -496,7 +496,7 @@ defmodule LiveLift.ComponentTest do
   test "unpublished handler forms fail at their source before generating JavaScript" do
     expressions = [
       "Float.round(1.5, 1)",
-      "cond do String.downcase(socket.assigns.value) -> 1; true -> 0 end",
+      "cond do String.downcase(socket.assigns.value, :turkic) -> 1; true -> 0 end",
       "Enum.find(socket.assigns.items, fn item, _index -> item.keep end)",
       "Enum.reduce(socket.assigns.items, 0, fn item -> item end)",
       "Enum.sort_by(socket.assigns.items, fn item, _index -> item.id end)",
@@ -504,7 +504,7 @@ defmodule LiveLift.ComponentTest do
       "Enum.count(socket.assigns.items, fn item, _index -> item.keep end)",
       "Enum.join(socket.assigns.items, :separator)",
       "Enum.flat_map(socket.assigns.items, fn item, _index -> [item] end)",
-      "String.downcase(socket.assigns.value)",
+      "String.downcase(socket.assigns.value, :turkic)",
       "String.split(socket.assigns.value, \",\")",
       "String.replace(socket.assigns.value, \"a\", \"b\")",
       "Map.keys(socket.assigns.value)",

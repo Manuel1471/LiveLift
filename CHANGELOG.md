@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile `String.downcase/1` with Elixir's context-free Unicode mapping, a full scalar parity spike, seeded strings, and three-browser native coverage.
 - Compile the callback form of `Enum.with_index/2` with zero-based indexes and parity; reject tuple-producing forms with a source-located alternative.
 - Compile `Enum.flat_map/2` for list-returning anonymous callbacks, with bounded output, seeded parity, invalid-result rejection, and native browser coverage.
 - Compile `Enum.join/1,2` with Elixir string conversion for safe state values and chardata, plus invalid-value rejection, float text parity, and native browser coverage.

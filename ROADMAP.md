@@ -280,7 +280,14 @@ orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.
 `String.contains?/2`, `String.trim/1` y `String.length/1` ya tienen paridad
 en el corpus probado, incluidos espacios Unicode y grafemas complejos. La
 segmentación de grafemas depende de `Intl.Segmenter` y de la versión Unicode del
-navegador; las demás funciones de `String` de esta fase siguen pendientes.
+navegador; `split` y `replace` siguen pendientes.
+El spike `docs/downcase-spike.md` comparó todos los valores escalares Unicode:
+1,488 cambian al bajar de caja y la conversión por carácter en JavaScript tuvo
+cero diferencias con Elixir en este toolchain. `String.downcase/1` ya compila;
+el corpus de 1,000 estados y el demo con sigma griega comprueban paridad y
+convergencia en tres navegadores. El paquete de referencia, que no usa
+`downcase`, midió `54,049` bytes gzip; se repitieron los benchmarks de render,
+evento Phoenix y DOM. `split` y `replace` siguen pendientes.
 `Enum.take/2`, `Enum.drop/2` y `Enum.uniq/1` también tienen paridad para listas
 seguras. `Enum.find/2,3` ya tiene paridad con 1,000 estados y un handler nativo
 que converge en tres navegadores. El paquete de referencia, que no usa esta

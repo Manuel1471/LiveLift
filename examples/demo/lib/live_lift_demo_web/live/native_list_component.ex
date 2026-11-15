@@ -14,6 +14,7 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <button type="button" phx-click="join_labels" phx-target={@myself}>Join labels</button>
       <button type="button" phx-click="expand_labels" phx-target={@myself}>Expand labels</button>
       <button type="button" phx-click="number_labels" phx-target={@myself}>Number labels</button>
+      <button type="button" phx-click="lower_labels" phx-target={@myself}>Lower labels</button>
       <output aria-label="Combined labels">{@combined_labels}</output>
       <button type="button" phx-click="count_new" phx-target={@myself}>Count new rows</button>
       <output aria-label="New row count">{@new_count}</output>
@@ -120,6 +121,19 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
          Integer.to_string(index + 1) <> ": " <> item.label
        end)
        |> Enum.join(" · ")
+     )}
+  end
+
+  @client true
+  def handle_event("lower_labels", _params, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :combined_labels,
+       socket.assigns.items
+       |> Enum.map(fn item -> item.label end)
+       |> Enum.join(" · ")
+       |> String.downcase()
      )}
   end
 

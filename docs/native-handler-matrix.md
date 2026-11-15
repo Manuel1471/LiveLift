@@ -20,7 +20,8 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | `Enum.flat_map/2` | Supported subset | List input and one-argument anonymous callback returning a list; flattened output is capped at 10,000 elements. |
 | `Enum.with_index/2` callback form | Supported subset | List input and two-argument anonymous callback returning a safe state value; indexes start at zero. Tuple-producing `/1` and offset `/2` fail at compile time with a source-located alternative. |
 | Other `Enum` operations | Supported subset | `map/filter/reject/any?/all?` with one-argument anonymous functions, `member?/2`, `reverse/1`, `take/2`, `drop/2`, and `uniq/1`; see [language semantics](language.md). |
-| `String.downcase/split/replace` | Server only | These operations are rejected with source location. |
+| `String.downcase/1` | Supported subset | Context-free Unicode lowercase mapping; locale-specific `/2` stays on the server. |
+| `String.split/replace` | Server only | These operations are rejected with source location. |
 | Other `String` operations | Supported subset | `trim/1`, `length/1`, `contains?/2`; see Unicode limits in [language semantics](language.md). |
 | `Map.keys/values` and `List` module operations | Server only | Map iteration order differs between Elixir and JavaScript. These operations are rejected. |
 | Other `Map` operations | Supported subset | Atom-keyed `put/get/delete`, shallow `merge`, and `take` with a literal atom-key list. |
