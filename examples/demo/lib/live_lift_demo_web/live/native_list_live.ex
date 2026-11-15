@@ -25,7 +25,8 @@ defmodule LiveLiftDemoWeb.NativeListLive do
        items: items,
        next_id: count + 1,
        first_match: "None",
-       combined_labels: ""
+       combined_labels: "",
+       new_count: 0
      )}
   end
 
@@ -40,6 +41,7 @@ defmodule LiveLiftDemoWeb.NativeListLive do
         next_id={@next_id}
         first_match={@first_match}
         combined_labels={@combined_labels}
+        new_count={@new_count}
       />
     </main>
     """

@@ -266,6 +266,13 @@ defmodule LiveLift.Client.Compiler do
     projected.sort((left, right) => __liveLiftTermCompare(left.key, right.key) || left.index - right.index);
     return projected.map(({item}) => item);
   }
+  function __liveLiftCount(list, predicate) {
+    let count = 0;
+    for (const item of __liveLiftList(list)) {
+      if (__liveLiftTruthy(predicate(item))) count += 1;
+    }
+    return count;
+  }
   function __liveLiftTake(list, count) {
     list = __liveLiftList(list);
     count = __liveLiftInt(count);
@@ -625,6 +632,21 @@ defmodule LiveLift.Client.Compiler do
     name = identifier!(variable)
     key = compile_expr(body, List.wrap(args) ++ [variable])
     "__liveLiftSortBy(#{compile_expr(list, args)}, (#{name}) => #{key})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :count]}, _, [list]}, args) do
+    "__liveLiftList(#{compile_expr(list, args)}).length"
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :count]}, _,
+          [list, {:fn, _, [{:->, _, [[{variable, _, context}], body]}]}]},
+         args
+       )
+       when is_atom(variable) and (is_atom(context) or is_nil(context)) do
+    name = identifier!(variable)
+    predicate = compile_expr(body, List.wrap(args) ++ [variable])
+    "__liveLiftCount(#{compile_expr(list, args)}, (#{name}) => #{predicate})"
   end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)

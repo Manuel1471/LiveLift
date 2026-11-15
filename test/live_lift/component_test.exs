@@ -501,7 +501,7 @@ defmodule LiveLift.ComponentTest do
       "Enum.reduce(socket.assigns.items, 0, fn item -> item end)",
       "Enum.sort_by(socket.assigns.items, fn item, _index -> item.id end)",
       "Enum.sort_by(socket.assigns.items, fn item -> item.id end, :desc)",
-      "Enum.count(socket.assigns.items)",
+      "Enum.count(socket.assigns.items, fn item, _index -> item.keep end)",
       "Enum.join(socket.assigns.items, \",\")",
       "Enum.flat_map(socket.assigns.items, fn item -> [item] end)",
       "Enum.with_index(socket.assigns.items)",

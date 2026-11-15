@@ -100,6 +100,8 @@ The callback receives each item before the accumulator, in list order.
 `reduce/2` uses the first item as its accumulator and raises on an empty list;
 `reduce/3` returns its initial value for an empty list. Also supported:
 `Enum.sort_by/2` on lists with a one-argument anonymous key function;
+`Enum.count/1` for list length and `Enum.count/2` with a one-argument anonymous
+predicate using Elixir truthiness;
 `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;

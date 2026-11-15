@@ -161,6 +161,20 @@ test("native Enum.sort_by preserves keyed focus and server order", async ({page}
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
 });
 
+test("native Enum.count predicts app-owned row counts", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  const count = root.getByRole("status", {name: "New row count"});
+  await expect(count).toHaveText("0");
+  await root.getByRole("button", {name: "Count new rows"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(count).toHaveText("0");
+  await root.getByRole("button", {name: "Add row"}).click();
+  await root.getByRole("button", {name: "Count new rows"}).click();
+  await expect(count).toHaveText("1");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

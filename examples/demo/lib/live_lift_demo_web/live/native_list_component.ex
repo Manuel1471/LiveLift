@@ -12,6 +12,8 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <output aria-label="First new row">{@first_match}</output>
       <button type="button" phx-click="combine_labels" phx-target={@myself}>Combine labels</button>
       <output aria-label="Combined labels">{@combined_labels}</output>
+      <button type="button" phx-click="count_new" phx-target={@myself}>Count new rows</button>
+      <output aria-label="New row count">{@new_count}</output>
       <ul>
         <li :for={item <- @items} id={item.id}>
           <form phx-change="edit" phx-submit="edit" phx-target={@myself}>
@@ -77,6 +79,16 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
        socket,
        :combined_labels,
        Enum.reduce(socket.assigns.items, "", fn item, labels -> labels <> item.label end)
+     )}
+  end
+
+  @client true
+  def handle_event("count_new", _params, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :new_count,
+       Enum.count(socket.assigns.items, fn item -> item.label == "New" end)
      )}
   end
 

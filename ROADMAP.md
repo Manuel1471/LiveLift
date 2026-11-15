@@ -297,11 +297,15 @@ benchmark no mide `reduce` directamente.
 El spike `docs/sort-by-spike.md` confirma el orden de términos para valores
 seguros y la diferencia UTF-8/UTF-16. `Enum.sort_by/2` ya pasa 1,000 listas
 mixtas y 302 listas numéricas con floats etiquetados; el demo verifica orden,
-foco y convergencia en tres navegadores. `count`, `join`, `flat_map` y
-`with_index` siguen pendientes, en ese orden. En 25 inversiones y ordenamientos
+foco y convergencia en tres navegadores. En 25 inversiones y ordenamientos
 locales de 1,000 filas, Chromium midió mediana de 10.9 ms y p95 de 18.3 ms:
 el p95 supera el presupuesto de un frame. El bundle de referencia, que no usa
 `sort_by`, midió `54,050` bytes gzip con LiveLift y `47,221` sin él.
+`Enum.count/1,2` ya compila para listas; el corpus de 1,000 estados comprueba
+longitud, listas vacías y predicados con verdad de Elixir. El demo cuenta filas
+propias de la app. `join`, `flat_map` y `with_index` siguen pendientes, en ese
+orden. El paquete de referencia, que no usa `count`, conservó `54,050` bytes
+gzip; se repitieron los benchmarks de render, evento Phoenix y DOM.
 `Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las otras
 operaciones de `Map` y `List` de esta fase siguen pendientes.
 
