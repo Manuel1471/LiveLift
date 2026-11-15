@@ -190,6 +190,72 @@ defmodule LiveLift.Client.Compiler do
   function __liveLiftDowncase(value) {
     return Array.from(__liveLiftString(value), (character) => character.toLowerCase()).join("");
   }
+  function __liveLiftSplitFromMatches(text, matches, trim, parts) {
+    if (parts === 1) return trim && text === "" ? [] : [text];
+    const result = [];
+    const append = (piece) => {
+      if (trim && piece === "") return false;
+      if (result.length >= 10000) throw new Error("LiveLift list length limit exceeded");
+      result.push(piece);
+      return true;
+    };
+    let cursor = 0;
+    for (const [position, length] of matches) {
+      if (append(text.slice(cursor, position)) && parts !== null && result.length === parts - 1) {
+        append(text.slice(position + length));
+        return result;
+      }
+      cursor = position + length;
+    }
+    append(text.slice(cursor));
+    return result;
+  }
+  function* __liveLiftSplitPositions(text, pattern) {
+    if (pattern === "") {
+      if (typeof Intl === "undefined" || typeof Intl.Segmenter !== "function") {
+        throw new Error("LiveLift requires Intl.Segmenter for String.split with an empty pattern");
+      }
+      __liveLiftGraphemes ??= new Intl.Segmenter(undefined, {granularity: "grapheme"});
+      yield [0, 0];
+      for (const part of __liveLiftGraphemes.segment(text)) yield [part.index + part.segment.length, 0];
+      return;
+    }
+    const patterns = typeof pattern === "string" ? [pattern] : pattern;
+    if (!Array.isArray(patterns) || patterns.some((item) => typeof item !== "string" || item === "")) {
+      throw new Error("LiveLift String.split expects a string or list of nonempty strings");
+    }
+    let cursor = 0;
+    while (cursor < text.length) {
+      let position = -1;
+      let length = 0;
+      for (const item of patterns) {
+        const found = text.indexOf(item, cursor);
+        if (found >= 0 && (position < 0 || found < position || (found === position && item.length > length))) {
+          position = found;
+          length = item.length;
+        }
+      }
+      if (position < 0) return;
+      yield [position, length];
+      cursor = position + length;
+    }
+  }
+  function __liveLiftSplit(text, pattern, trim, parts) {
+    text = __liveLiftString(text);
+    if (typeof pattern !== "string" &&
+        (!Array.isArray(pattern) || pattern.some((item) => typeof item !== "string" || item === ""))) {
+      throw new Error("LiveLift String.split expects a string or list of nonempty strings");
+    }
+    return __liveLiftSplitFromMatches(text, __liveLiftSplitPositions(text, pattern), trim, parts);
+  }
+  function __liveLiftSplitWhitespace(text) {
+    text = __liveLiftString(text);
+    const whitespace = /[\u0009-\u000d\u0020\u0085\u1680\u2000-\u2006\u2008-\u200a\u2028\u2029\u205f\u3000]+/g;
+    const matches = (function* () {
+      for (const match of text.matchAll(whitespace)) yield [match.index, match[0].length];
+    })();
+    return __liveLiftSplitFromMatches(text, matches, true, null);
+  }
   let __liveLiftGraphemes;
   function __liveLiftStringLength(value) {
     if (typeof Intl === "undefined" || typeof Intl.Segmenter !== "function") throw new Error("LiveLift requires Intl.Segmenter for String.length/1");
@@ -755,6 +821,32 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftDowncase(#{compile_expr(text, arg)})"
   end
 
+  defp compile_expr({{:., _, [{:__aliases__, _, [:String]}, :split]}, _, [text]}, arg) do
+    "__liveLiftSplitWhitespace(#{compile_expr(text, arg)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:String]}, :split]}, _, [text, pattern]}, arg) do
+    "__liveLiftSplit(#{compile_expr(text, arg)}, #{compile_expr(pattern, arg)}, false, null)"
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:String]}, :split]}, _, [text, pattern, options]},
+         arg
+       )
+       when is_list(options) do
+    {trim, parts} = split_options!(options)
+
+    "__liveLiftSplit(#{compile_expr(text, arg)}, #{compile_expr(pattern, arg)}, #{trim}, #{parts})"
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:String]}, :split]}, _, [_text, _pattern, _options]},
+         _arg
+       ) do
+    raise ArgumentError,
+          "unsupported client String.split/3 options; use literal trim: true/false and positive parts: n, or move this handler to the server"
+  end
+
   defp compile_expr({{:., _, [{:__aliases__, _, [:String]}, :length]}, _, [text]}, arg) do
     "__liveLiftStringLength(#{compile_expr(text, arg)})"
   end
@@ -847,6 +939,27 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr(other, _arg) do
     raise ArgumentError, "unsupported client expression: #{Macro.to_string(other)}"
+  end
+
+  defp split_options!(options) do
+    unless Keyword.keyword?(options) do
+      raise ArgumentError,
+            "unsupported client String.split/3 options; use literal trim: true/false and positive parts: n, or move this handler to the server"
+    end
+
+    keys = Keyword.keys(options)
+    trim = Keyword.get(options, :trim, false)
+    parts = Keyword.get(options, :parts, :infinity)
+
+    unless Enum.uniq(keys) == keys and Enum.all?(keys, &(&1 in [:trim, :parts])) and
+             is_boolean(trim) and
+             (parts == :infinity or
+                (is_integer(parts) and parts > 0 and parts <= @max_safe_integer)) do
+      raise ArgumentError,
+            "unsupported client String.split/3 options; use literal trim: true/false and positive parts: n, or move this handler to the server"
+    end
+
+    {Jason.encode!(trim), if(parts == :infinity, do: "null", else: Integer.to_string(parts))}
   end
 
   defp compile_find(list, fallback, variable, body, args) do

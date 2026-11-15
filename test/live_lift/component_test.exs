@@ -505,7 +505,7 @@ defmodule LiveLift.ComponentTest do
       "Enum.join(socket.assigns.items, :separator)",
       "Enum.flat_map(socket.assigns.items, fn item, _index -> [item] end)",
       "String.downcase(socket.assigns.value, :turkic)",
-      "String.split(socket.assigns.value, \",\")",
+      "String.split(socket.assigns.value, ~r/,/)",
       "String.replace(socket.assigns.value, \"a\", \"b\")",
       "Map.keys(socket.assigns.value)",
       "Map.values(socket.assigns.value)",
@@ -550,6 +550,24 @@ defmodule LiveLift.ComponentTest do
 
       assert_raise ArgumentError,
                    ~r/matrix.ex:6: unsupported @client handler: unsupported client Enum.with_index tuple output; use Enum.with_index\(list, fn item, index ->/,
+                   fn -> Code.compile_string(source, "matrix.ex") end
+    end
+
+    for {options, index} <- Enum.with_index(["parts: 0", "trim: :maybe", "unknown: true"]) do
+      source = """
+      defmodule LiveLift.ComponentTest.UnsupportedSplitOptions#{index} do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@value}</output>"
+        @client true
+        def handle_event("run", _params, socket) do
+          {:noreply, assign(socket, :value, String.split(socket.assigns.value, ",", #{options}))}
+        end
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/matrix.ex:6: unsupported @client handler: unsupported client String.split\/3 options; use literal trim:/,
                    fn -> Code.compile_string(source, "matrix.ex") end
     end
 

@@ -14,6 +14,8 @@ defmodule LiveLift.PropertyParityTest do
       do: %{items: Enum.flat_map(state.items, fn item -> item.id end)}
     )
 
+    defclient(split_values(state), do: %{parts: String.split(state.value, state.pattern)})
+
     defclient(check(state),
       do: %{
         count: state.count + state.step,
@@ -77,6 +79,11 @@ defmodule LiveLift.PropertyParityTest do
         contains: String.contains?(state.label, state.query),
         trimmed: String.trim(state.label),
         downcased: String.downcase(state.label),
+        split_whitespace: String.split(state.label),
+        split_pattern: String.split(state.label, state.split_pattern),
+        split_trim: String.split(state.label, state.split_pattern, trim: true),
+        split_parts: String.split(state.label, state.split_pattern, trim: true, parts: 2),
+        split_overlap: String.split("ab", ["a", "ab"]),
         graphemes: String.length(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
         cond_choice:
@@ -139,6 +146,19 @@ defmodule LiveLift.PropertyParityTest do
     assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
   end
 
+  test "String.split rejects an empty pattern inside a list on both sides" do
+    assert_raise ArgumentError, fn ->
+      Actions.split_values(%{value: "a,b", pattern: ["", ","]})
+    end
+
+    source =
+      LiveLift.Client.Compiler.compile_module(Actions) <>
+        "try { actions.split_values({value: 'a,b', pattern: ['', ',']}); process.exit(1); } " <>
+        "catch (error) { if (!error.message.includes('nonempty strings')) process.exit(2); }"
+
+    assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+  end
+
   test "1,000 seeded states keep Elixir and generated JavaScript equal" do
     item = StreamData.fixed_map(%{id: StreamData.integer(-100..100), keep: StreamData.boolean()})
     items = StreamData.list_of(item, max_length: 6)
@@ -182,6 +202,8 @@ defmodule LiveLift.PropertyParityTest do
           "é",
           "Σ",
           "ΟΣ",
+          "a,,b,",
+          "a  b",
           "İ",
           "ẞ",
           "👨‍👩‍👧‍👦",
@@ -195,6 +217,8 @@ defmodule LiveLift.PropertyParityTest do
           " ",
           "\t",
           "\u0085",
+          "\u00A0",
+          "\u202F",
           "\uFEFF",
           "\u2000"
         ]),
@@ -218,6 +242,7 @@ defmodule LiveLift.PropertyParityTest do
         sortable: sortable,
         joinables: joinables,
         separator: StreamData.member_of(["", ",", " · ", "😀"]),
+        split_pattern: StreamData.member_of(["", ",", "é", "😀", [",", ";"], [], ["a", "aa"]]),
         amount: StreamData.integer(-12..12),
         other: items,
         target: item,
@@ -245,6 +270,7 @@ defmodule LiveLift.PropertyParityTest do
           sortable: ["\u{10000}", "\uE000", nil, false, true],
           joinables: [],
           separator: ",",
+          split_pattern: "",
           amount: -1,
           other: [],
           target: %{id: 1, keep: false},
@@ -260,6 +286,7 @@ defmodule LiveLift.PropertyParityTest do
           sortable: [%{b: 0}, %{a: 1}, %{}, [], "a"],
           joinables: [nil, false, 0, [65]],
           separator: " · ",
+          split_pattern: [",", ";"],
           amount: -12,
           other: [%{id: 1, keep: false}],
           target: %{id: 1, keep: false},
@@ -275,6 +302,7 @@ defmodule LiveLift.PropertyParityTest do
           sortable: [[1, 2], [1], 2, 0, -2],
           joinables: ["😀", [[65], "b"], true],
           separator: "😀",
+          split_pattern: "",
           amount: 12,
           other: [],
           target: %{id: 0, keep: true},
@@ -292,6 +320,7 @@ defmodule LiveLift.PropertyParityTest do
             sortable: [],
             joinables: [],
             separator: "",
+            split_pattern: ",",
             amount: 0,
             other: [],
             target: %{id: 0, keep: false},
