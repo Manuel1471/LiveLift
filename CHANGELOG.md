@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile `Enum.flat_map/2` for list-returning anonymous callbacks, with bounded output, seeded parity, invalid-result rejection, and native browser coverage.
 - Compile `Enum.join/1,2` with Elixir string conversion for safe state values and chardata, plus invalid-value rejection, float text parity, and native browser coverage.
 - Compile `Enum.count/1,2` for lists and Elixir-truthy predicates, with seeded parity and native browser coverage.
 - Compile `Enum.sort_by/2` with stable Elixir term order for safe state values, including Unicode and tagged floats; verify seeded parity and native keyed focus in three browsers.

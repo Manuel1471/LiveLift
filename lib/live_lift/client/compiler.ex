@@ -297,6 +297,15 @@ defmodule LiveLift.Client.Compiler do
     separator = __liveLiftString(separator);
     return list.map(__liveLiftJoinValue).join(separator);
   }
+  function __liveLiftFlatMap(list, callback) {
+    const result = [];
+    for (const item of __liveLiftList(list)) {
+      const part = __liveLiftList(callback(item));
+      if (result.length + part.length > 10000) throw new Error("LiveLift list length limit exceeded");
+      for (const value of part) result.push(value);
+    }
+    return result;
+  }
   function __liveLiftTake(list, count) {
     list = __liveLiftList(list);
     count = __liveLiftInt(count);
@@ -679,6 +688,17 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :join]}, _, [list, separator]}, args) do
     "__liveLiftJoin(#{compile_expr(list, args)}, #{compile_expr(separator, args)})"
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Enum]}, :flat_map]}, _,
+          [list, {:fn, _, [{:->, _, [[{variable, _, context}], body]}]}]},
+         args
+       )
+       when is_atom(variable) and (is_atom(context) or is_nil(context)) do
+    name = identifier!(variable)
+    projection = compile_expr(body, List.wrap(args) ++ [variable])
+    "__liveLiftFlatMap(#{compile_expr(list, args)}, (#{name}) => #{projection})"
   end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)

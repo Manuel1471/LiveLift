@@ -103,6 +103,8 @@ The callback receives each item before the accumulator, in list order.
 `Enum.count/1` for list length and `Enum.count/2` with a one-argument anonymous
 predicate using Elixir truthiness;
 `Enum.join/1,2` for lists with a string separator;
+`Enum.flat_map/2` for lists with a one-argument anonymous callback that returns
+a list for every item;
 `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
@@ -138,6 +140,10 @@ contributes an empty string, while floats preserve their Elixir display text,
 including `-0.0`. A non-string separator, map element, or invalid Unicode
 code point raises. The resulting state still obeys LiveLift's 1 MiB string
 budget.
+`Enum.flat_map/2` concatenates callback lists in input order. A scalar,
+string, or map callback result is outside the client subset and raises. The
+browser stops when the flattened list exceeds 10,000 elements; the server
+result is subject to the same state limit before delivery.
 
 State and action results must be maps with safe atom keys. Values may be safe
 integers, finite binary64 floats, strings, booleans, `nil`, lists, or nested maps to a maximum depth

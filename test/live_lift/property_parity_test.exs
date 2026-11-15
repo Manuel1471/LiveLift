@@ -10,6 +10,10 @@ defmodule LiveLift.PropertyParityTest do
 
     defclient(join_values(state), do: %{joined: Enum.join(state.items, state.separator)})
 
+    defclient(flat_invalid(state),
+      do: %{items: Enum.flat_map(state.items, fn item -> item.id end)}
+    )
+
     defclient(check(state),
       do: %{
         count: state.count + state.step,
@@ -60,6 +64,9 @@ defmodule LiveLift.PropertyParityTest do
         counted_truthy: Enum.count(state.items, fn item -> item.keep || state.flag end),
         joined_values: Enum.join(state.joinables, state.separator),
         joined_default: Enum.join(state.joinables),
+        flat_doubled: Enum.flat_map(state.items, fn item -> [item, item] end),
+        flat_kept:
+          Enum.flat_map(state.items, fn item -> if item.keep, do: [item.id], else: [] end),
         member: Enum.member?(state.items, state.target),
         taken: Enum.take(state.items, state.amount),
         dropped: Enum.drop(state.items, state.amount),
@@ -112,6 +119,19 @@ defmodule LiveLift.PropertyParityTest do
         "for (const item of [{}, [0xd800]]) { " <>
         "try { actions.join_values({items: [item], separator: ','}); process.exit(1); } " <>
         "catch (error) { if (!error.message.includes('LiveLift')) process.exit(2); } }"
+
+    assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+  end
+
+  test "Enum.flat_map rejects a scalar callback result on both sides" do
+    assert_raise Protocol.UndefinedError, fn ->
+      Actions.flat_invalid(%{items: [%{id: 1}]})
+    end
+
+    source =
+      LiveLift.Client.Compiler.compile_module(Actions) <>
+        "try { actions.flat_invalid({items: [{id: 1}]}); process.exit(1); } " <>
+        "catch (error) { if (!error.message.includes('expected a list')) process.exit(2); }"
 
     assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
   end
