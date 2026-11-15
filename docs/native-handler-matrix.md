@@ -16,7 +16,8 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | `Enum.reduce/2,3` | Supported subset | List input and two-argument anonymous callback; `/2` uses the first element as its accumulator and rejects an empty list, while `/3` returns the initial accumulator on an empty list. |
 | `Enum.sort_by/2` | Supported subset | List input and one-argument anonymous key function; stable Elixir term order for safe state values. Custom sorters in `/3` stay on the server. |
 | `Enum.count/1,2` | Supported subset | List length or one-argument anonymous predicate with Elixir truthiness. |
-| `Enum.join/flat_map/with_index` | Server only | These operations are rejected with source location. |
+| `Enum.join/1,2` | Supported subset | List values that implement the published `String.Chars` subset; `/2` requires a string separator. Maps and unsupported values raise. |
+| `Enum.flat_map/with_index` | Server only | These operations are rejected with source location. |
 | Other `Enum` operations | Supported subset | `map/filter/reject/any?/all?` with one-argument anonymous functions, `member?/2`, `reverse/1`, `take/2`, `drop/2`, and `uniq/1`; see [language semantics](language.md). |
 | `String.downcase/split/replace` | Server only | These operations are rejected with source location. |
 | Other `String` operations | Supported subset | `trim/1`, `length/1`, `contains?/2`; see Unicode limits in [language semantics](language.md). |

@@ -8,6 +8,8 @@ defmodule LiveLift.PropertyParityTest do
       do: %{value: Enum.reduce(state.items, fn item, accumulator -> item + accumulator end)}
     )
 
+    defclient(join_values(state), do: %{joined: Enum.join(state.items, state.separator)})
+
     defclient(check(state),
       do: %{
         count: state.count + state.step,
@@ -56,6 +58,8 @@ defmodule LiveLift.PropertyParityTest do
         counted: Enum.count(state.items),
         counted_kept: Enum.count(state.items, fn item -> item.keep end),
         counted_truthy: Enum.count(state.items, fn item -> item.keep || state.flag end),
+        joined_values: Enum.join(state.joinables, state.separator),
+        joined_default: Enum.join(state.joinables),
         member: Enum.member?(state.items, state.target),
         taken: Enum.take(state.items, state.amount),
         dropped: Enum.drop(state.items, state.amount),
@@ -94,6 +98,24 @@ defmodule LiveLift.PropertyParityTest do
     assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", javascript])
   end
 
+  test "Enum.join rejects maps and invalid chardata on both sides" do
+    assert_raise Protocol.UndefinedError, fn ->
+      Actions.join_values(%{items: [%{}], separator: ","})
+    end
+
+    assert_raise UnicodeConversionError, fn ->
+      Actions.join_values(%{items: [[0xD800]], separator: ","})
+    end
+
+    source =
+      LiveLift.Client.Compiler.compile_module(Actions) <>
+        "for (const item of [{}, [0xd800]]) { " <>
+        "try { actions.join_values({items: [item], separator: ','}); process.exit(1); } " <>
+        "catch (error) { if (!error.message.includes('LiveLift')) process.exit(2); } }"
+
+    assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", source])
+  end
+
   test "1,000 seeded states keep Elixir and generated JavaScript equal" do
     item = StreamData.fixed_map(%{id: StreamData.integer(-100..100), keep: StreamData.boolean()})
     items = StreamData.list_of(item, max_length: 6)
@@ -119,6 +141,12 @@ defmodule LiveLift.PropertyParityTest do
           %{b: 0},
           %{a: 1, b: 2}
         ]),
+        max_length: 8
+      )
+
+    joinables =
+      StreamData.list_of(
+        StreamData.member_of(["", "é", "😀", -2, 0, 2, nil, false, true, [], [65], [[65], "b"]]),
         max_length: 8
       )
 
@@ -161,6 +189,8 @@ defmodule LiveLift.PropertyParityTest do
         step: StreamData.integer(-1_000..1_000),
         items: items,
         sortable: sortable,
+        joinables: joinables,
+        separator: StreamData.member_of(["", ",", " · ", "😀"]),
         amount: StreamData.integer(-12..12),
         other: items,
         target: item,
@@ -186,6 +216,8 @@ defmodule LiveLift.PropertyParityTest do
           step: 0,
           items: [],
           sortable: ["\u{10000}", "\uE000", nil, false, true],
+          joinables: [],
+          separator: ",",
           amount: -1,
           other: [],
           target: %{id: 1, keep: false},
@@ -199,6 +231,8 @@ defmodule LiveLift.PropertyParityTest do
           step: -1,
           items: [%{id: 1, keep: false}],
           sortable: [%{b: 0}, %{a: 1}, %{}, [], "a"],
+          joinables: [nil, false, 0, [65]],
+          separator: " · ",
           amount: -12,
           other: [%{id: 1, keep: false}],
           target: %{id: 1, keep: false},
@@ -212,6 +246,8 @@ defmodule LiveLift.PropertyParityTest do
           step: 1,
           items: [%{id: 1, keep: true}, %{id: 1, keep: true}],
           sortable: [[1, 2], [1], 2, 0, -2],
+          joinables: ["😀", [[65], "b"], true],
+          separator: "😀",
           amount: 12,
           other: [],
           target: %{id: 0, keep: true},
@@ -227,6 +263,8 @@ defmodule LiveLift.PropertyParityTest do
             step: 0,
             items: [],
             sortable: [],
+            joinables: [],
+            separator: "",
             amount: 0,
             other: [],
             target: %{id: 0, keep: false},

@@ -273,6 +273,30 @@ defmodule LiveLift.Client.Compiler do
     }
     return count;
   }
+  function __liveLiftChardata(value) {
+    if (typeof value === "string") return value;
+    if (typeof value === "number") {
+      if (!Number.isSafeInteger(value) || value < 0 || value > 0x10ffff ||
+          (value >= 0xd800 && value <= 0xdfff)) throw new Error("LiveLift expected a Unicode code point");
+      return String.fromCodePoint(value);
+    }
+    if (Array.isArray(value)) return value.map(__liveLiftChardata).join("");
+    throw new Error("LiveLift expected chardata");
+  }
+  function __liveLiftJoinValue(value) {
+    if (value === null) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "boolean") return String(value);
+    if (__liveLiftIsFloat(value)) return value.$live_lift_float;
+    if (typeof value === "number") return String(__liveLiftInt(value));
+    if (Array.isArray(value)) return __liveLiftChardata(value);
+    throw new Error("LiveLift Enum.join expects String.Chars values");
+  }
+  function __liveLiftJoin(list, separator) {
+    list = __liveLiftList(list);
+    separator = __liveLiftString(separator);
+    return list.map(__liveLiftJoinValue).join(separator);
+  }
   function __liveLiftTake(list, count) {
     list = __liveLiftList(list);
     count = __liveLiftInt(count);
@@ -647,6 +671,14 @@ defmodule LiveLift.Client.Compiler do
     name = identifier!(variable)
     predicate = compile_expr(body, List.wrap(args) ++ [variable])
     "__liveLiftCount(#{compile_expr(list, args)}, (#{name}) => #{predicate})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :join]}, _, [list]}, args) do
+    "__liveLiftJoin(#{compile_expr(list, args)}, \"\")"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :join]}, _, [list, separator]}, args) do
+    "__liveLiftJoin(#{compile_expr(list, args)}, #{compile_expr(separator, args)})"
   end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, operation]}, _, [list, count]}, arg)

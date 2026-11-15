@@ -303,9 +303,16 @@ el p95 supera el presupuesto de un frame. El bundle de referencia, que no usa
 `sort_by`, midió `54,050` bytes gzip con LiveLift y `47,221` sin él.
 `Enum.count/1,2` ya compila para listas; el corpus de 1,000 estados comprueba
 longitud, listas vacías y predicados con verdad de Elixir. El demo cuenta filas
-propias de la app. `join`, `flat_map` y `with_index` siguen pendientes, en ese
+propias de la app. `flat_map` y `with_index` siguen pendientes, en ese
 orden. El paquete de referencia, que no usa `count`, conservó `54,050` bytes
 gzip; se repitieron los benchmarks de render, evento Phoenix y DOM.
+`Enum.join/1,2` compila para listas de valores convertibles según el subconjunto
+publicado de `String.Chars`, con separador de string. El corpus de 1,000 estados
+cubre `nil`, booleanos, enteros, Unicode y chardata; otro test cubre floats y
+`-0.0`, y se rechazan mapas y puntos Unicode inválidos. El demo concatena
+etiquetas con separador propio y converge en tres navegadores. El bundle de
+referencia, que no usa `join`, conservó `54,050` bytes gzip; se repitieron los
+benchmarks de render, evento Phoenix y DOM.
 `Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las otras
 operaciones de `Map` y `List` de esta fase siguen pendientes.
 

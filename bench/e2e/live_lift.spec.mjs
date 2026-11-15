@@ -175,6 +175,19 @@ test("native Enum.count predicts app-owned row counts", async ({page}) => {
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
 });
 
+test("native Enum.join renders app-owned labels and converges", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  const joined = root.getByRole("status", {name: "Combined labels"});
+  await root.getByRole("button", {name: "Join labels"}).click();
+  await expect(joined).toHaveText("One · Two");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("button", {name: "Add row"}).click();
+  await root.getByRole("button", {name: "Join labels"}).click();
+  await expect(joined).toHaveText("One · Two · New");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

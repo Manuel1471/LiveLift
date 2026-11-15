@@ -102,6 +102,7 @@ The callback receives each item before the accumulator, in list order.
 `Enum.sort_by/2` on lists with a one-argument anonymous key function;
 `Enum.count/1` for list length and `Enum.count/2` with a one-argument anonymous
 predicate using Elixir truthiness;
+`Enum.join/1,2` for lists with a string separator;
 `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
@@ -131,6 +132,12 @@ Maps compare by size, sorted atom keys, then values; lists compare
 lexicographically. Strings compare by UTF-8 byte order, which differs from
 JavaScript's default UTF-16 string order for some Unicode characters. Custom
 sorters (`Enum.sort_by/3`) remain server only.
+`Enum.join/1,2` converts strings, safe integers, finite floats, booleans,
+`nil`, and valid nested chardata lists as Elixir's `String.Chars` does. `nil`
+contributes an empty string, while floats preserve their Elixir display text,
+including `-0.0`. A non-string separator, map element, or invalid Unicode
+code point raises. The resulting state still obeys LiveLift's 1 MiB string
+budget.
 
 State and action results must be maps with safe atom keys. Values may be safe
 integers, finite binary64 floats, strings, booleans, `nil`, lists, or nested maps to a maximum depth

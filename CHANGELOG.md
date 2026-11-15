@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile `Enum.join/1,2` with Elixir string conversion for safe state values and chardata, plus invalid-value rejection, float text parity, and native browser coverage.
 - Compile `Enum.count/1,2` for lists and Elixir-truthy predicates, with seeded parity and native browser coverage.
 - Compile `Enum.sort_by/2` with stable Elixir term order for safe state values, including Unicode and tagged floats; verify seeded parity and native keyed focus in three browsers.
 - Compile `Enum.reduce/2,3` for lists and two-argument anonymous callbacks, with empty-list behavior, seeded parity, and native browser coverage.

@@ -11,6 +11,7 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <button type="button" phx-click="find_new" phx-target={@myself}>Find new row</button>
       <output aria-label="First new row">{@first_match}</output>
       <button type="button" phx-click="combine_labels" phx-target={@myself}>Combine labels</button>
+      <button type="button" phx-click="join_labels" phx-target={@myself}>Join labels</button>
       <output aria-label="Combined labels">{@combined_labels}</output>
       <button type="button" phx-click="count_new" phx-target={@myself}>Count new rows</button>
       <output aria-label="New row count">{@new_count}</output>
@@ -79,6 +80,16 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
        socket,
        :combined_labels,
        Enum.reduce(socket.assigns.items, "", fn item, labels -> labels <> item.label end)
+     )}
+  end
+
+  @client true
+  def handle_event("join_labels", _params, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :combined_labels,
+       socket.assigns.items |> Enum.map(fn item -> item.label end) |> Enum.join(" · ")
      )}
   end
 
