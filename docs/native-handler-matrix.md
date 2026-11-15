@@ -10,8 +10,8 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | --- | --- | --- |
 | Handler header and event params | Supported subset | One literal event name, one clause, no guard; `_params`, flat or nested string-key map pattern, or `params["key"]` / `Map.get(params, "key")` through four safe segments. Other patterns stay on the server. |
 | `socket`, `assign/3`, `update/3`, `assign_new/3`, pipe | Supported subset | Return `{:noreply, socket}` after these operations; chains work with `|>`. `assign_new` accepts an atom key and a zero-argument callback whose expression is in the client language. A present key, including `nil`, skips the callback. One-argument callbacks, other socket operations, and general expression pipes stay on the server. |
-| Integers and decimals | Safe integers only | Arithmetic and comparison require integers within JavaScript's safe range. Decimal literals and floating point operations stay on the server until a numeric model is specified. |
-| `if`, `case`, `cond`, `defp` | `if` only | `if` with optional `else` uses Elixir truthiness. `case`, `cond`, and calls to local helpers are rejected for marked handlers; leave those handlers unmarked. |
+| Integers and decimals | Finite binary64 floats and safe integers | Mixed `+`, `-`, `*`, comparisons and `==` follow the documented subset. `Decimal` structs and arbitrary numeric functions stay on the server. |
+| `if`, `case`, `cond`, `defp` | `if` and `cond` | `if` with optional `else` and `cond` use Elixir truthiness. A `cond` with no true clause raises. `case` and calls to local helpers remain server-only. |
 | `Enum.find/reduce/sort_by/count/join/flat_map/with_index` | Server only | These operations are rejected with source location. |
 | Other `Enum` operations | Supported subset | `map/filter/reject/any?/all?` with one-argument anonymous functions, `member?/2`, `reverse/1`, `take/2`, `drop/2`, and `uniq/1`; see [language semantics](language.md). |
 | `String.downcase/split/replace` | Server only | These operations are rejected with source location. |

@@ -8,7 +8,7 @@ form outside this table is unsupported even if it is valid Elixir.
 | --- | --- |
 | State | Top-level atom-keyed map; nested maps, lists, strings, booleans, `nil`, safe integers, and finite binary64 floats. Maximum nesting depth: 16. Floats use a private tagged wire value. |
 | Numbers | Safe integers range from `-9_007_199_254_740_991` to `9_007_199_254_740_991`; integer arithmetic checks inputs and result. A float operand yields a float; nonfinite results raise. `rem/2` accepts integers only. Floats display with Elixir's `Float.to_string/1`, including `-0.0`. |
-| Truthiness | Only `false` and `nil` are false. `0`, `""` and `[]` are true. `if`, `!`, `&&`, `||`, `Enum.filter/2` and predicate functions use this rule. |
+| Truthiness | Only `false` and `nil` are false. `0`, `""` and `[]` are true. `if`, `cond`, `!`, `&&`, `||`, `Enum.filter/2` and predicate functions use this rule. A `cond` without a true clause raises. |
 | Equality | `==` and `!=` compare nested lists and maps structurally. Integer/float equality follows Elixir (`1 == 1.0`), including nested values. Atoms remain outside state. |
 | Maps | Keys in state are safe atoms; JSON sends their string names to JavaScript. A field read and `%{map | key: value}` require the key to exist. `Map.get/2,3` returns `nil` or its fallback for a missing key. |
 | Lists | `++`, `length`, `Enum.map/filter/reject/any?/all?/member?/reverse` are supported with the documented function shapes. List order is stable unless an action changes it. |

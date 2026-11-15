@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile `cond` clauses with Elixir truthiness, lazy branch selection, and an explicit no-match error; include it in the seeded parity corpus.
 - Compile finite Elixir float literals and mixed arithmetic using a tagged browser value that preserves `1.0`, negative zero, and server display; verify 5,000 seeded bit patterns and native handler parity.
 - Decide the float wire and parity model before enabling decimal literal compilation; document the type-loss spike and acceptance gate.
 - Compile native `assign_new/3` with a zero-argument callback, optional initial fields, lazy fallback, and Elixir/JavaScript plus browser parity.

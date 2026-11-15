@@ -38,6 +38,13 @@ defmodule LiveLift.PropertyParityTest do
         trimmed: String.trim(state.label),
         graphemes: String.length(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
+        cond_choice:
+          cond do
+            state.flag == false -> "false"
+            state.flag == nil -> "nil"
+            state.count < 0 -> "negative"
+            true -> "other"
+          end,
         absent: Map.get(state.optional, :missing, "fallback"),
         maybe_present: Map.get(state.optional, :present),
         added: Map.put(state.optional, :added, state.flag),

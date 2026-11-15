@@ -84,6 +84,7 @@ defmodule LiveLift.Client.Compiler do
       keys.every((key) => Object.hasOwn(right, key) && __liveLiftEqual(left[key], right[key]));
   }
   function __liveLiftTruthy(value) { return value !== false && value !== null; }
+  function __liveLiftCondFailure() { throw new Error("LiveLift cond has no true clause"); }
   function __liveLiftList(value) {
     if (!Array.isArray(value)) throw new Error("LiveLift expected a list");
     return value;
@@ -509,6 +510,22 @@ defmodule LiveLift.Client.Compiler do
     test = compile_expr(condition, arg)
 
     "(__liveLiftTruthy(#{test}) ? #{compile_expr(then_expr, arg)} : #{compile_expr(else_expr, arg)})"
+  end
+
+  defp compile_expr({:cond, _, [[do: clauses]]}, arg) when is_list(clauses) and clauses != [] do
+    Enum.reduce(Enum.reverse(clauses), "__liveLiftCondFailure()", fn
+      {:->, _, [[condition], result]}, fallback ->
+        "(__liveLiftTruthy(#{compile_expr(condition, arg)}) ? #{compile_expr(result, arg)} : #{fallback})"
+
+      other, _fallback ->
+        raise ArgumentError,
+              "unsupported client cond clause: #{Macro.to_string(other)}; use one condition per clause"
+    end)
+  end
+
+  defp compile_expr({:cond, _, _}, _arg) do
+    raise ArgumentError,
+          "unsupported client cond: use a nonempty do block with one condition per clause"
   end
 
   defp compile_expr({op, _, [left, right]}, arg) when op in [:==, :!=] do

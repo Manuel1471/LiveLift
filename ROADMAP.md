@@ -17,7 +17,7 @@ checks como porcentaje de avance.
 
 **Siguiente secuencia, en orden:**
 
-1. Continuar con `case`/`cond`, funciones locales y las operaciones de `Enum`,
+1. Continuar con `case`, funciones locales y las operaciones de `Enum`,
    `String`, `Map` y `List` enumeradas en esta fase. Cada forma nueva exige
    semántica, paridad y rechazo de variantes cercanas.
 2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
@@ -213,6 +213,11 @@ distintas y no una comparación de velocidad de tipos. El paquete de referencia
 subió 511 bytes gzip respecto del commit anterior (`53,539` a `54,050` bytes).
 La puerta 2 continúa abierta por las formas restantes del compilador y la
 regresión final.
+`cond` compila en handlers marcados: el corpus de 1,000 estados, un caso de
+ausencia de rama verdadera y un caso de evaluación perezosa pasan en
+Elixir/JavaScript. El botón «Minimum one» lo verifica en tres navegadores.
+El paquete de referencia conservó `54,050` bytes gzip tras este cambio; el
+helper de `cond` no se incluye cuando ninguna acción lo utiliza.
 `assign_new/3` con clave átomo y callback sin argumentos admite campos ausentes
 en el snapshot inicial. Un valor presente, incluso `nil`, evita evaluar el
 callback. El demo `/native-optional` y dos casos de paridad comprueban creación
