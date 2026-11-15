@@ -14,13 +14,65 @@ defmodule LiveLift.Client.Compiler do
     if (!Number.isSafeInteger(value)) throw new Error("LiveLift expected a safe integer");
     return value;
   }
+  function __liveLiftFloatText(value) {
+    if (!Number.isFinite(value)) throw new Error("LiveLift expected a finite float");
+    if (Object.is(value, -0)) return "-0.0";
+    const raw = String(value);
+    let fixed;
+    if (!raw.includes("e")) {
+      fixed = raw.includes(".") ? raw : `${raw}.0`;
+    } else {
+      let [mantissa, exponent] = raw.split("e");
+      const sign = mantissa.startsWith("-") ? "-" : "";
+      mantissa = mantissa.replace("-", "");
+      const dot = mantissa.indexOf(".");
+      const digits = mantissa.replace(".", "");
+      const position = (dot < 0 ? mantissa.length : dot) + Number(exponent);
+      fixed = position <= 0 ? `0.${"0".repeat(-position)}${digits}` :
+        position >= digits.length ? `${digits}${"0".repeat(position - digits.length)}.0` :
+          `${digits.slice(0, position)}.${digits.slice(position)}`;
+      fixed = sign + fixed;
+    }
+    let [mantissa, exponent] = value.toExponential().split("e");
+    exponent = Number(exponent);
+    const scientific = `${mantissa.includes(".") ? mantissa : `${mantissa}.0`}e${exponent}`;
+    return exponent >= 16 || exponent <= -5 || scientific.length < fixed.length ? scientific : fixed;
+  }
+  function __liveLiftFloat(value) {
+    return {$live_lift_float: __liveLiftFloatText(value)};
+  }
+  function __liveLiftIsFloat(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value) &&
+      Object.keys(value).length === 1 && Object.hasOwn(value, "$live_lift_float");
+  }
+  function __liveLiftNumber(value) {
+    if (__liveLiftIsFloat(value)) return Number(value.$live_lift_float);
+    return __liveLiftInt(value);
+  }
+  function __liveLiftArithmetic(left, right, operation) {
+    const float = __liveLiftIsFloat(left) || __liveLiftIsFloat(right);
+    left = __liveLiftNumber(left);
+    right = __liveLiftNumber(right);
+    const result = operation === "+" ? left + right : operation === "-" ? left - right : left * right;
+    return float ? __liveLiftFloat(result) : __liveLiftInt(result);
+  }
+  function __liveLiftUnary(value, operation) {
+    const float = __liveLiftIsFloat(value);
+    const result = operation === "-" ? -__liveLiftNumber(value) : +__liveLiftNumber(value);
+    return float ? __liveLiftFloat(result) : __liveLiftInt(result);
+  }
   function __liveLiftGet(value, key) {
-    if (value === null || typeof value !== "object" || !Object.hasOwn(value, key)) {
+    if (value === null || typeof value !== "object" || __liveLiftIsFloat(value) || !Object.hasOwn(value, key)) {
       throw new Error(`Missing LiveLift field: ${key}`);
     }
     return value[key];
   }
   function __liveLiftEqual(left, right) {
+    if (__liveLiftIsFloat(left) || __liveLiftIsFloat(right)) {
+      if (!(typeof left === "number" || __liveLiftIsFloat(left)) ||
+          !(typeof right === "number" || __liveLiftIsFloat(right))) return false;
+      return __liveLiftNumber(left) === __liveLiftNumber(right);
+    }
     if (left === right) return true;
     if (left === null || right === null || typeof left !== typeof right) return false;
     if (typeof left !== "object" || Array.isArray(left) !== Array.isArray(right)) return false;
@@ -36,40 +88,42 @@ defmodule LiveLift.Client.Compiler do
     if (!Array.isArray(value)) throw new Error("LiveLift expected a list");
     return value;
   }
+  function __liveLiftMap(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value) || __liveLiftIsFloat(value)) {
+      throw new Error("LiveLift expected a map");
+    }
+    return value;
+  }
   function __liveLiftMapPut(map, key, value) {
-    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    map = __liveLiftMap(map);
     return {...map, [key]: value};
   }
   function __liveLiftMapUpdate(map, updates) {
-    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    map = __liveLiftMap(map);
     for (const key of Object.keys(updates)) {
       if (!Object.hasOwn(map, key)) throw new Error(`Missing LiveLift map key: ${key}`);
     }
     return {...map, ...updates};
   }
   function __liveLiftAssignNew(map, key, fallback) {
-    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    map = __liveLiftMap(map);
     return Object.hasOwn(map, key) ? map : {...map, [key]: fallback()};
   }
   function __liveLiftMapGet(map, key, fallback) {
-    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    map = __liveLiftMap(map);
     return Object.hasOwn(map, key) ? map[key] : fallback;
   }
   function __liveLiftMapMerge(left, right) {
-    if (!left || typeof left !== "object" || Array.isArray(left) ||
-        !right || typeof right !== "object" || Array.isArray(right)) {
-      throw new Error("LiveLift expected two maps");
-    }
-    return {...left, ...right};
+    return {...__liveLiftMap(left), ...__liveLiftMap(right)};
   }
   function __liveLiftMapDelete(map, key) {
-    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    map = __liveLiftMap(map);
     const result = {...map};
     delete result[key];
     return result;
   }
   function __liveLiftMapTake(map, keys) {
-    if (!map || typeof map !== "object" || Array.isArray(map)) throw new Error("LiveLift expected a map");
+    map = __liveLiftMap(map);
     const result = {};
     for (const key of keys) {
       if (Object.hasOwn(map, key)) result[key] = map[key];
@@ -255,6 +309,9 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr(value, _arg) when is_integer(value) and abs(value) <= @max_safe_integer,
     do: Integer.to_string(value)
 
+  defp compile_expr(value, _arg) when is_float(value),
+    do: "__liveLiftFloat(#{Float.to_string(value)})"
+
   defp compile_expr(value, _arg) when is_binary(value) or is_boolean(value) or is_nil(value),
     do: Jason.encode!(value)
 
@@ -305,7 +362,7 @@ defmodule LiveLift.Client.Compiler do
   end
 
   defp compile_expr({op, _, [left, right]}, arg) when op in [:+, :-, :*] do
-    "__liveLiftInt((__liveLiftInt(#{compile_expr(left, arg)}) #{op} __liveLiftInt(#{compile_expr(right, arg)})))"
+    "__liveLiftArithmetic(#{compile_expr(left, arg)}, #{compile_expr(right, arg)}, #{Jason.encode!(Atom.to_string(op))})"
   end
 
   defp compile_expr({:rem, _, [left, right]}, arg),
@@ -316,7 +373,7 @@ defmodule LiveLift.Client.Compiler do
       "(__liveLiftString(#{compile_expr(left, arg)}) + __liveLiftString(#{compile_expr(right, arg)}))"
 
   defp compile_expr({op, _, [left, right]}, arg) when op in [:<, :<=, :>, :>=] do
-    "(__liveLiftInt(#{compile_expr(left, arg)}) #{op} __liveLiftInt(#{compile_expr(right, arg)}))"
+    "(__liveLiftNumber(#{compile_expr(left, arg)}) #{op} __liveLiftNumber(#{compile_expr(right, arg)}))"
   end
 
   defp compile_expr({op, _, [left, right]}, arg) when op in [:&&, :||] do
@@ -325,7 +382,7 @@ defmodule LiveLift.Client.Compiler do
   end
 
   defp compile_expr({op, _, [value]}, arg) when op in [:+, :-] do
-    "__liveLiftInt((#{op}__liveLiftInt(#{compile_expr(value, arg)})))"
+    "__liveLiftUnary(#{compile_expr(value, arg)}, #{Jason.encode!(Atom.to_string(op))})"
   end
 
   defp compile_expr({:!, _, [value]}, arg), do: "(!__liveLiftTruthy(#{compile_expr(value, arg)}))"

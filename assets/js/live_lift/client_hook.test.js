@@ -107,6 +107,19 @@ test("rejects unsafe action results", () => {
   assert.equal(el.countNode.textContent, "1");
 });
 
+test("accepts tagged floats and rejects malformed float state", () => {
+  const el = element({count: {$live_lift_float: "-0.0"}, step: 1});
+  const hook = {...createClientHook({"App.Score": {actions: {}, template: "<output></output>"}}), el};
+  hook.mounted();
+  assert.equal(el.countNode.textContent, "-0.0");
+
+  for (const malformed of ["NaN", "Infinity", "1", "1.0e+309"]) {
+    const bad = element({count: {$live_lift_float: malformed}, step: 1});
+    const badHook = {...createClientHook({"App.Score": {actions: {}, template: "<output></output>"}}), el: bad};
+    assert.throws(() => badHook.mounted(), /Invalid LiveLift float/);
+  }
+});
+
 test("does not commit state when rendering a client action fails", () => {
   const el = element({count: 1, step: 1});
   const hook = {

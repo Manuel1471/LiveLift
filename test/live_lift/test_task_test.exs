@@ -2,6 +2,7 @@ defmodule LiveLift.TestTaskTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureIO
+  import Phoenix.LiveViewTest, only: [render_component: 2]
 
   defmodule Counter do
     use Phoenix.LiveComponent
@@ -49,6 +50,37 @@ defmodule LiveLift.TestTaskTest do
 
     @client true
     def handle_event("dec", _params, socket), do: {:noreply, update(socket, :count, &(&1 - 1))}
+  end
+
+  defmodule FloatCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@value}</output>"
+
+    @client true
+    def handle_event("inc", _params, socket),
+      do: {:noreply, update(socket, :value, &(&1 + 0.5))}
+  end
+
+  test "compares a native float handler using the tagged wire value" do
+    html = render_component(&FloatCounter.render/1, id: "float-counter", value: -0.0)
+
+    assert html =~ "<!--live-lift:text-->-0.0<!--live-lift:end-->" or html =~ ">-0.0</output>"
+    assert html =~ "$live_lift_float"
+
+    output =
+      capture_io(fn ->
+        Mix.Tasks.LiveLift.Test.run([
+          "LiveLift.TestTaskTest.FloatCounter",
+          "--event",
+          "inc",
+          "--state",
+          ~s({"value":{"$live_lift_float":"1.5"}})
+        ])
+      end)
+
+    assert output =~ ~s|Parity passed: LiveLift.TestTaskTest.FloatCounter.handle_event("inc")|
   end
 
   test "compares a marked handler in Elixir and Node" do

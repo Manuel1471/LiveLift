@@ -72,9 +72,9 @@ owns the actions and state. Components have no slots or independent state yet.
 
 ## Action expressions
 
-`defclient` supports safe integer, string, boolean, and `nil` literals;
+`defclient` supports safe integer, finite binary64 float, string, boolean, and `nil` literals;
 atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);
-integer `+`, `-`, `*`, `rem/2`, and numeric comparisons; `==`, `!=`;
+numeric `+`, `-`, `*`, integer-only `rem/2`, and numeric comparisons; `==`, `!=`;
 `if` with `do` and optional `else` (omission returns `nil`); unary `!`;
 short-circuit `&&` and `||`;
 string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
@@ -90,17 +90,21 @@ of strings as the pattern. An empty pattern list returns `false`; an empty
 string pattern matches. `String.trim/1` uses Elixir's Unicode whitespace set,
 including U+0085 and excluding U+FEFF. `String.length/1` counts graphemes
 with `Intl.Segmenter`; browsers without it raise an explicit error. Unsupported
-calls fail at compile time. Browser
-arithmetic fails if it would leave JavaScript's safe integer range. Map and
-list equality is structural.
+calls fail at compile time. Integer-only browser arithmetic fails if it would
+leave JavaScript's safe integer range. Float results must remain finite. A
+float operand produces a float result, and `1 == 1.0` is true, including inside
+maps and lists. Map and list equality is structural.
 
 State and action results must be maps with safe atom keys. Values may be safe
-integers, strings, booleans, `nil`, lists, or nested maps to a maximum depth
+integers, finite binary64 floats, strings, booleans, `nil`, lists, or nested maps to a maximum depth
 of 16. Keys named `__proto__`, `constructor`, or `prototype` are rejected.
 Each map may have at most 1,024 fields and each list at most 10,000 elements.
 The complete state tree may contain at most 50,000 nodes and 1 MiB of UTF-8
 string content, including keys. Elixir validates before serializing; the
-browser validates both initial state and action results before rendering.
+browser validates both initial state and action results before rendering. Floats
+use a private tagged wire value so `1.0` and `-0.0` retain their Elixir type and
+display text. App code uses ordinary floats. `Decimal` structs remain server
+only; these floats are unsuitable for exact money arithmetic.
 Initial state is rendered and escaped on the server. Keyed nodes are patched
 in place in the browser, preserving input focus while editing. Local state
 resets if its LiveView island remounts. Server-owned fields can receive explicit

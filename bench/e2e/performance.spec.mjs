@@ -51,6 +51,35 @@ test("benchmark native component click latency", async ({page, browserName}) => 
   }, null, 2));
 });
 
+test("benchmark native float action against integer action", async ({page, browserName}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
+  test.setTimeout(120_000);
+
+  const measure = async (route, selector, event, expected) => {
+    const samples = [];
+    for (let run = 0; run < 5; run += 1) {
+      await page.goto(route);
+      await page.waitForFunction(() => window.liveSocket?.isConnected());
+      await page.evaluate(() => window.liveSocket.disconnect());
+      const result = await page.locator(selector).evaluate((root, eventName) => {
+        const button = root.querySelector(`button[phx-click="${eventName}"]`);
+        for (let index = 0; index < 10; index += 1) button.click();
+        const started = performance.now();
+        for (let index = 0; index < 50; index += 1) button.click();
+        return {totalMs: performance.now() - started, output: root.querySelector("output").textContent};
+      }, event);
+      expect(result.output).toBe(expected);
+      samples.push(result.totalMs);
+    }
+    samples.sort((a, b) => a - b);
+    return {medianBatchMs: samples[2], medianPerActionUs: samples[2] * 1000 / 50};
+  };
+
+  const integer = await measure("/native-counter", "#native-counter", "inc", "60");
+  const float = await measure("/native-float", "#native-float", "add_half", "30.0");
+  console.log(JSON.stringify({browser: "Chromium", batches: 5, actionsPerBatch: 50, integer, float}, null, 2));
+});
+
 test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserName}) => {
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);

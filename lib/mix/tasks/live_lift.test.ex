@@ -169,7 +169,11 @@ defmodule Mix.Tasks.LiveLift.Test do
       fields
       |> Enum.filter(&Map.has_key?(state, Atom.to_string(&1)))
       |> Map.new(fn field ->
-        {field, state |> Map.fetch!(Atom.to_string(field)) |> restore_state_keys!()}
+        {field,
+         state
+         |> Map.fetch!(Atom.to_string(field))
+         |> LiveLift.FloatWire.decode()
+         |> restore_state_keys!()}
       end)
 
     LiveLift.State.validate!(client_state)
@@ -182,7 +186,7 @@ defmodule Mix.Tasks.LiveLift.Test do
 
     source =
       LiveLift.Client.Compiler.compile_module(module) <>
-        "\nconsole.log(JSON.stringify(actions[#{Jason.encode!(event)}](#{Jason.encode!(state)}, {params: #{Jason.encode!(params)}, value: null, checked: false})));\n"
+        "\nconsole.log(JSON.stringify(actions[#{Jason.encode!(event)}](#{state |> LiveLift.FloatWire.encode() |> Jason.encode!()}, {params: #{Jason.encode!(params)}, value: null, checked: false})));\n"
 
     output = run_javascript!(source)
 

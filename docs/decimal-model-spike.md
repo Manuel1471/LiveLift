@@ -54,5 +54,23 @@ as one scalar while charging its serialized bytes, and reject nonfinite values.
    formatter cannot match Elixir over the supported range, keep float
    expressions rejected rather than emit divergent JavaScript.
 
-This is a model decision and spike result. Decimal literal support is **not yet
-implemented**.
+## Implementation evidence
+
+The tagged float representation is implemented in `LiveLift.FloatWire`, the
+generated action helpers, the template interpreter, and the browser runtime.
+`test/live_lift/float_parity_test.exs` compares 5,000 seeded finite binary64 bit
+patterns, including negative zero and subnormals, across Elixir and Node. It
+also compares mixed arithmetic, relational operators, nested equality and a
+server-rendered template against the browser DOM. A native marked handler is
+exercised through `mix live_lift.test` in `test/live_lift/test_task_test.exs`.
+The `/native-float` demo confirms initial `-0.0`, optimistic `0.5`, and
+authoritative `1.0` in Chromium, Firefox, and WebKit. The native browser
+benchmark measures a median of 0.8 ms for 50 float actions (five batches) on
+the local machine. The reference Phoenix bundle grows from 53,539 to 54,050
+gzip bytes relative to the pre-float commit. The integer benchmark uses a
+different template and is not an isolated cost comparison.
+
+Arithmetic that produces a nonfinite JavaScript number fails before a result
+is committed. The Elixir handler also raises for arithmetic overflow. These
+tests establish the published finite float subset; they do not make `Decimal`
+structs or arbitrary numeric Elixir functions client compatible.

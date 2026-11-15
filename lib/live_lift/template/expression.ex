@@ -13,6 +13,9 @@ defmodule LiveLift.Template.Expression do
 
   def eval(%{type: "literal", value: value}, _scope), do: value
 
+  def eval(%{type: "float", value: value}, _scope),
+    do: LiveLift.FloatWire.decode(%{"$live_lift_float" => value})
+
   def eval(%{type: "path", root: root, fields: fields}, scope) do
     {value, fields} =
       case {root, fields} do
@@ -53,6 +56,9 @@ defmodule LiveLift.Template.Expression do
   defp convert(value, _file, _line)
        when is_integer(value) or is_binary(value) or is_boolean(value) or is_nil(value),
        do: %{type: "literal", value: value}
+
+  defp convert(value, _file, _line) when is_float(value),
+    do: %{type: "float", value: Float.to_string(value)}
 
   defp convert({:@, _, [{name, _, _}]}, _file, _line) when is_atom(name),
     do: %{type: "path", root: "state", fields: [Atom.to_string(name)]}

@@ -396,6 +396,24 @@ test("native assign_new reveals an initially absent field and converges", async 
   await expect(root).toHaveAttribute("data-live-lift-state", /"draft":"Fresh draft"/);
 });
 
+test("native floats preserve type and display through optimistic and authoritative updates", async ({page}) => {
+  await page.goto("/native-float");
+  const root = page.locator("#native-float");
+  const output = root.locator("output");
+  await expect(output).toHaveText("-0.0");
+  await expect(output).toHaveAttribute("title", "-0.0");
+  await expect(root).toHaveAttribute("data-live-lift-state", /\$live_lift_float/);
+  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+
+  await root.getByRole("button", {name: "Add half"}).click();
+  await expect(output).toHaveText("0.5", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("button", {name: "Add half"}).click();
+  await expect(output).toHaveText("1.0", {timeout: 200});
+  await expect(output).toHaveAttribute("title", "1.0");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
 test("100 opted-in islands keep their state and events isolated", async ({page}) => {
   await page.goto("/many-islands?count=100");
   await expect(page.locator('#many-islands [data-live-lift-mode="component"]')).toHaveCount(100);

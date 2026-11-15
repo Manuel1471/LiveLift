@@ -37,7 +37,12 @@ defmodule LiveLift.View do
     end
 
     html = LiveLift.Template.render_server(template, assigns.state)
-    assigns = assigns |> assign(:html, html) |> assign(:server_fields_json, Jason.encode!(fields))
+
+    assigns =
+      assigns
+      |> assign(:html, html)
+      |> assign(:server_fields_json, Jason.encode!(fields))
+      |> assign(:state_json, assigns.state |> LiveLift.FloatWire.encode() |> Jason.encode!())
 
     ~H"""
     <div
@@ -45,7 +50,7 @@ defmodule LiveLift.View do
       phx-hook="LiveLift"
       phx-update="ignore"
       data-live-lift-module={inspect(@module)}
-      data-live-lift-state={Jason.encode!(@state)}
+      data-live-lift-state={@state_json}
       data-live-lift-server-fields={@server_fields_json}
       data-live-lift-server-revision={@server_revision}
     >

@@ -121,7 +121,10 @@ defmodule LiveLift.Component do
           var!(assigns) =
             var!(assigns)
             |> Phoenix.Component.assign(:live_lift_inner, inner)
-            |> Phoenix.Component.assign(:live_lift_state_json, Jason.encode!(state))
+            |> Phoenix.Component.assign(
+              :live_lift_state_json,
+              state |> LiveLift.FloatWire.encode() |> Jason.encode!()
+            )
             |> Phoenix.Component.assign(
               :live_lift_revision,
               Map.get(var!(assigns), :__live_lift_revision, 0)
@@ -377,7 +380,7 @@ defmodule LiveLift.Component do
       |> Phoenix.Component.assign(:__live_lift_ack_seq, seq)
 
     state = state!(socket.assigns, fields, optional)
-    {:reply, %{revision: revision, ack_seq: seq, state: state}, socket}
+    {:reply, %{revision: revision, ack_seq: seq, state: LiveLift.FloatWire.encode(state)}, socket}
   end
 
   def reply!(_result, _seq, _fields, _optional) do
@@ -392,7 +395,7 @@ defmodule LiveLift.Component do
      %{
        revision: Map.get(socket.assigns, :__live_lift_revision, 0),
        ack_seq: Map.get(socket.assigns, :__live_lift_ack_seq, 0),
-       state: state
+       state: LiveLift.FloatWire.encode(state)
      }, socket}
   end
 
@@ -400,7 +403,8 @@ defmodule LiveLift.Component do
   def sync_unmarked(result, previous, fields, optional \\ [])
 
   def sync_unmarked({:noreply, next} = result, previous, fields, optional) do
-    if state!(next.assigns, fields, optional) == state!(previous.assigns, fields, optional) do
+    if LiveLift.FloatWire.encode(state!(next.assigns, fields, optional)) ==
+         LiveLift.FloatWire.encode(state!(previous.assigns, fields, optional)) do
       result
     else
       revision = Map.get(next.assigns, :__live_lift_revision, 0) + 1

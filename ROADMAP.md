@@ -17,13 +17,10 @@ checks como porcentaje de avance.
 
 **Siguiente secuencia, en orden:**
 
-1. Implementar el modelo decimal definido en `docs/decimal-model-spike.md` y
-   demostrar paridad de bits, formato, operaciones y render. `assign_new` ya
-   pasó paridad y navegador.
-2. Continuar con `case`/`cond`, funciones locales y las operaciones de `Enum`,
+1. Continuar con `case`/`cond`, funciones locales y las operaciones de `Enum`,
    `String`, `Map` y `List` enumeradas en esta fase. Cada forma nueva exige
    semántica, paridad y rechazo de variantes cercanas.
-3. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
+2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
    navegador y los benchmarks afectados. Solo entonces revisar la puerta 2.
 
 Cada entrega termina en un commit de una funcionalidad, con pruebas y
@@ -203,10 +200,19 @@ El subconjunto inicial ya acepta patrones anidados como
 de `assign/update`, tanto por pipe como por llamadas anidadas. Los patrones
 generales, callbacks de un argumento en `assign_new` y las demás operaciones de esta fase siguen
 pendientes; por eso sigue abierta.
-El modelo para literales decimales ya se decidió en
+El modelo para literales decimales está documentado en
 `docs/decimal-model-spike.md`: floats binarios finitos con un escalar etiquetado
-en el protocolo de estado. La sintaxis decimal sigue rechazada hasta pasar sus
-pruebas de bits, formato, paridad, render y costo.
+en el protocolo de estado. La sintaxis decimal ya compila; 5,000 patrones de
+bits finitos, operaciones mixtas, paridad de handler nativo y render de
+plantilla en DOM simulado pasaron. El demo `/native-float` verificó render
+inicial, predicción y respuesta autoritativa en Chromium, Firefox y WebKit. El
+benchmark reproducible `LIVE_LIFT_BENCH=1 npx playwright test -g 'benchmark native float action' --project=chromium`
+midió cinco lotes de 50 clics: mediana de 16 µs por acción flotante en esta
+máquina, frente a 40 µs para el contador entero de otra plantilla; son cargas
+distintas y no una comparación de velocidad de tipos. El paquete de referencia
+subió 511 bytes gzip respecto del commit anterior (`53,539` a `54,050` bytes).
+La puerta 2 continúa abierta por las formas restantes del compilador y la
+regresión final.
 `assign_new/3` con clave átomo y callback sin argumentos admite campos ausentes
 en el snapshot inicial. Un valor presente, incluso `nil`, evita evaluar el
 callback. El demo `/native-optional` y dos casos de paridad comprueban creación

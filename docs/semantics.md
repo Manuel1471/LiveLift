@@ -6,10 +6,10 @@ form outside this table is unsupported even if it is valid Elixir.
 
 | Area | Contract |
 | --- | --- |
-| State | Top-level atom-keyed map; nested maps, lists, strings, booleans, `nil`, and safe integers only. Maximum nesting depth: 16. |
-| Integers | Range `-9_007_199_254_740_991..9_007_199_254_740_991`. Arithmetic checks its inputs and result. Overflow raises instead of rounding. Floats are unsupported. |
+| State | Top-level atom-keyed map; nested maps, lists, strings, booleans, `nil`, safe integers, and finite binary64 floats. Maximum nesting depth: 16. Floats use a private tagged wire value. |
+| Numbers | Safe integers range from `-9_007_199_254_740_991` to `9_007_199_254_740_991`; integer arithmetic checks inputs and result. A float operand yields a float; nonfinite results raise. `rem/2` accepts integers only. Floats display with Elixir's `Float.to_string/1`, including `-0.0`. |
 | Truthiness | Only `false` and `nil` are false. `0`, `""` and `[]` are true. `if`, `!`, `&&`, `||`, `Enum.filter/2` and predicate functions use this rule. |
-| Equality | `==` and `!=` compare nested lists and maps structurally. There are no float or atom values in state, so cross-type numeric equality is outside the subset. |
+| Equality | `==` and `!=` compare nested lists and maps structurally. Integer/float equality follows Elixir (`1 == 1.0`), including nested values. Atoms remain outside state. |
 | Maps | Keys in state are safe atoms; JSON sends their string names to JavaScript. A field read and `%{map | key: value}` require the key to exist. `Map.get/2,3` returns `nil` or its fallback for a missing key. |
 | Lists | `++`, `length`, `Enum.map/filter/reject/any?/all?/member?/reverse` are supported with the documented function shapes. List order is stable unless an action changes it. |
 | Strings | `<>` concatenates binaries. Grapheme counting, case mapping, locale-aware comparison and general `String` functions are unsupported. |
@@ -26,6 +26,7 @@ boundary: a LiveView handler must validate every event payload itself.
 
 The parity suite runs 1,000 seeded action states against Elixir and generated
 JavaScript, then compares 1,000 seeded server/browser DOM renders across four
-template shapes. Real Chromium tests cover forms, focus, entities and server
-patches. The property suite covers the published subset, not arbitrary Elixir
-or every possible template shape.
+template shapes. Float tests add 5,000 seeded finite bit patterns, mixed
+arithmetic, nested equality, native handler parity and real Chromium, Firefox
+and WebKit rendering. The property suite covers the published subset, not
+arbitrary Elixir or every possible template shape.

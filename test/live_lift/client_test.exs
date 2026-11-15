@@ -158,7 +158,7 @@ defmodule LiveLift.ClientTest do
     javascript = Compiler.compile_module(CounterActions)
     assert javascript =~ "function __liveLiftInt"
     assert javascript =~ "function __liveLiftGet"
-    assert javascript =~ "increment: (count) => __liveLiftInt"
+    assert javascript =~ "increment: (count) => __liveLiftArithmetic"
     assert javascript =~ ~s|__liveLiftGet(state, "count")|
   end
 
@@ -253,7 +253,7 @@ defmodule LiveLift.ClientTest do
 
     assert javascript =~ "export const template = "
     assert javascript =~ ~s("type":"binding")
-    assert javascript =~ "increment: (state) => ({count: __liveLiftInt"
+    assert javascript =~ "increment: (state) => ({count: __liveLiftArithmetic"
   end
 
   test "rejects a template event without a matching action" do
@@ -268,7 +268,7 @@ defmodule LiveLift.ClientTest do
     assert javascript =~ "export const views = {"
     assert javascript =~ "\"LiveLift.ClientTest.TemplatedActions\""
     assert javascript =~ "\"LiveLift.ClientTest.ReadOnlyView\""
-    assert javascript =~ "actions: {increment: (state) => ({count: __liveLiftInt"
+    assert javascript =~ "actions: {increment: (state) => ({count: __liveLiftArithmetic"
     assert javascript =~ "template: "
   end
 

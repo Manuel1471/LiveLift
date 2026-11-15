@@ -495,7 +495,7 @@ defmodule LiveLift.ComponentTest do
 
   test "unpublished handler forms fail at their source before generating JavaScript" do
     expressions = [
-      "1.5",
+      "Float.round(1.5, 1)",
       "case socket.assigns.value do nil -> 0; other -> other end",
       "cond do socket.assigns.value -> 1; true -> 0 end",
       "Enum.find(socket.assigns.items, fn item -> item.keep end)",

@@ -31,6 +31,9 @@ defmodule LiveLift.State do
        when is_integer(value) and abs(value) <= @max_safe_integer,
        do: charge!(budget, 1, 0, path)
 
+  defp validate_value!(value, path, _depth, budget) when is_float(value),
+    do: charge!(budget, 1, byte_size(Float.to_string(value)) + 16, path)
+
   defp validate_value!(value, path, depth, budget) when is_list(value) and depth < 16 do
     if length(value) > @max_list_length,
       do: raise(ArgumentError, "LiveLift list length limit exceeded at #{path}")

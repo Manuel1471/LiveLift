@@ -7,6 +7,8 @@ const MAX_STATE_BYTES = 1_048_576;
 const MAX_EVENT_FIELDS = 64;
 const MAX_EVENT_BYTES = 65_536;
 const OFFLINE_ACTION_MAX_AGE_MS = 30_000;
+const FLOAT_TAG = "$live_lift_float";
+const FLOAT_TEXT = /^-?(?:0|[1-9]\d*)\.(?:\d+)(?:e-?\d+)?$/;
 const encoder = new TextEncoder();
 const decodedEntities = new Map();
 
@@ -37,6 +39,14 @@ function validateValue(value, path, depth, budget) {
     charge(budget, 1, 0, path);
     return;
   }
+  if (isFloat(value)) {
+    const text = value[FLOAT_TAG];
+    if (typeof text !== "string" || !FLOAT_TEXT.test(text) || !Number.isFinite(Number(text))) {
+      throw new Error(`Invalid LiveLift float at ${path}`);
+    }
+    charge(budget, 1, encoder.encode(text).length + 16, path);
+    return;
+  }
   if (depth >= 16) throw new Error(`Unsupported LiveLift state value at ${path}`);
   if (Array.isArray(value)) {
     if (value.length > MAX_LIST_LENGTH) throw new Error(`LiveLift list length limit exceeded at ${path}`);
@@ -60,6 +70,11 @@ function validateValue(value, path, depth, budget) {
   throw new Error(`Unsupported LiveLift state value at ${path}`);
 }
 
+function isFloat(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) &&
+    Object.keys(value).length === 1 && Object.hasOwn(value, FLOAT_TAG);
+}
+
 function validateState(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) {
     throw new Error("LiveLift state must be a map");
@@ -81,6 +96,7 @@ function sameValue(left, right) {
 
 function evaluate(expr, scope) {
   if (expr.type === "literal") return expr.value;
+  if (expr.type === "float") return {[FLOAT_TAG]: expr.value};
   if (expr.type === "map") {
     return Object.fromEntries(expr.entries.map(({key, expr: value}) => [key, evaluate(value, scope)]));
   }
@@ -112,6 +128,7 @@ function evaluate(expr, scope) {
 
 function display(value) {
   if (value === null) return "";
+  if (isFloat(value)) return value[FLOAT_TAG];
   if (["string", "number", "boolean"].includes(typeof value)) return String(value);
   throw new Error("Cannot display a client collection directly");
 }

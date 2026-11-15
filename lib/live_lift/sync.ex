@@ -16,7 +16,7 @@ defmodule LiveLift.Sync do
     Phoenix.LiveView.push_event(socket, "live_lift:patch", %{
       id: id,
       revision: revision,
-      patch: patch
+      patch: LiveLift.FloatWire.encode(patch)
     })
   end
 
