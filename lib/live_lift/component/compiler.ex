@@ -3,6 +3,15 @@ defmodule LiveLift.Component.Compiler do
 
   def action!(event, params, socket, [do: result], file, line)
       when is_binary(event) do
+    action = action_unchecked!(event, params, socket, [do: result], file, line)
+    validate_action!(action, file, line)
+    action
+  end
+
+  def action!(_event, _params, _socket, _body, file, line), do: invalid_handler!(file, line)
+
+  def action_unchecked!(event, params, socket, [do: result], file, line)
+      when is_binary(event) do
     update =
       case result do
         {:{}, _, [:noreply, update]} -> update
@@ -28,6 +37,13 @@ defmodule LiveLift.Component.Compiler do
             "#{file}:#{line}: @client supports params[\"name\"] and Map.get(params, \"name\"); move other parameter handling to the server"
     end
 
+    {name, args, body}
+  end
+
+  def action_unchecked!(_event, _params, _socket, _body, file, line),
+    do: invalid_handler!(file, line)
+
+  def validate_action!({name, args, body}, file, line) do
     try do
       LiveLift.Client.Compiler.compile_action(name, args, body)
     rescue
@@ -35,11 +51,7 @@ defmodule LiveLift.Component.Compiler do
         raise ArgumentError,
               "#{file}:#{line}: unsupported @client handler: #{Exception.message(error)}; move it to a server handler"
     end
-
-    {name, args, body}
   end
-
-  def action!(_event, _params, _socket, _body, file, line), do: invalid_handler!(file, line)
 
   defp invalid_handler!(file, line) do
     raise ArgumentError,

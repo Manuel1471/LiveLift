@@ -436,6 +436,19 @@ test("native case matches a typed float and converges after a prior client actio
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
 });
 
+test("native multi-clause helper works after the marked handler", async ({page}) => {
+  await page.goto("/native-float");
+  const root = page.locator("#native-float");
+  const output = root.locator("output");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+  await root.getByRole("button", {name: "Helper step"}).click();
+  await expect(output).toHaveText("0.5", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("button", {name: "Helper step"}).click();
+  await expect(output).toHaveText("1.0", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
 test("100 opted-in islands keep their state and events isolated", async ({page}) => {
   await page.goto("/many-islands?count=100");
   await expect(page.locator('#many-islands [data-live-lift-mode="component"]')).toHaveCount(100);

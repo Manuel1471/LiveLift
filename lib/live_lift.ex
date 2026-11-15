@@ -16,6 +16,7 @@ defmodule LiveLift do
       Module.register_attribute(__MODULE__, :client, persist: false)
       Module.register_attribute(__MODULE__, :live_lift_marked_actions, accumulate: true)
       Module.register_attribute(__MODULE__, :live_lift_local_components, accumulate: true)
+      Module.register_attribute(__MODULE__, :live_lift_local_helpers, accumulate: true)
       @on_definition {LiveLift.Component, :on_definition}
       @before_compile LiveLift.Component
     end

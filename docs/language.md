@@ -11,6 +11,15 @@ The native LiveComponent opt-in currently translates literal `~H`, static
 [the component guide](native-livecomponent.md).
 The exact native handler boundary is listed in the
 [handler matrix](native-handler-matrix.md); unmarked handlers stay on LiveView.
+Marked handlers may call private functions declared in the same component,
+including functions defined after the handler and functions with several
+unguarded clauses. LiveLift compiles each call through the same bounded `case`
+patterns described below, so arguments are evaluated once and clauses keep
+their Elixir order. A called helper with a guard or recursive call fails at
+compilation with a location. A helper call with no matching clause raises at
+runtime, as it does in Elixir. Leave unsupported handlers on the server.
+Expansion is capped at 1,000 helper calls and 50,000 visited AST nodes per
+marked handler to keep generated code bounded.
 Native `assign_new(socket, :field, fn -> expression end)` accepts a safe atom
 field and a zero-argument callback. The initial client state may omit that
 field; an existing value, including `nil`, is preserved without evaluating

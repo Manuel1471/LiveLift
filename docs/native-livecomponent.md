@@ -67,7 +67,11 @@ This path currently accepts a literal `~H` render and a marked
 `assign/3` or `update/3` operations. The expression must fit the
 [client language subset](language.md). Marked handlers can read string
 keys with `params["name"]`, `Map.get(params, "name")`, or nested paths such as
-`params["profile"]["note"]`. The template supports
+`params["profile"]["note"]`. They may call local `defp` functions with several
+unguarded clauses, even when defined below the handler. For example,
+`assign(socket, :label, label(socket.assigns.count))` can call
+`defp label(0), do: "Empty"` and `defp label(count), do: Integer.to_string(count)`.
+Recursion and guards remain on the server. The template supports
 static `phx-click`, `phx-change`, `phx-submit`, `phx-value-*`, and
 `phx-target={@myself}`. Native expression attributes `class={@tone}`,
 `title={@title}`, `aria-label={@label}`, `value={@value}`, and `id={item.id}` are supported.

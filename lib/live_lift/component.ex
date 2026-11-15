@@ -18,15 +18,26 @@ defmodule LiveLift.Component do
       end
 
       action =
-        LiveLift.Component.Compiler.action!(event, params, socket, body, env.file, env.line)
+        LiveLift.Component.Compiler.action_unchecked!(
+          event,
+          params,
+          socket,
+          body,
+          env.file,
+          env.line
+        )
 
-      Module.put_attribute(env.module, :live_lift_marked_actions, {event, action})
+      Module.put_attribute(
+        env.module,
+        :live_lift_marked_actions,
+        {event, action, env.file, env.line}
+      )
     end
 
     Module.delete_attribute(env.module, :client)
   end
 
-  def on_definition(env, kind, name, [_assigns], guards, body)
+  def on_definition(env, kind, name, [assigns_arg], guards, body)
       when kind in [:def, :defp] and is_atom(name) do
     if Module.get_attribute(env.module, :client) == true do
       raise ArgumentError,
@@ -39,7 +50,28 @@ defmodule LiveLift.Component do
         :live_lift_local_components,
         {Atom.to_string(name), body, env.file, env.line}
       )
+    else
+      if kind == :defp do
+        Module.put_attribute(
+          env.module,
+          :live_lift_local_helpers,
+          {name, [assigns_arg], guards, body, env.file, env.line}
+        )
+      end
     end
+  end
+
+  def on_definition(env, :defp, name, args, guards, body) when is_atom(name) and is_list(args) do
+    if Module.get_attribute(env.module, :client) == true do
+      raise ArgumentError,
+            "#{env.file}:#{env.line}: @client must precede handle_event/3, not #{name}; move this handler to the server"
+    end
+
+    Module.put_attribute(
+      env.module,
+      :live_lift_local_helpers,
+      {name, args, guards, body, env.file, env.line}
+    )
   end
 
   def on_definition(env, _kind, name, _args, _guards, _body) do
@@ -85,7 +117,16 @@ defmodule LiveLift.Component do
 
     {source, line} = render_source!(render, env.file)
     template = LiveLift.Template.compile_liveview(source, env.file, events, local_components)
-    action_tuples = Enum.map(actions, &elem(&1, 1))
+    helpers = env.module |> Module.get_attribute(:live_lift_local_helpers) |> Enum.reverse()
+
+    action_tuples =
+      Enum.map(actions, fn {_event, {name, args, body}, file, line} ->
+        expanded = LiveLift.Component.Helpers.expand!(body, helpers, file, line)
+        action = {name, args, expanded}
+        LiveLift.Component.Compiler.validate_action!(action, file, line)
+        action
+      end)
+
     fields = state_fields(template, action_tuples)
     optional_fields = optional_state_fields(action_tuples)
 

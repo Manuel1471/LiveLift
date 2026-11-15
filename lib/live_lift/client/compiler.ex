@@ -86,11 +86,16 @@ defmodule LiveLift.Client.Compiler do
   function __liveLiftTruthy(value) { return value !== false && value !== null; }
   function __liveLiftCondFailure() { throw new Error("LiveLift cond has no true clause"); }
   function __liveLiftCaseFailure() { throw new Error("LiveLift case has no matching clause"); }
+  function __liveLiftHelperFailure(name) { throw new Error(`LiveLift helper has no matching clause: ${name}`); }
   function __liveLiftMatch(value, pattern, bindings) {
     if (pattern.type === "wildcard") return true;
     if (pattern.type === "variable") {
       bindings[pattern.name] = value;
       return true;
+    }
+    if (pattern.type === "alias") {
+      return __liveLiftMatch(value, pattern.left, bindings) &&
+        __liveLiftMatch(value, pattern.right, bindings);
     }
     if (pattern.type === "literal") {
       const literal = pattern.value;
@@ -590,6 +595,9 @@ defmodule LiveLift.Client.Compiler do
           "unsupported client case: use a nonempty do block with unguarded patterns"
   end
 
+  defp compile_expr({:__live_lift_helper_failure__, _, [name]}, _args) when is_binary(name),
+    do: "__liveLiftHelperFailure(#{Jason.encode!(name)})"
+
   defp compile_expr({op, _, [left, right]}, arg) when op in [:==, :!=] do
     comparison = "__liveLiftEqual(#{compile_expr(left, arg)}, #{compile_expr(right, arg)})"
     if op == :==, do: comparison, else: "(!#{comparison})"
@@ -627,6 +635,12 @@ defmodule LiveLift.Client.Compiler do
 
   defp case_pattern({:_, _, context}) when is_atom(context) or is_nil(context),
     do: {%{type: "wildcard"}, []}
+
+  defp case_pattern({:=, _, [left, right]}) do
+    {left_pattern, left_names} = case_pattern(left)
+    {right_pattern, right_names} = case_pattern(right)
+    {%{type: "alias", left: left_pattern, right: right_pattern}, left_names ++ right_names}
+  end
 
   defp case_pattern({name, _, context})
        when is_atom(name) and (is_atom(context) or is_nil(context)) do

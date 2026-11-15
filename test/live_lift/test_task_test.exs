@@ -63,6 +63,120 @@ defmodule LiveLift.TestTaskTest do
       do: {:noreply, update(socket, :value, &(&1 + 0.5))}
   end
 
+  defmodule HelperCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@label}</output>"
+
+    @client true
+    def handle_event("classify", _params, socket),
+      do: {:noreply, assign(socket, :label, classify(socket.assigns.value))}
+
+    defp classify(nil), do: "empty"
+    defp classify(%{id: id}), do: Integer.to_string(id)
+    defp classify([head | _tail]), do: Integer.to_string(head)
+    defp classify(_other), do: "other"
+  end
+
+  defmodule NestedHelperCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@label}</output>"
+
+    @client true
+    def handle_event("label", _params, socket),
+      do: {:noreply, assign(socket, :label, format_value(socket.assigns.value, "!"))}
+
+    defp format_value(nil, suffix), do: "none" <> suffix
+    defp format_value(value, suffix), do: Integer.to_string(value) <> decorate(suffix)
+    defp decorate(value), do: value <> value
+  end
+
+  defmodule SparseHelper do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@label}</output>"
+
+    @client true
+    def handle_event("label", _params, socket),
+      do: {:noreply, assign(socket, :label, label(socket.assigns.value))}
+
+    defp label(1), do: "one"
+    defp label(2), do: "two"
+  end
+
+  test "a local helper with no matching clause fails on both sides" do
+    socket = %Phoenix.LiveView.Socket{assigns: %{label: "", value: 3, __changed__: %{}}}
+
+    assert_raise FunctionClauseError, fn ->
+      SparseHelper.handle_event("label", %{"_live_lift_seq" => 1}, socket)
+    end
+
+    source =
+      LiveLift.Client.Compiler.compile_module(SparseHelper) <>
+        "\nactions.label({label: '', value: 3});\n"
+
+    path =
+      Path.join(System.tmp_dir!(), "live_lift_sparse_#{System.unique_integer([:positive])}.mjs")
+
+    try do
+      File.write!(path, source)
+      {output, status} = System.cmd("node", [path], stderr_to_stdout: true)
+      assert status != 0
+      assert output =~ "LiveLift helper has no matching clause: label/1"
+    after
+      File.rm(path)
+    end
+  end
+
+  test "expands multi-argument clauses and local helper calls in later definitions" do
+    for {value, expected} <- [{nil, "none!"}, {3, "3!!"}] do
+      socket = %Phoenix.LiveView.Socket{assigns: %{label: "", value: value, __changed__: %{}}}
+
+      assert {:reply, %{state: %{label: ^expected}}, _} =
+               NestedHelperCounter.handle_event("label", %{"_live_lift_seq" => 1}, socket)
+
+      state = %{label: "", value: value} |> Jason.encode!()
+
+      output =
+        capture_io(fn ->
+          Mix.Tasks.LiveLift.Test.run([
+            "LiveLift.TestTaskTest.NestedHelperCounter",
+            "--event",
+            "label",
+            "--state",
+            state
+          ])
+        end)
+
+      assert output =~
+               ~s|Parity passed: LiveLift.TestTaskTest.NestedHelperCounter.handle_event("label")|
+    end
+  end
+
+  test "compares a marked handler using a later multi-clause defp" do
+    for value <- [nil, %{id: 7, extra: true}, [3, 4], "hello"] do
+      state = %{label: "", value: value} |> Jason.encode!()
+
+      output =
+        capture_io(fn ->
+          Mix.Tasks.LiveLift.Test.run([
+            "LiveLift.TestTaskTest.HelperCounter",
+            "--event",
+            "classify",
+            "--state",
+            state
+          ])
+        end)
+
+      assert output =~
+               ~s|Parity passed: LiveLift.TestTaskTest.HelperCounter.handle_event("classify")|
+    end
+  end
+
   test "compares a native float handler using the tagged wire value" do
     html = render_component(&FloatCounter.render/1, id: "float-counter", value: -0.0)
 

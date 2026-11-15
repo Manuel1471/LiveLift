@@ -9,6 +9,7 @@ defmodule LiveLiftDemoWeb.NativeFloatComponent do
       <button phx-click="add_half" phx-target={@myself}>Add half</button>
       <button phx-click="minimum_one" phx-target={@myself}>Minimum one</button>
       <button phx-click="advance_one" phx-target={@myself}>Advance one</button>
+      <button phx-click="helper_step" phx-target={@myself}>Helper step</button>
     </section>
     """
   end
@@ -43,4 +44,13 @@ defmodule LiveLiftDemoWeb.NativeFloatComponent do
        end
      )}
   end
+
+  @client true
+  def handle_event("helper_step", _params, socket) do
+    {:noreply, assign(socket, :value, next_value(socket.assigns.value))}
+  end
+
+  defp next_value(-0.0), do: 0.5
+  defp next_value(0.5), do: 1.0
+  defp next_value(value), do: value + 0.5
 end

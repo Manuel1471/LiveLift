@@ -564,6 +564,54 @@ defmodule LiveLift.ComponentTest do
                  fn -> Code.compile_string(assign_new_source, "matrix.ex") end
   end
 
+  test "local client helpers reject guarded and recursive clauses with locations" do
+    guarded = """
+    defmodule LiveLift.ComponentTest.GuardedHelper do
+      use Phoenix.LiveComponent
+      use LiveLift
+      def render(assigns), do: ~H"<output>{@value}</output>"
+      @client true
+      def handle_event("run", _params, socket) do
+        {:noreply, assign(socket, :value, helper(socket.assigns.value))}
+      end
+      defp helper(value) when is_integer(value), do: value
+    end
+    """
+
+    assert_raise ArgumentError,
+                 ~r/helper.ex:9: client helper helper\/1 has a guard.*move this handler to the server/s,
+                 fn -> Code.compile_string(guarded, "helper.ex") end
+
+    recursive = """
+    defmodule LiveLift.ComponentTest.RecursiveHelper do
+      use Phoenix.LiveComponent
+      use LiveLift
+      def render(assigns), do: ~H"<output>{@value}</output>"
+      @client true
+      def handle_event("run", _params, socket) do
+        {:noreply, assign(socket, :value, helper(socket.assigns.value))}
+      end
+      defp helper(value), do: helper(value)
+    end
+    """
+
+    assert_raise ArgumentError,
+                 ~r/helper.ex:6: recursive client helper helper\/1 is not supported.*move this handler to the server/s,
+                 fn -> Code.compile_string(recursive, "helper.ex") end
+  end
+
+  test "local helper expansion has a source-located size bound" do
+    definitions = [
+      {:helper, [{:value, [], nil}], [], [do: 1], "helper.ex", 1}
+    ]
+
+    body = {:__block__, [], List.duplicate({:helper, [], [1]}, 1_001)}
+
+    assert_raise ArgumentError, ~r/helper.ex:7: client helper expansion limit exceeded/, fn ->
+      LiveLift.Component.Helpers.expand!(body, definitions, "helper.ex", 7)
+    end
+  end
+
   test "rejects unsafe native event parameter names at compilation" do
     for key <- ~w(__proto__ constructor prototype) do
       assert_raise ArgumentError, ~r/unsafe.ex:1: unsafe phx-value parameter/, fn ->

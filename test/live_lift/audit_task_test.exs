@@ -65,6 +65,35 @@ defmodule LiveLift.AuditTaskTest do
     end
   end
 
+  test "recognizes local multi-clause helpers declared after a handler" do
+    directory =
+      Path.join(System.tmp_dir!(), "live_lift_audit_#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(directory)
+    file = Path.join(directory, "helper.ex")
+
+    try do
+      File.write!(
+        file,
+        """
+        defmodule Demo.Helper do
+          use Phoenix.LiveComponent
+          def render(assigns), do: ~H"<output>{@label}</output>"
+          def handle_event("label", _params, socket), do: {:noreply, assign(socket, :label, label(socket.assigns.value))}
+          defp label(nil), do: "empty"
+          defp label(value), do: Integer.to_string(value)
+        end
+        """
+      )
+
+      output = capture_io(fn -> Mix.Tasks.LiveLift.Audit.run(["--path", file]) end)
+      assert output =~ ~s|Demo.Helper.handle_event("label"): compatible|
+      assert output =~ "1/1 handlers compatible"
+    after
+      File.rm_rf!(directory)
+    end
+  end
+
   test "reports the actual render line for unsafe templates" do
     directory =
       Path.join(System.tmp_dir!(), "live_lift_audit_#{System.unique_integer([:positive])}")

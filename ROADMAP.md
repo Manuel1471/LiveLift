@@ -17,7 +17,7 @@ checks como porcentaje de avance.
 
 **Siguiente secuencia, en orden:**
 
-1. Continuar con funciones locales y las operaciones de `Enum`,
+1. Continuar con `|>` en expresiones y las operaciones de `Enum`,
    `String`, `Map` y `List` enumeradas en esta fase. Cada forma nueva exige
    semántica, paridad y rechazo de variantes cercanas.
 2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
@@ -227,6 +227,13 @@ Guardas, pins, tuplas y variables repetidas se rechazan antes de emitir JS.
 El benchmark de paquete de referencia permaneció en `54,050` bytes gzip al
 no usar `case` en esa app; el benchmark DOM de 1,000 filas y el de evento
 Phoenix se ejecutaron de nuevo sin regresión funcional.
+Los `defp` locales con varias cláusulas sin guarda compilan aunque se declaren
+después del handler. Tres componentes de prueba verifican listas, mapas, `nil`,
+varios argumentos, llamadas entre helpers y errores sin cláusula; la app demo
+añade 2 casos de paridad y un flujo de navegador en Chromium, Firefox y WebKit.
+Recursión, guardas y expansión excesiva se rechazan con ubicación de origen.
+El paquete de referencia conservó `54,050` bytes gzip cuando no usa helpers;
+los benchmarks de render, DOM y evento Phoenix se repitieron.
 `assign_new/3` con clave átomo y callback sin argumentos admite campos ausentes
 en el snapshot inicial. Un valor presente, incluso `nil`, evita evaluar el
 callback. El demo `/native-optional` y dos casos de paridad comprueban creación
@@ -277,7 +284,7 @@ validación de formulario en vivo, lista ordenable.
 | Slots con nombre y componentes remotos | Alcance decidido | Rechazo accionable con origen; quedan en LiveView servidor |
 | `class={[...]}` | Verificado | Comparación de render inicial y actualización para listas condicionales |
 | `phx-debounce` | Verificado para input/textarea | HTML inicial, temporizador y `blur` en tres navegadores; otras formas se rechazan |
-| Formas y funciones restantes de handlers | Pendiente | `docs/native-handler-matrix.md` registra 18 rechazos actuales; faltan las formas enumeradas arriba |
+| Formas y funciones restantes de handlers | Pendiente | `docs/native-handler-matrix.md` registra los rechazos actuales; faltan `|>` general y operaciones enumeradas arriba |
 | Tres casos completos | Verificado | Contador, formulario anidado y lista ordenable; detalles abajo |
 | Regresión final de fase | Pendiente | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
 

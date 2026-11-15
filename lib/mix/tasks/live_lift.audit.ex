@@ -73,6 +73,8 @@ defmodule Mix.Tasks.LiveLift.Audit do
               expressions,
             do: {meta[:line], event, params, socket, result}
 
+      helpers = Enum.flat_map(expressions, &helper_definition(&1, file))
+
       duplicates =
         handlers
         |> Enum.map(&elem(&1, 1))
@@ -91,7 +93,7 @@ defmodule Mix.Tasks.LiveLift.Audit do
               "blocked: render/1 must return a literal ~H template"
 
             true ->
-              check_handler(file, line, event, params, socket, result, template)
+              check_handler(file, line, event, params, socket, result, template, helpers)
           end
 
         {file, line, name, event, status}
@@ -117,9 +119,33 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
   defp render_source(_), do: nil
 
-  defp check_handler(file, line, event, params, socket, result, {template, render_line}) do
+  defp helper_definition({:defp, meta, [{name, _, args}, [do: body]]}, file)
+       when is_atom(name) and is_list(args),
+       do: [{name, args, [], [do: body], file, meta[:line]}]
+
+  defp helper_definition(
+         {:defp, meta, [{:when, _, [{name, _, args} | guards]}, [do: body]]},
+         file
+       )
+       when is_atom(name) and is_list(args),
+       do: [{name, args, guards, [do: body], file, meta[:line]}]
+
+  defp helper_definition(_, _file), do: []
+
+  defp check_handler(file, line, event, params, socket, result, {template, render_line}, helpers) do
     try do
-      LiveLift.Component.Compiler.action!(event, params, socket, [do: result], file, line)
+      {name, args, body} =
+        LiveLift.Component.Compiler.action_unchecked!(
+          event,
+          params,
+          socket,
+          [do: result],
+          file,
+          line
+        )
+
+      expanded = LiveLift.Component.Helpers.expand!(body, helpers, file, line)
+      LiveLift.Component.Compiler.validate_action!({name, args, expanded}, file, line)
       source = String.duplicate("\n", max(render_line - 1, 0)) <> template
       LiveLift.Template.compile_liveview(source, file, [event])
       "compatible"
