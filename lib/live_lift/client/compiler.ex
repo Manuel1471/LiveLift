@@ -85,6 +85,37 @@ defmodule LiveLift.Client.Compiler do
   }
   function __liveLiftTruthy(value) { return value !== false && value !== null; }
   function __liveLiftCondFailure() { throw new Error("LiveLift cond has no true clause"); }
+  function __liveLiftCaseFailure() { throw new Error("LiveLift case has no matching clause"); }
+  function __liveLiftMatch(value, pattern, bindings) {
+    if (pattern.type === "wildcard") return true;
+    if (pattern.type === "variable") {
+      bindings[pattern.name] = value;
+      return true;
+    }
+    if (pattern.type === "literal") {
+      const literal = pattern.value;
+      if (__liveLiftIsFloat(value) || __liveLiftIsFloat(literal)) {
+        return __liveLiftIsFloat(value) && __liveLiftIsFloat(literal) &&
+          value.$live_lift_float === literal.$live_lift_float;
+      }
+      return value === literal;
+    }
+    if (pattern.type === "list") {
+      return Array.isArray(value) && value.length === pattern.items.length &&
+        pattern.items.every((item, index) => __liveLiftMatch(value[index], item, bindings));
+    }
+    if (pattern.type === "cons") {
+      return Array.isArray(value) && value.length > 0 &&
+        __liveLiftMatch(value[0], pattern.head, bindings) &&
+        __liveLiftMatch(value.slice(1), pattern.tail, bindings);
+    }
+    if (pattern.type === "map") {
+      return value !== null && typeof value === "object" && !Array.isArray(value) &&
+        !__liveLiftIsFloat(value) && pattern.entries.every(([key, item]) =>
+          Object.hasOwn(value, key) && __liveLiftMatch(value[key], item, bindings));
+    }
+    throw new Error(`Unknown LiveLift case pattern: ${pattern.type}`);
+  }
   function __liveLiftList(value) {
     if (!Array.isArray(value)) throw new Error("LiveLift expected a list");
     return value;
@@ -528,6 +559,37 @@ defmodule LiveLift.Client.Compiler do
           "unsupported client cond: use a nonempty do block with one condition per clause"
   end
 
+  defp compile_expr({:case, _, [value, [do: clauses]]}, args)
+       when is_list(clauses) and clauses != [] do
+    branches =
+      Enum.map(clauses, fn
+        {:->, _, [[{:when, _, _}], _result]} ->
+          raise ArgumentError,
+                "unsupported client case guard; use an unguarded pattern or move this handler to the server"
+
+        {:->, _, [[pattern], result]} ->
+          {descriptor, names} = compile_case_pattern(pattern)
+          inputs = Enum.map_join(names, ", ", &"$liveLiftCaseBindings[#{Jason.encode!(&1)}]")
+          parameters = Enum.join(names, ", ")
+
+          "if (__liveLiftMatch($liveLiftCaseValue, #{Jason.encode!(descriptor)}, " <>
+            "($liveLiftCaseBindings = Object.create(null)))) { " <>
+            "return ((#{parameters}) => #{compile_expr(result, List.wrap(args) ++ Enum.map(names, &String.to_atom/1))})(#{inputs}); }"
+
+        other ->
+          raise ArgumentError,
+                "unsupported client case clause: #{Macro.to_string(other)}; use one unguarded pattern per clause"
+      end)
+
+    "(($liveLiftCaseValue) => { let $liveLiftCaseBindings; " <>
+      "#{Enum.join(branches, " ")} return __liveLiftCaseFailure(); })(#{compile_expr(value, args)})"
+  end
+
+  defp compile_expr({:case, _, _}, _args) do
+    raise ArgumentError,
+          "unsupported client case: use a nonempty do block with unguarded patterns"
+  end
+
   defp compile_expr({op, _, [left, right]}, arg) when op in [:==, :!=] do
     comparison = "__liveLiftEqual(#{compile_expr(left, arg)}, #{compile_expr(right, arg)})"
     if op == :==, do: comparison, else: "(!#{comparison})"
@@ -539,6 +601,92 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr(other, _arg) do
     raise ArgumentError, "unsupported client expression: #{Macro.to_string(other)}"
+  end
+
+  defp compile_case_pattern(pattern) do
+    {descriptor, names} = case_pattern(pattern)
+
+    if length(names) != length(Enum.uniq(names)) do
+      raise ArgumentError,
+            "unsupported client case pattern: bind each variable once; use ^ for matching an existing value on the server"
+    end
+
+    {descriptor, names}
+  end
+
+  defp case_pattern(value)
+       when (is_integer(value) and abs(value) <= @max_safe_integer) or is_float(value) or
+              is_binary(value) or is_boolean(value) or is_nil(value),
+       do: {%{type: "literal", value: LiveLift.FloatWire.encode(value)}, []}
+
+  defp case_pattern({operation, _, [value]})
+       when operation in [:+, :-] and is_number(value) do
+    signed = if operation == :-, do: -value, else: +value
+    case_pattern(signed)
+  end
+
+  defp case_pattern({:_, _, context}) when is_atom(context) or is_nil(context),
+    do: {%{type: "wildcard"}, []}
+
+  defp case_pattern({name, _, context})
+       when is_atom(name) and (is_atom(context) or is_nil(context)) do
+    identifier!(name)
+    {%{type: "variable", name: Atom.to_string(name)}, [Atom.to_string(name)]}
+  end
+
+  defp case_pattern({:%{}, _, fields}) when is_list(fields) do
+    {entries, names} =
+      Enum.map_reduce(fields, [], fn
+        {key, value}, acc when is_atom(key) ->
+          key = Atom.to_string(key)
+          safe_case_key!(key)
+          {descriptor, bound} = case_pattern(value)
+          {[key, descriptor], acc ++ bound}
+
+        other, _acc ->
+          raise ArgumentError,
+                "unsupported client case map pattern: #{Macro.to_string(other)}; use safe atom keys"
+      end)
+
+    if length(entries) != length(Enum.uniq_by(entries, &hd/1)) do
+      raise ArgumentError, "unsupported client case map pattern: duplicate key"
+    end
+
+    {%{type: "map", entries: entries}, names}
+  end
+
+  defp case_pattern(values) when is_list(values) do
+    case List.last(values) do
+      {:|, _, [head, tail]} ->
+        prefix = Enum.drop(values, -1) ++ [head]
+        {tail_pattern, tail_names} = case_pattern(tail)
+
+        Enum.reduce(Enum.reverse(prefix), {tail_pattern, tail_names}, fn item, {rest, names} ->
+          {head_pattern, head_names} = case_pattern(item)
+          {%{type: "cons", head: head_pattern, tail: rest}, head_names ++ names}
+        end)
+
+      _ ->
+        {items, names} =
+          Enum.map_reduce(values, [], fn item, acc ->
+            {descriptor, bound} = case_pattern(item)
+            {descriptor, acc ++ bound}
+          end)
+
+        {%{type: "list", items: items}, names}
+    end
+  end
+
+  defp case_pattern(other) do
+    raise ArgumentError,
+          "unsupported client case pattern: #{Macro.to_string(other)}; use literals, lists, maps, variables or _"
+  end
+
+  defp safe_case_key!(key) do
+    unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
+             key not in @reserved do
+      raise ArgumentError, "unsupported client case map key: #{inspect(key)}"
+    end
   end
 
   defp identifier!(name) do

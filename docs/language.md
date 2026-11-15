@@ -76,8 +76,7 @@ owns the actions and state. Components have no slots or independent state yet.
 atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);
 numeric `+`, `-`, `*`, integer-only `rem/2`, and numeric comparisons; `==`, `!=`;
 `if` with `do` and optional `else` (omission returns `nil`); unary `!`;
-short-circuit `&&` and `||`;
-`cond` with one condition per clause and a matching branch;
+short-circuit `&&` and `||`; `cond` and bounded `case`;
 string `<>`; list `++`; `length/1`; `Enum.map/2`, `Enum.filter/2`,
 `Enum.reject/2`, `Enum.any?/2`, `Enum.all?/2` with one-argument anonymous
 functions; `Enum.member?/2`; `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
@@ -87,7 +86,13 @@ functions; `Enum.member?/2`; `Enum.reverse/1`; `Enum.take/2`, `Enum.drop/2`
 `Integer.to_string/1` for safe integers;
 `String.trim/1`; `String.length/1`; and
 `String.contains?/2` with a string or list
-of strings as the pattern. An empty pattern list returns `false`; an empty
+of strings as the pattern. `cond` uses one condition per clause and raises
+when no condition is true. `case` accepts unguarded literal, list (including
+`[head | tail]`), partial map with safe atom keys, variable, and `_` patterns.
+It tries clauses in order and raises when none matches. Pattern matching is
+type strict: `1` does not match `1.0`, and `-0.0` does not match `0.0`.
+Pinned variables, tuples, guards, string-key maps, and repeated bindings stay
+on the server. An empty pattern list returns `false`; an empty
 string pattern matches. `String.trim/1` uses Elixir's Unicode whitespace set,
 including U+0085 and excluding U+FEFF. `String.length/1` counts graphemes
 with `Intl.Segmenter`; browsers without it raise an explicit error. Unsupported

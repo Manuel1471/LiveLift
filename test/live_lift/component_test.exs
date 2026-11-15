@@ -496,7 +496,6 @@ defmodule LiveLift.ComponentTest do
   test "unpublished handler forms fail at their source before generating JavaScript" do
     expressions = [
       "Float.round(1.5, 1)",
-      "case socket.assigns.value do nil -> 0; other -> other end",
       "cond do String.downcase(socket.assigns.value) -> 1; true -> 0 end",
       "Enum.find(socket.assigns.items, fn item -> item.keep end)",
       "Enum.reduce(socket.assigns.items, 0, fn item, acc -> item + acc end)",
@@ -531,6 +530,22 @@ defmodule LiveLift.ComponentTest do
                    ~r/matrix.ex:6: unsupported @client handler: unsupported client expression:.*move it to a server handler/s,
                    fn -> Code.compile_string(source, "matrix.ex") end
     end
+
+    guarded_case = """
+    defmodule LiveLift.ComponentTest.UnsupportedGuardedCase do
+      use Phoenix.LiveComponent
+      use LiveLift
+      def render(assigns), do: ~H"<output>{@value}</output>"
+      @client true
+      def handle_event("run", _params, socket) do
+        {:noreply, assign(socket, :value, case socket.assigns.value do other when is_integer(other) -> other; _ -> 0 end)}
+      end
+    end
+    """
+
+    assert_raise ArgumentError,
+                 ~r/matrix.ex:6: unsupported @client handler: unsupported client case guard.*move it to a server handler/s,
+                 fn -> Code.compile_string(guarded_case, "matrix.ex") end
 
     assign_new_source = """
     defmodule LiveLift.ComponentTest.UnsupportedAssignNew do

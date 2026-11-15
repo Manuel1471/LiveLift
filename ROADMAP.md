@@ -17,7 +17,7 @@ checks como porcentaje de avance.
 
 **Siguiente secuencia, en orden:**
 
-1. Continuar con `case`, funciones locales y las operaciones de `Enum`,
+1. Continuar con funciones locales y las operaciones de `Enum`,
    `String`, `Map` y `List` enumeradas en esta fase. Cada forma nueva exige
    semántica, paridad y rechazo de variantes cercanas.
 2. Repetir los tres casos de aceptación, el arnés de paridad, las pruebas de
@@ -218,6 +218,15 @@ ausencia de rama verdadera y un caso de evaluación perezosa pasan en
 Elixir/JavaScript. El botón «Minimum one» lo verifica en tres navegadores.
 El paquete de referencia conservó `54,050` bytes gzip tras este cambio; el
 helper de `cond` no se incluye cuando ninguna acción lo utiliza.
+`case` compila patrones sin guarda de literales, listas, mapas parciales,
+variables y `_`, con distinción entre `1` y `1.0`, y entre `-0.0` y `0.0`.
+Dos acciones con 1,000
+estados generados cada una, errores por falta de coincidencia, dos casos de
+paridad de la app y un handler nativo en tres navegadores verifican el alcance.
+Guardas, pins, tuplas y variables repetidas se rechazan antes de emitir JS.
+El benchmark de paquete de referencia permaneció en `54,050` bytes gzip al
+no usar `case` en esa app; el benchmark DOM de 1,000 filas y el de evento
+Phoenix se ejecutaron de nuevo sin regresión funcional.
 `assign_new/3` con clave átomo y callback sin argumentos admite campos ausentes
 en el snapshot inicial. Un valor presente, incluso `nil`, evita evaluar el
 callback. El demo `/native-optional` y dos casos de paridad comprueban creación

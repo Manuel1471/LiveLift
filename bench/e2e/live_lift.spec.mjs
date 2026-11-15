@@ -424,6 +424,18 @@ test("native cond selects a float branch without changing the LiveComponent temp
   await expect(root.locator("output")).toHaveAttribute("title", "1.0");
 });
 
+test("native case matches a typed float and converges after a prior client action", async ({page}) => {
+  await page.goto("/native-float");
+  const root = page.locator("#native-float");
+  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+  await root.getByRole("button", {name: "Minimum one"}).click();
+  await expect(root.locator("output")).toHaveText("1.0", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("button", {name: "Advance one"}).click();
+  await expect(root.locator("output")).toHaveText("2.0", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
 test("100 opted-in islands keep their state and events isolated", async ({page}) => {
   await page.goto("/many-islands?count=100");
   await expect(page.locator('#many-islands [data-live-lift-mode="component"]')).toHaveCount(100);
