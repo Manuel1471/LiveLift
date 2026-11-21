@@ -9,9 +9,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**La fase 5 está activa y su entrega 5.1 son los temporizadores.** El siguiente
-paso es verificar el ciclo de vida de ambas rutas, incluidos temporizadores
-simultáneos, desmontaje y reconexión.
+**La fase 5 está activa y su entrega 5.2 es la validación con `Ecto.Changeset`.**
+El siguiente paso es un spike de proyección de valores y errores de un
+formulario nativo.
 
 ### Orden de cierre
 
@@ -30,8 +30,8 @@ simultáneos, desmontaje y reconexión.
 
 | Orden | Entrega | Estado | Para cerrarla |
 |---|---|---|---|
-| 5.1 | Temporizadores | **En curso** | Ruta de LiveComponent y ruta de LiveView probadas en cliente y servidor, con reconciliación, cancelación al desmontar y política de reconexión |
-| 5.2 | Validación con `Ecto.Changeset` | En espera de 5.1 | Paridad de valores y errores en formularios válidos e inválidos |
+| 5.1 | Temporizadores | Cerrada | Ruta de LiveComponent y ruta de LiveView probadas en cliente y servidor, con reconciliación, cancelación al desmontar y política de reconexión |
+| 5.2 | Validación con `Ecto.Changeset` | **En curso** | Paridad de valores y errores en formularios válidos e inválidos |
 | 5.3 | Comandos `JS` locales y lista permitida | En espera de 5.2 | Comportamiento de los comandos admitidos y rechazo explícito del resto |
 | 5.4 | Persistencia opcional con `sessionStorage` | En espera de 5.3 | Restauración, caducidad, límites y regresión integral de la fase |
 
@@ -497,10 +497,7 @@ por isla. El comando reproducible es `python3 bench/island_bundle.py`.
 | b. Reconciliación autoritativa de `update` | Verificado | `update/2` y `update_many/1` conservan la revisión inicial y avanzan al cambiar los datos de la isla (`3052a90`). Playwright verifica en los tres navegadores que un temporizador de Phoenix actualiza la isla y que la siguiente acción conserva su secuencia |
 | c. Temporizador en el cliente de un LiveComponent | Verificado | `62ac763` ejecuta la predicción con el WebSocket retenido y verifica que una solicitud duplicada produce una sola actualización del servidor y un solo cambio visible |
 | d. Temporizador en el cliente de un LiveView | Verificado | `f53e75e` prueba el enrutamiento al LiveView. `b17d99b` compila el `handle_info/2` y verifica su orden con acciones pendientes y la entrega duplicada del evento |
-| e. Verificación de ciclo de vida | **Siguiente** | Probar varios temporizadores, desmontaje, reconexión y rechazos con ubicación, y documentar las formas admitidas |
-
-La validación de formularios (5.2) empieza al cerrar estos pasos. Los comandos
-locales (5.3) y la persistencia (5.4) conservan el alcance de la cola.
+| e. Verificación de ciclo de vida | Verificado | `855e60e` cubre varios temporizadores, desmontaje y nueva instancia en los tres navegadores, y conserva temporizadores confirmados al reconectar a la misma instancia |
 
 La prueba de c pasó en Chromium, Firefox y WebKit con assets digeridos
 (`LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- --grep 'a (marked|server) timer'`,
@@ -519,6 +516,19 @@ con assets digeridos y 44 casos de paridad, incluidos los resultados de
 y `python3 bench/island_bundle.py` dio 55,287 bytes gzip al inicio del demo
 con carga por isla.
 
+El cierre de 5.1 pasó 33 pruebas dirigidas con assets digeridos
+(`LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- --grep 'timer|root events|offline clicks'`,
+desde `bench/`). Pasaron 126 pruebas Elixir, 34 de Node, 8 del demo y 44 casos
+de paridad. El arnés compara el estado al programar y el resultado de entrega
+en ambas rutas. El núcleo quedó en 8,190 bytes gzip, frente a 8,188 antes del
+cambio. La prueba de reconexión a la misma instancia usó un reloj controlado
+y comprobó que no se emite una segunda solicitud de programación.
+
+### 5.2 Validación con Ecto.Changeset
+
+El spike debe comparar valores y errores que usa el formulario cuando
+recibe parámetros válidos, vacíos o inválidos. Las operaciones candidatas
+son `validate_required/3`, `validate_length/3` y `validate_format/4`.
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
