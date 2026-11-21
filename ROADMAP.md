@@ -10,8 +10,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 ## Estado de ejecución
 
 **La fase 5 está activa y su entrega 5.3 aborda los comandos `JS` locales.**
-El siguiente paso es comprobar qué comandos nativos se pueden conservar
-al reconciliar una isla y delimitar la lista permitida.
+Los comandos de foco están verificados. Sigue comprobar cómo conservar
+las mutaciones locales al reconciliar la isla y completar la puerta
+controlada hacia JavaScript.
 
 ### Orden de cierre
 
@@ -542,6 +543,19 @@ confirmar el resultado. Los tres navegadores comprobaron campos sin usar,
 espacios en blanco, entradas válidas y envío del formulario. El núcleo
 quedó en 8,182 bytes gzip.
 [Evidencia de cierre](docs/progress/5.2-changeset-verification.md).
+
+### 5.3 Comandos JS locales
+
+El [spike](docs/liveview-js-spike.md) en `c2fb110` comprobó que el foco de un
+nodo conservado sobrevive al parche y que una clase agregada por Phoenix
+puede desaparecer al actualizar el nodo. `dcf9f1d` verifica `focus` y
+`focus_first` con bindings nativos. El compilador conserva la codificación
+de Phoenix y rechaza opciones calculadas, selectores globales y comandos
+fuera de la lista inicial con E053.
+[Evidencia del incremento](docs/progress/5.3-native-focus.md).
+
+La entrega permanece abierta para las mutaciones locales y la puerta
+controlada hacia JavaScript.
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
