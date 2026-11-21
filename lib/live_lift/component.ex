@@ -130,7 +130,24 @@ defmodule LiveLift.Component do
     fields = state_fields(template, action_tuples)
     optional_fields = optional_state_fields(action_tuples)
 
+    mount =
+      if Module.defines?(env.module, {:mount, 1}, :def) do
+        quote do
+          defoverridable mount: 1
+
+          def mount(socket) do
+            LiveLift.Component.mount_instance(super(socket))
+          end
+        end
+      else
+        quote do
+          def mount(socket), do: LiveLift.Component.mount_instance({:ok, socket})
+        end
+      end
+
     quote do
+      unquote(mount)
+
       @doc false
       def __live_lift_client_actions__, do: unquote(Macro.escape(action_tuples))
 
@@ -186,6 +203,8 @@ defmodule LiveLift.Component do
             data-live-lift-server-fields="[]"
             data-live-lift-server-revision={@live_lift_revision}
             data-live-lift-ack-seq={@live_lift_ack_seq}
+            data-live-lift-instance={Map.get(assigns, :__live_lift_instance)}
+            data-live-lift-reconnect-conflict={LiveLift.Component.reconnect_conflict()}
           >{@live_lift_inner}</div>
           """
         else
@@ -212,6 +231,25 @@ defmodule LiveLift.Component do
           )
         end
       end
+    end
+  end
+
+  @doc false
+  def mount_instance({:ok, socket}), do: {:ok, put_instance(socket)}
+
+  def mount_instance({:ok, socket, options}), do: {:ok, put_instance(socket), options}
+
+  defp put_instance(socket) do
+    instance = Base.url_encode64(:crypto.strong_rand_bytes(16), padding: false)
+    Phoenix.Component.assign(socket, :__live_lift_instance, instance)
+  end
+
+  @doc false
+  def reconnect_conflict do
+    case Application.get_env(:live_lift, :reconnect_conflict, :replay_offline) do
+      :replay_offline -> "replay_offline"
+      :discard -> "discard"
+      _ -> raise ArgumentError, "LiveLift reconnect_conflict must be :replay_offline or :discard"
     end
   end
 

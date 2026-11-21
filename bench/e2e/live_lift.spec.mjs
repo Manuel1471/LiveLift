@@ -427,10 +427,13 @@ test("native component reconnects from the server snapshot", async ({page}) => {
   const count = root.locator("output");
   await root.getByRole("button", {name: "Add one"}).click();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  const instance = await root.getAttribute("data-live-lift-instance");
+  expect(instance).toBeTruthy();
   await page.evaluate(() => { window.liveSocket.disconnect(); window.liveSocket.connect(); });
   await page.waitForFunction(() => window.liveSocket.isConnected());
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
   await expect(count).toHaveText("0");
+  await expect(root).not.toHaveAttribute("data-live-lift-instance", instance);
   await root.getByRole("button", {name: "Add one"}).click();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await expect(count).toHaveText("1");

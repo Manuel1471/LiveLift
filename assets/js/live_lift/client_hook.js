@@ -468,7 +468,10 @@ export function createClientHook(views) {
         this.authoritativeState = this.state;
         this.pending = [];
         this.recovery = null;
-        this.nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
+        this.recoveryBlocked = false;
+        this.instance = this.el.dataset.liveLiftInstance;
+        this.ackSequence = Number(this.el.dataset.liveLiftAckSeq || "0");
+        this.nextSequence = this.ackSequence + 1;
         if (!Number.isSafeInteger(this.nextSequence) || this.nextSequence < 1) {
           throw new Error("Invalid LiveLift event sequence");
         }
@@ -477,38 +480,62 @@ export function createClientHook(views) {
         this.offline = false;
         this.offlineQueue = [];
         this.resetOptimisticSnapshot = () => {
-          const snapshot = JSON.parse(this.el.dataset.liveLiftState);
-          const revision = Number(this.el.dataset.liveLiftServerRevision || "0");
-          if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("Invalid LiveLift server revision");
-          const nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
-          if (!Number.isSafeInteger(nextSequence) || nextSequence < 1) throw new Error("Invalid LiveLift event sequence");
+          const instance = this.el.dataset.liveLiftInstance;
+          const sameInstance = Boolean(instance) && instance === this.instance;
+          const snapshotRevision = Number(this.el.dataset.liveLiftServerRevision || "0");
+          const snapshotAck = Number(this.el.dataset.liveLiftAckSeq || "0");
+          if (!Number.isSafeInteger(snapshotRevision) || snapshotRevision < 0) {
+            throw new Error("Invalid LiveLift server revision");
+          }
+          if (!Number.isSafeInteger(snapshotAck) || snapshotAck < 0) {
+            throw new Error("Invalid LiveLift acknowledged sequence");
+          }
+          const keepBase = sameInstance && snapshotRevision < this.serverRevision;
+          const snapshot = keepBase ? this.authoritativeState : JSON.parse(this.el.dataset.liveLiftState);
+          const revision = keepBase ? this.serverRevision : snapshotRevision;
+          const ack = sameInstance ? Math.max(this.ackSequence, snapshotAck) : snapshotAck;
+          const retry = sameInstance ? this.pending.filter(({sequence}) => sequence > ack) : [];
+          const hadUnacknowledged = retry.length > 0;
+          const offline = sameInstance || this.el.dataset.liveLiftReconnectConflict !== "discard"
+            ? this.offlineQueue.filter(({createdAt}) => performance.now() - createdAt <= OFFLINE_ACTION_MAX_AGE_MS)
+            : [];
+          let nextSequence = (retry.at(-1)?.sequence ?? ack) + 1;
+          for (const {action, params, eventData} of offline) {
+            retry.push({sequence: nextSequence++, action, params, eventData});
+          }
+          if (!Number.isSafeInteger(nextSequence)) throw new Error("LiveLift event sequence overflow");
           validateState(snapshot);
-          let fresh = this.offlineQueue.filter(({createdAt}) => performance.now() - createdAt <= OFFLINE_ACTION_MAX_AGE_MS);
+
           let replayed = snapshot;
           let replayError = null;
           try {
-            for (const {eventName, eventData} of fresh) {
-              replayed = this.view.actions[eventName](replayed, eventData);
+            for (const {action, eventData} of retry) {
+              replayed = this.view.actions[action](replayed, eventData);
               validateState(replayed);
             }
           } catch (error) {
             replayError = error;
-            fresh = [];
+            retry.length = 0;
+            replayed = snapshot;
+            nextSequence = ack + 1;
           }
-          this.render(snapshot);
-          this.pending = [];
-          this.recovery = null;
+          this.render(replayed);
+          this.pending = retry;
+          this.recovery = retry.length ? {sent: null} : null;
+          this.recoveryBlocked = sameInstance && (this.recoveryBlocked || Boolean(replayError && hadUnacknowledged));
+          this.instance = instance;
+          this.ackSequence = ack;
           this.authoritativeState = snapshot;
           this.serverRevision = revision;
           this.nextSequence = nextSequence;
-          this.state = snapshot;
+          this.state = replayed;
           this.reconnectPending = false;
           this.offline = false;
           this.offlineQueue = [];
           if (replayError) {
             throw new Error(`LiveLift offline replay conflict; queued actions were dropped: ${replayError.message}`);
           }
-          for (const {control, eventName, params} of fresh) this.sendOptimistic(control, eventName, params);
+          this.recoverPending();
         };
         this.applyAuthoritative = (revision, state, ackSequence = 0) => {
           if (!Number.isSafeInteger(revision) || revision < 0) {
@@ -534,6 +561,7 @@ export function createClientHook(views) {
           if (!sameValue(nextState, this.state)) this.render(nextState);
           this.authoritativeState = nextBase;
           this.serverRevision = nextRevision;
+          this.ackSequence = Math.max(this.ackSequence, ackSequence);
           this.pending = nextPending;
           this.state = nextState;
           this.reconnectPending = false;
@@ -604,7 +632,8 @@ export function createClientHook(views) {
       };
 
       this.sendOptimistic = (control, eventName, params) => {
-        if ((this.offline ? this.offlineQueue : this.pending).length >= 100) {
+        if (this.recoveryBlocked) throw new Error("LiveLift cannot resume this action sequence; reload the page");
+        if (this.offlineQueue.length + this.pending.length >= 100) {
           throw new Error("LiveLift pending action limit reached");
         }
         if (!Number.isSafeInteger(this.nextSequence)) throw new Error("LiveLift event sequence overflow");
@@ -612,7 +641,7 @@ export function createClientHook(views) {
         const sequence = this.nextSequence;
         const eventData = this.runAction(eventName, control, params);
         if (this.offline) {
-          this.offlineQueue.push({control, eventName, params, eventData, createdAt: performance.now()});
+          this.offlineQueue.push({action: eventName, params, eventData, createdAt: performance.now()});
           return;
         }
         this.nextSequence += 1;

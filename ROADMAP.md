@@ -9,8 +9,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 3, Sincronización optimista. Próxima entrega: reconexión
-y política de conflictos.** Las fases S, 0, 1 y 2 están cerradas. La fase 8 es opcional y
+**Fase activa: 3, Sincronización optimista. Próxima entrega: pruebas de
+convergencia y cierre de la fase.** Las fases S, 0, 1 y 2 están cerradas. La fase 8 es opcional y
 posterior a 1.0. Los avances antiguos de fases 4–7 se conservan como inventario.
 
 **Estados:** `Hecho` significa funcionalidad implementada, documentada y
@@ -30,8 +30,8 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.5 | IR y normalización del compilador | Hecho | Pipes y condicionales normalizados, tipos de prueba y paridad |
 | 2.6 | Regresión integral y puerta 2 | Hecho | Tres casos, paridad, tres navegadores, benchmarks |
 | 3.1 | Orden de acciones e idempotencia del servidor | Hecho | Duplicados y entrega fuera de orden sin perder acciones |
-| 3.2 | Reconexión y conflictos | **En curso** | Reintentos y política de conflictos con límites |
-| 3.3 | Pruebas caóticas y puerta 3 | En espera | Convergencia y acciones aplicadas exactamente una vez |
+| 3.2 | Reconexión y conflictos | Hecho | Reintentos y política de conflictos con límites |
+| 3.3 | Pruebas caóticas y puerta 3 | **En curso** | Convergencia y acciones aplicadas exactamente una vez |
 | 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
 | 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
 | 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
@@ -428,11 +428,14 @@ reintentar sin ejecutar dos veces un handler.
   confirmación al recibir eventos LiveView sin secuencia. Chromium, Firefox y
   WebKit entregaron 2 antes de 1 por el WebSocket real, duplicaron la primera
   acción y verificaron dos incrementos en el servidor.
-- **Previo:** Reconexión: usar el snapshot fresco de LiveView, descartar eventos en vuelo
-  y drenar en orden una cola de acciones creadas sin conexión con caducidad de 30 s.
-  La cola vive solo mientras la página y el hook sigan montados.
+- **Hecho:** Reconexión con identidad por montaje. Se reintentan las acciones
+  pendientes para la misma instancia conservando sus IDs. Un montaje nuevo
+  conserva su snapshot y descarta acciones enviadas al anterior. Las acciones
+  creadas sin conexión caducan a los 30 segundos y la cola se conserva mientras
+  el hook siga montado.
 - **Previo:** Límites de tamaño de estado, listas y parámetros.
-- **Falta:** Política de conflictos configurable.
+- **Hecho:** `:reconnect_conflict` permite reproducir acciones nunca enviadas
+  o descartarlas tras un montaje nuevo.
 
 **Listo cuando:** pruebas caóticas (corte de red, reordenamiento, duplicados) con
 Playwright y una propiedad de **convergencia**: en reposo, cliente y servidor tienen el

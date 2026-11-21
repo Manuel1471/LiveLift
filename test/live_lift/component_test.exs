@@ -105,6 +105,8 @@ defmodule LiveLift.ComponentTest do
     use Phoenix.LiveComponent
     use LiveLift
 
+    def mount(socket), do: {:ok, assign(socket, :label, "mounted"), temporary_assigns: []}
+
     def render(assigns), do: ~H"<output>{@count} {@label}</output>"
 
     @client true
@@ -250,6 +252,21 @@ defmodule LiveLift.ComponentTest do
     assert javascript =~ ~s("LiveLift.ComponentTest.Counter")
     assert javascript =~ "inc: (state)"
     assert javascript =~ ~s("data-live-lift-action")
+  end
+
+  test "an instance identifier is stable on the component socket and unique per mount" do
+    initial = %Phoenix.LiveView.Socket{assigns: %{count: 0, id: "counter", __changed__: %{}}}
+
+    assert {:ok, first} = Counter.mount(initial)
+    assert {:ok, second} = Counter.mount(initial)
+    refute first.assigns.__live_lift_instance == second.assigns.__live_lift_instance
+
+    assert {:reply, _, updated} = Counter.handle_event("inc", %{"_live_lift_seq" => 1}, first)
+    assert updated.assigns.__live_lift_instance == first.assigns.__live_lift_instance
+
+    assert {:ok, custom, [temporary_assigns: []]} = ChainedCounter.mount(initial)
+    assert custom.assigns.label == "mounted"
+    assert is_binary(custom.assigns.__live_lift_instance)
   end
 
   test "reply returns the server's authoritative state" do

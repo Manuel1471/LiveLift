@@ -26,7 +26,7 @@ defmodule LiveLift.MixProject do
     ]
   end
 
-  def application, do: [extra_applications: [:logger]]
+  def application, do: [extra_applications: [:logger, :crypto]]
 
   defp deps do
     [

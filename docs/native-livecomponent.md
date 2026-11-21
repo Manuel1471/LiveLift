@@ -34,8 +34,8 @@ wraps the original server render in an owned DOM boundary. On a marked click,
 the hook runs the compiled handler locally and sends the event through
 LiveView's public `pushEventTo` API. The server executes the original handler
 on its own socket and replies with its authoritative assigns. Unmarked
-handlers continue through LiveView normally. A reconnect replaces local
-predictions with the new server snapshot.
+handlers continue through LiveView normally. After reconnect, the browser
+reconciles its predictions with the server snapshot.
 
 Check a marked handler against the generated JavaScript from your Phoenix app:
 
@@ -125,15 +125,27 @@ the same form. Both handlers read `params["profile"]["note"]`; the change
 handler shows a local error immediately and the save handler enforces the same
 three-grapheme minimum on the server. The browser keeps the input value and
 reconciles with the authoritative reply.
-The browser caps pending marked actions at 100 and rejects unsafe parameter
-names before changing local state. While disconnected, it keeps up to 100 new
-actions in memory for at most 30 seconds. It replays those actions in order
-after LiveView supplies a fresh snapshot on reconnect. Actions already sent
-before the disconnect are discarded instead of resent, because they may have
-reached the server.
-The server records the last acknowledged action sequence on the component
-socket and returns the current snapshot for duplicate deliveries without
-running the marked handler twice.
+The browser shares a 100-action limit between sent and offline actions.
+Offline actions created during a disconnect expire after 30 seconds.
+
+On reconnect, the same mounted component resumes from its acknowledged
+sequence. The browser retries outstanding actions with their original
+sequences. The server acknowledges the contiguous sequence it has applied
+and returns the current snapshot for duplicates. If a replay cannot apply
+to the same server instance and an outstanding sequence may already have
+been sent, reload the page before sending further marked actions.
+
+If LiveView mounts a fresh component, LiveLift adopts that instance's
+state. Unconfirmed actions sent to the previous instance are discarded.
+By default, fresh offline actions that were never sent are replayed against
+the new snapshot. Apps can discard those as well by setting:
+
+```elixir
+config :live_lift, reconnect_conflict: :discard
+```
+
+The default is `:replay_offline`. The queue survives a transport
+disconnect while the hook stays mounted. Reloading the page clears it.
 Optimistic events accept at most 64 string leaf parameters, nested to four
 segments, and 64 KiB of
 combined UTF-8 key/value content. The browser checks before predicting; the

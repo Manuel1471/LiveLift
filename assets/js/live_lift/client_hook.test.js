@@ -605,6 +605,70 @@ test("offline actions replay only after a fresh snapshot and receive new sequenc
   assert.equal(hook.state.count, 8);
 });
 
+test("reconnect to the same instance retries only unacknowledged actions with original IDs", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  el.dataset.liveLiftInstance = "same";
+  const sent = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, payload, reply) => sent.push({payload, reply}),
+  };
+  hook.mounted();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  hook.sendOptimistic(el.controls.advance, "advance", {name: "second"});
+  hook.disconnected();
+  hook.sendOptimistic(el.controls.advance, "advance", {name: "offline"});
+
+  el.dataset.liveLiftState = JSON.stringify({count: 1, step: 1});
+  el.dataset.liveLiftServerRevision = "1";
+  el.dataset.liveLiftAckSeq = "1";
+  hook.updated();
+
+  assert.equal(hook.state.count, 3);
+  assert.deepEqual(sent.map(({payload}) => payload._live_lift_seq), [1, 2, 2]);
+  assert.deepEqual(sent[2].payload, sent[1].payload);
+  sent[1].reply({revision: 2, ack_seq: 2, state: {count: 99, step: 1}});
+  assert.equal(hook.state.count, 3);
+  sent[2].reply({revision: 2, ack_seq: 2, state: {count: 2, step: 1}});
+  assert.deepEqual(sent[3].payload, {name: "offline", _live_lift_seq: 3});
+  sent[3].reply({revision: 3, ack_seq: 3, state: {count: 3, step: 1}});
+  assert.equal(hook.pending.length, 0);
+  assert.equal(hook.state.count, 3);
+});
+
+test("an instance change discards offline actions when configured", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  el.dataset.liveLiftInstance = "old";
+  el.dataset.liveLiftReconnectConflict = "discard";
+  const sent = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, payload) => sent.push(payload),
+  };
+  hook.mounted();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  hook.disconnected();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  el.dataset.liveLiftInstance = "new";
+  hook.updated();
+  assert.equal(hook.state.count, 0);
+  assert.equal(hook.pending.length, 0);
+  assert.equal(hook.offlineQueue.length, 0);
+  assert.equal(sent.length, 1);
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.equal(sent[1]._live_lift_seq, 1);
+});
+
 test("expired offline actions roll back to the new server snapshot", () => {
   const el = element({count: 0, step: 1});
   el.dataset.liveLiftMode = "component";
