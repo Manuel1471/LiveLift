@@ -52,6 +52,43 @@ function stats(values) {
   hook.destroyed();
 }
 
+// Conditional siblings can move without sending a reused descendant to the wrong parent.
+{
+  const {document} = parseHTML("<html><body><div id='probe'></div></body></html>");
+  globalThis.document = document;
+  const el = document.getElementById("probe");
+  el.dataset.liveLiftModule = "Probe";
+  el.dataset.liveLiftState = JSON.stringify({visible: true, text: "old"});
+  const path = (field) => ({type: "path", root: "state", fields: [field]});
+  const element = (tag, children, fields = {}) => ({
+    type: "element", tag, attrs: [], children, for: null, key: null, if: null, node_id: null, ...fields,
+  });
+  const template = [element("section", [
+    element("p", [{type: "text", value: "Optional"}], {if: path("visible"), node_id: "optional"}),
+    element("p", [element("strong", [{type: "text", value: "Label"}]),
+      {type: "binding", expr: path("text")}]),
+  ])];
+  const hook = {...createClientHook({Probe: {template, actions: {
+    update: () => ({visible: false, text: "new"}),
+  }}}), el};
+  hook.mounted();
+  const paragraph = el.querySelector("p:last-child");
+  const label = el.querySelector("strong");
+  const createElement = document.createElement.bind(document);
+  let labelAllocations = 0;
+  document.createElement = (tag, ...args) => {
+    if (tag === "strong") labelAllocations += 1;
+    return createElement(tag, ...args);
+  };
+  hook.runAction("update", el);
+  assert.equal(labelAllocations, 0);
+  assert.equal(el.querySelectorAll("p").length, 1);
+  assert.equal(el.querySelector("p"), paragraph);
+  assert.equal(el.querySelector("strong"), label);
+  assert.equal(paragraph.textContent, "Labelnew");
+  hook.destroyed();
+}
+
 const results = {};
 for (const size of [10, 100, 1000]) {
   const {document} = parseHTML("<html><body><div id='tasks'></div></body></html>");

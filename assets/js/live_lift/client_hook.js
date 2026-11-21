@@ -224,19 +224,22 @@ function validateEventParams(params, depth = 0, budget = {fields: 0, bytes: 0}) 
   }
 }
 
-const rowPlans = new WeakMap();
+const dependencyPlans = new WeakMap();
+const renderedTemplates = new WeakMap();
+const renderTargets = new WeakMap();
 const IN_ROW = Symbol();
 
-function rowPlan(row) {
-  if (rowPlans.has(row)) return rowPlans.get(row);
-  const variable = row.for.var;
+function dependencyPlan(root) {
+  if (dependencyPlans.has(root)) return dependencyPlans.get(root);
+  const variable = root.for?.var;
   const state = new Map();
   const item = new Map();
 
   function expression(expr) {
     if (!expr || expr.type === "literal" || expr.type === "float") return true;
     if (expr.type === "path") {
-      const local = expr.root === variable || (expr.root === "state" && expr.fields[0] === variable);
+      const local = variable !== undefined &&
+        (expr.root === variable || (expr.root === "state" && expr.fields[0] === variable));
       if (!local && expr.root !== "state") return false;
       (local ? item : state).set(JSON.stringify([expr.root, expr.fields]), expr);
       return true;
@@ -250,8 +253,11 @@ function rowPlan(row) {
   function subtree(node) {
     if (node.type === "text") return true;
     if (node.type === "binding") return expression(node.expr);
-    if (node.type === "component") return node.props.every((prop) => expression(prop.expr));
-    if (node.type !== "element" || (node !== row && node.for)) return false;
+    if (node.type === "component") return variable !== undefined &&
+      node.props.every((prop) => expression(prop.expr));
+    if (node.type !== "element" || (node !== root && node.for)) return false;
+    // Unkeyed form controls still reconcile their live values and selection.
+    if (variable === undefined && ["form", "input", "select", "textarea", "option"].includes(node.tag)) return false;
     return expression(node.if) && expression(node.key) && node.attrs.every((attr) => {
       if (attr.name === "data-live-lift-show") {
         return expression({type: "path", root: "state", fields: [attr.value]});
@@ -261,8 +267,8 @@ function rowPlan(row) {
     }) && node.children.every(subtree);
   }
 
-  const plan = subtree(row) ? {state: [...state.values()], item: [...item.values()]} : null;
-  rowPlans.set(row, plan);
+  const plan = subtree(root) ? {state: [...state.values()], item: [...item.values()]} : null;
+  dependencyPlans.set(root, plan);
   return plan;
 }
 
@@ -303,11 +309,26 @@ function hydrateKeyedRows(nodes, scope, root) {
   }
 }
 
-function renderNodes(nodes, scope, views, stack = [], textOnly = false) {
-  return nodes.flatMap((node) => renderNode(node, scope, views, stack, textOnly));
+function renderNodes(nodes, scope, views, stack = [], textOnly = false, parent = null) {
+  let previous;
+  if (parent && scope.__previousState && nodes.some((node) => node.type === "element" && !node.for)) {
+    previous = new Map();
+    for (const child of parent.children) {
+      const template = renderedTemplates.get(child);
+      if (template && !template.for) previous.set(template, child);
+    }
+  }
+  return nodes.flatMap((node) => renderNode(node, scope, views, stack, textOnly, previous));
 }
 
-function renderNode(node, scope, views, stack, textOnly) {
+function reuseMarker(element) {
+  // Keep live children attached until their parent reconciles them.
+  const marker = document.createComment("");
+  marker.__liveLiftReuse = element;
+  return [marker];
+}
+
+function renderNode(node, scope, views, stack, textOnly, previousChildren) {
   if (node.type === "text") {
     return [document.createTextNode(decodeEntities(node.value))];
   }
@@ -331,7 +352,7 @@ function renderNode(node, scope, views, stack, textOnly) {
     const items = evaluate(node.for.source, scope);
     if (!Array.isArray(items)) throw new Error(":for expects a list");
     const keys = new Set();
-    const plan = scope[IN_ROW] ? null : rowPlan(node);
+    const plan = scope[IN_ROW] ? null : dependencyPlan(node);
     const previousScope = {state: scope.__previousState};
     const previous = new Map();
     const existing = new Map();
@@ -362,18 +383,18 @@ function renderNode(node, scope, views, stack, textOnly) {
       const priorItem = previous.get(keyString);
       if (existing.has(keyString) && previous.has(keyString) &&
           (Object.is(priorItem, item) || samePaths(plan.item, {...previousScope, [node.for.var]: priorItem}, itemScope))) {
-        // Keep the row attached until reconciliation can move it within its live parent.
-        const marker = document.createComment("");
-        marker.__liveLiftReuse = existing.get(keyString);
-        return [marker];
+        return reuseMarker(existing.get(keyString));
       }
       return renderElement(node, itemScope, key, views, stack);
     });
   }
-  return renderElement(node, scope, null, views, stack);
+  const current = previousChildren?.get(node);
+  const plan = current && dependencyPlan(node);
+  if (plan && samePaths(plan.state, {state: scope.__previousState}, scope)) return reuseMarker(current);
+  return renderElement(node, scope, null, views, stack, current);
 }
 
-function renderElement(node, scope, key, views, stack) {
+function renderElement(node, scope, key, views, stack, current) {
   if (node.if && [false, null].includes(evaluate(node.if, scope))) return [];
   const element = document.createElement(node.tag);
   for (const attr of node.attrs) {
@@ -402,7 +423,9 @@ function renderElement(node, scope, key, views, stack) {
   }
   if (key !== null) element.setAttribute("data-live-lift-key", String(key));
   if (node.node_id !== null) element.setAttribute("data-live-lift-node-id", node.node_id);
-  element.append(...renderNodes(node.children, scope, views, stack, node.tag === "textarea"));
+  renderedTemplates.set(element, node);
+  if (current) renderTargets.set(element, current);
+  element.append(...renderNodes(node.children, scope, views, stack, node.tag === "textarea", current));
   return [element];
 }
 
@@ -424,7 +447,7 @@ function reconcile(parent, desired) {
     const reuse = next.__liveLiftReuse;
     if (reuse) {
       if (reuse.parentNode !== parent || used.has(reuse)) {
-        throw new Error("LiveLift keyed row changed parent before reconciliation");
+        throw new Error("LiveLift node changed parent before reconciliation");
       }
       used.add(reuse);
       if (parent.childNodes[index] !== reuse) parent.insertBefore(reuse, parent.childNodes[index] || null);
@@ -433,14 +456,21 @@ function reconcile(parent, desired) {
     const key = next.nodeType === 1 ? next.getAttribute("data-live-lift-key") : null;
     const nodeId = next.nodeType === 1 ? next.getAttribute("data-live-lift-node-id") : null;
     const indexed = previous[index];
+    const template = renderedTemplates.get(next);
     const matchesUnmarked = (node) => node && !used.has(node) &&
       (node.nodeType !== 1 || (!node.hasAttribute("data-live-lift-key") && !node.hasAttribute("data-live-lift-node-id"))) &&
-      node.nodeType === next.nodeType && (node.nodeType !== 1 || node.tagName === next.tagName);
-    const current = key !== null
+      node.nodeType === next.nodeType &&
+      (node.nodeType !== 1 || (node.tagName === next.tagName &&
+        (!renderedTemplates.has(node) || renderedTemplates.get(node) === template)));
+    const target = renderTargets.get(next);
+    if (target && (target.parentNode !== parent || used.has(target))) {
+      throw new Error("LiveLift subtree changed parent before reconciliation");
+    }
+    const current = target || (key !== null
       ? keyed.get(`${next.tagName}:${nodeId}:${key}`)
       : nodeId !== null
         ? identified.get(`${next.tagName}:${nodeId}`)
-        : matchesUnmarked(indexed) ? indexed : unmarked.find(matchesUnmarked);
+        : matchesUnmarked(indexed) ? indexed : unmarked.find(matchesUnmarked));
     const chosen = current || next;
     if (current) patchNode(current, next);
     used.add(chosen);
@@ -454,6 +484,7 @@ function patchNode(current, next) {
     if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
     return;
   }
+  renderedTemplates.set(current, renderedTemplates.get(next));
   const hadValueAttribute = current.nodeType === 1 && current.hasAttribute("value");
   for (const attr of [...current.attributes]) {
     // The component CID belongs to LiveView and is supplied by its original ~H render.
@@ -925,7 +956,7 @@ export function createClientHook(views) {
         const selection = focused && typeof focused.selectionStart === "number"
           ? [focused.selectionStart, focused.selectionEnd] : null;
         reconcile(this.el, renderNodes(this.view.template,
-          {state, __previousState: this.state, __root: this.el}, views));
+          {state, __previousState: this.state, __root: this.el}, views, [], false, this.el));
         if (focused && focused.isConnected && document.activeElement !== focused) {
           focused.focus({preventScroll: true});
           if (selection && typeof focused.setSelectionRange === "function") {

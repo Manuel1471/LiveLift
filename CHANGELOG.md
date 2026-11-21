@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve static and unchanged template subtrees during state changes.
+
 - Track keyed row dependencies across authoritative snapshots and reuse rows whose rendered values are unchanged.
 
 - Move unchanged keyed rows directly during reconciliation without allocating temporary elements.

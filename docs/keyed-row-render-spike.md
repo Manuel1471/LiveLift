@@ -41,3 +41,27 @@ parameter at the local test server boundary to force an authoritative
 correction. Across Chromium, Firefox and WebKit, it preserved the edited
 and neighboring inputs and allocated at most two row elements for the
 prediction and correction together.
+
+
+The same analysis now skips unchanged ordinary subtrees after the first
+reconciliation has associated their template with live elements. That
+association lets a changing subtree keep its parent even when conditional
+siblings move. Unkeyed form controls reconcile their live values and
+selection, and component calls keep their own scope. The DOM regression
+probe removes a sibling and changes adjacent text without creating a fresh
+static descendant.
+
+
+With dependency reuse outside lists, a reversal allocates two elements.
+In a separate 25-sample run Chromium measured p95 of 13.5 ms for reversal,
+17.7 ms for sort and 8.3 ms for a row edit. Sorting still needs tuning to
+meet a 16.7 ms budget consistently.
+
+The standalone runtime weighed 7,437 bytes after the demo's esbuild
+minifier and gzip. The row-marker-only baseline was 6,984 bytes. To
+measure from `examples/demo/` after building assets:
+
+```sh
+livelift_esbuild=$(mix run --no-start --no-compile -e 'IO.puts(Esbuild.bin_path())')
+"$livelift_esbuild" --minify < ../../assets/js/live_lift/client_hook.js | gzip -cn | wc -c
+```
