@@ -51,6 +51,38 @@ test("runs app actions and renders app-selected fields", () => {
   assert.equal(el.listeners.size, 0);
 });
 
+test("lazy mounts share an import and do not initialize a destroyed island", async () => {
+  let resolve;
+  let attempts = 0;
+  const loaded = new Promise((done) => { resolve = done; });
+  const hooks = createClientHook({
+    "App.Score": () => {
+      attempts += 1;
+      return loaded;
+    },
+  });
+  const first = {...hooks, el: element({count: 0, step: 1})};
+  const second = {...hooks, el: element({count: 0, step: 1})};
+  const firstMounted = first.mounted();
+  const secondMounted = second.mounted();
+  first.destroyed();
+  second.el.dataset.liveLiftState = JSON.stringify({count: 4, step: 1});
+  second.updated();
+
+  resolve({views: {"App.Score": {
+    template: "<button>Add</button>",
+    actions: {advance: (state) => ({...state, count: state.count + 1})},
+  }}});
+  await Promise.all([firstMounted, secondMounted]);
+  assert.equal(attempts, 1);
+  assert.equal(first.el.listeners.size, 0);
+  assert.equal(second.el.dataset.liveLiftLoad, "ready");
+  assert.equal(second.el.countNode.textContent, "4");
+  second.el.click("advance");
+  assert.equal(second.el.countNode.textContent, "5");
+  second.destroyed();
+});
+
 test("passes input values and typed element parameters to two-argument actions", () => {
   const el = element({count: 0, step: 1, items: [{id: 1, name: "Old"}]});
   el.controls.edit = {

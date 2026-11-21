@@ -1,6 +1,7 @@
 import {defineConfig} from "@playwright/test";
 import {fileURLToPath} from "node:url";
 
+const deployed = process.env.LIVE_LIFT_TEST_DEPLOY === "1";
 const demo = fileURLToPath(new URL("../examples/demo/", import.meta.url));
 
 export default defineConfig({
@@ -15,7 +16,7 @@ export default defineConfig({
     {name: "webkit", use: {browserName: "webkit"}},
   ],
   webServer: {
-    command: "mix assets.build && mix phx.server",
+    command: `mix assets.${deployed ? "deploy" : "build"} && mix phx.server`,
     cwd: demo,
     env: {PORT: "4031"},
     url: "http://127.0.0.1:4031/",

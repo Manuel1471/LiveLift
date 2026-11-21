@@ -194,3 +194,6 @@ removing the clicked button locally does not cancel its server delivery.
 in Chromium with delayed responses, consecutive clicks, server-only reset and
 reconnect. This is an early supported subset of the new API, not a claim that
 arbitrary LiveComponents compile to JavaScript.
+
+
+Apps that use esbuild can [load each island on demand](island-loading-spike.md).

@@ -1,6 +1,6 @@
 import {parseHTML} from "linkedom";
 import {createClientHook} from "../assets/js/live_lift/client_hook.js";
-import {views} from "../examples/demo/assets/js/generated_views.js";
+import {views as generated} from "../examples/demo/assets/js/generated_views.js";
 import assert from "node:assert/strict";
 
 function stats(values) {
@@ -89,6 +89,8 @@ function stats(values) {
   hook.destroyed();
 }
 
+const taskView = generated["LiveLiftDemo.TaskListView"];
+const views = typeof taskView === "function" ? (await taskView()).views : generated;
 const results = {};
 for (const size of [10, 100, 1000]) {
   const {document} = parseHTML("<html><body><div id='tasks'></div></body></html>");

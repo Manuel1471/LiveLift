@@ -551,13 +551,51 @@ function frameBatch(apply) {
  * The app supplies its own HEEx and marks only the locally owned DOM subtree.
  */
 export function createClientHook(views) {
+  const imports = new WeakMap();
+
   return {
     mounted() {
-      this.view = views[this.el.dataset.liveLiftModule];
-      if (!this.view) {
-        throw new Error(`Unknown LiveLift view: ${this.el.dataset.liveLiftModule}`);
+      const name = this.el.dataset.liveLiftModule;
+      const entry = Object.hasOwn(views, name) ? views[name] : undefined;
+      if (!entry) throw new Error(`Unknown LiveLift view: ${name}`);
+      if (typeof entry !== "function") {
+        this.mountView(entry, views);
+        return;
       }
 
+      const loading = {snapshot: this.el.dataset.liveLiftState, disconnected: false};
+      this.loading = loading;
+      this.el.dataset.liveLiftLoad = "loading";
+      if (!imports.has(entry)) {
+        imports.set(entry, Promise.resolve().then(entry).catch((error) => {
+          imports.delete(entry);
+          throw error;
+        }));
+      }
+      return imports.get(entry).then(({views: loaded}) => {
+        if (this.loading !== loading) return;
+        if (!loaded || !Object.hasOwn(loaded, name)) throw new Error(`Unknown LiveLift view: ${name}`);
+        const refresh = loading.snapshot !== this.el.dataset.liveLiftState;
+        this.mountView(loaded[name], loaded, refresh);
+        this.loading = null;
+        if (loading.disconnected) this.disconnected();
+        this.el.dataset.liveLiftLoad = "ready";
+      }).catch((error) => {
+        if (this.loading !== loading) return;
+        this.el.dataset.liveLiftLoad = "error";
+        const status = this.el.ownerDocument?.createElement("span");
+        if (status) {
+          status.setAttribute("role", "status");
+          status.textContent = "Local updates could not load. Reload the page to try again.";
+          this.el.append(status);
+        }
+        console.error(`Could not load LiveLift view: ${name}`, error);
+      });
+    },
+
+    mountView(view, views, refresh = false) {
+      this.view = view;
+      this.viewRegistry = views;
       this.state = JSON.parse(this.el.dataset.liveLiftState);
       validateState(this.state);
       const serverRendered = this.el.hasChildNodes();
@@ -939,10 +977,14 @@ export function createClientHook(views) {
       this.el.addEventListener("input", this.onInput);
       this.el.addEventListener("change", this.onChange);
       this.el.addEventListener("submit", this.onSubmit);
-      if (!serverRendered) this.render();
+      if (!serverRendered || refresh) this.render(this.state, null);
     },
 
     destroyed() {
+      if (this.loading) {
+        this.loading = null;
+        return;
+      }
       if (this.syncRef && typeof this.removeHandleEvent === "function") this.removeHandleEvent(this.syncRef);
       if (this.optimistic) {
         this.authoritativeBatch.clear();
@@ -961,6 +1003,10 @@ export function createClientHook(views) {
     },
 
     disconnected() {
+      if (this.loading) {
+        this.loading.disconnected = true;
+        return;
+      }
       if (this.optimistic) {
         this.authoritativeBatch.clear();
         this.connectionEpoch += 1;
@@ -969,7 +1015,12 @@ export function createClientHook(views) {
       }
     },
 
+    reconnected() {
+      if (this.loading) this.loading.disconnected = false;
+    },
+
     updated() {
+      if (this.loading) return;
       if (this.optimistic) {
         if (this.reconnectPending) {
           this.resetOptimisticSnapshot();
@@ -1002,13 +1053,13 @@ export function createClientHook(views) {
       this.applyServerPatch(revision, patch);
     },
 
-    render(state = this.state) {
+    render(state = this.state, previousState = this.state) {
       if (Array.isArray(this.view.template) && typeof document !== "undefined") {
         const focused = this.el.contains(document.activeElement) ? document.activeElement : null;
         const selection = focused && typeof focused.selectionStart === "number"
           ? [focused.selectionStart, focused.selectionEnd] : null;
         reconcile(this.el, renderNodes(this.view.template,
-          {state, __previousState: this.state, __root: this.el}, views, [], false, this.el));
+          {state, __previousState: previousState, __root: this.el}, this.viewRegistry, [], false, this.el));
         if (focused && focused.isConnected && document.activeElement !== focused) {
           focused.focus({preventScroll: true});
           if (selection && typeof focused.setSelectionRange === "function") {

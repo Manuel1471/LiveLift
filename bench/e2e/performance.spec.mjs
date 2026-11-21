@@ -1,11 +1,12 @@
 import {test, expect} from "@playwright/test";
+import {gotoLiveLift} from "./support.mjs";
 
 test("benchmark native component click latency", async ({page, browserName}) => {
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
 
   const measure = async (route, optimistic) => {
-    await page.goto(route);
+    await gotoLiveLift(page, route);
     await page.waitForFunction(() => window.liveSocket.isConnected());
     await page.waitForTimeout(300);
     await page.evaluate(() => window.liveSocket.enableLatencySim(150));
@@ -58,7 +59,7 @@ test("benchmark native float action against integer action", async ({page, brows
   const measure = async (route, selector, event, expected) => {
     const samples = [];
     for (let run = 0; run < 5; run += 1) {
-      await page.goto(route);
+      await gotoLiveLift(page, route);
       await page.waitForFunction(() => window.liveSocket?.isConnected());
       await page.evaluate(() => window.liveSocket.disconnect());
       const result = await page.locator(selector).evaluate((root, eventName) => {
@@ -83,7 +84,7 @@ test("benchmark native float action against integer action", async ({page, brows
 test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserName}) => {
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
-  await page.goto("/?bench_rows=1000");
+  await gotoLiveLift(page, "/?bench_rows=1000");
   await page.waitForFunction(() => window.liveSocket?.isConnected());
   await expect(page.locator("#task-list [data-live-lift-key]")).toHaveCount(1_000);
 
@@ -118,7 +119,7 @@ test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserNam
 test("benchmark 1,000 native LiveComponent row reversals in Chromium", async ({page, browserName}) => {
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
-  await page.goto("/native-list?rows=1000");
+  await gotoLiveLift(page, "/native-list?rows=1000");
   await page.waitForFunction(() => window.liveSocket?.isConnected());
   const root = page.locator("#native-list");
   await expect(root.locator("li")).toHaveCount(1_000);
@@ -163,7 +164,7 @@ test("benchmark 1,000 native LiveComponent row reversals in Chromium", async ({p
 test("benchmark 1,000 native LiveComponent row sorts in Chromium", async ({page, browserName}) => {
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
-  await page.goto("/native-list?rows=1000");
+  await gotoLiveLift(page, "/native-list?rows=1000");
   await page.waitForFunction(() => window.liveSocket?.isConnected());
   const root = page.locator("#native-list");
   await expect(root.locator("li")).toHaveCount(1_000);
@@ -200,7 +201,7 @@ test("benchmark navigation and mount with 100 islands", async ({page, browserNam
     const durations = [];
     for (let index = 0; index < 9; index += 1) {
       const started = performance.now();
-      await page.goto(`/many-islands?count=100&mode=${mode}`);
+      await gotoLiveLift(page, `/many-islands?count=100&mode=${mode}`);
       await page.waitForFunction(() => window.liveSocket.isConnected());
       await expect(page.locator("#many-islands > div")).toHaveCount(100);
       if (index >= 2) durations.push(performance.now() - started);
@@ -217,7 +218,7 @@ test("benchmark navigation and mount with 100 islands", async ({page, browserNam
 
 test("benchmark editing a row in a 1,000-row native LiveComponent list", async ({page, browserName}) => {
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
-  await page.goto("/native-list?rows=1000");
+  await gotoLiveLift(page, "/native-list?rows=1000");
   await page.waitForFunction(() => window.liveSocket?.isConnected());
   const root = page.locator("#native-list");
   await expect(root.locator("li")).toHaveCount(1_000);

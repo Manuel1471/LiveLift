@@ -76,6 +76,10 @@ jobs:
         working-directory: bench
       - run: npm run e2e
         working-directory: bench
+      - run: npm run e2e -- e2e/island_loading.spec.mjs
+        working-directory: bench
+        env:
+          LIVE_LIFT_TEST_DEPLOY: '1'
 
   liveview-main:
     runs-on: ubuntu-latest

@@ -1,8 +1,9 @@
 import {test, expect} from "@playwright/test";
+import {gotoLiveLift} from "./support.mjs";
 import AxeBuilder from "@axe-core/playwright";
 
 test("local state and server patches coexist", async ({page}) => {
-  await page.goto("/");
+  await gotoLiveLift(page, "/");
   const score = page.locator("#local-counter .score-row output");
   await expect(score).toHaveText("10");
   await page.getByRole("button", {name: "+ 2 points"}).click();
@@ -21,7 +22,7 @@ test("local state and server patches coexist", async ({page}) => {
 });
 
 test("keyed task editing preserves focus across reorder", async ({page}) => {
-  await page.goto("/");
+  await gotoLiveLift(page, "/");
   const input = page.locator('#task-list [data-live-lift-key="1"] input');
   await input.fill("Edited in browser");
   await expect(input).toBeFocused();
@@ -39,7 +40,7 @@ test("keyed task editing preserves focus across reorder", async ({page}) => {
 });
 
 test("native HEEx :for keeps the same focused row across a client reorder", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const first = root.locator('#row-1 input[name="label"]');
   await expect(root.locator("li").first()).toHaveAttribute("id", "row-1");
@@ -58,7 +59,7 @@ test("native list validates live form changes and saves the edited row", async (
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const row = root.locator("#row-1");
   await row.getByRole("textbox", {name: "Label"}).fill("Édité <&>");
@@ -86,7 +87,7 @@ test("a server-corrected row reuses its unaffected neighbors", async ({page}) =>
       }
     });
   });
-  await page.goto("/native-list?rows=1000");
+  await gotoLiveLift(page, "/native-list?rows=1000");
   await page.waitForFunction(() => window.liveSocket.isConnected());
   const root = page.locator("#native-list");
   await expect(root.locator("li")).toHaveCount(1000);
@@ -118,7 +119,7 @@ test("a server-corrected row reuses its unaffected neighbors", async ({page}) =>
 });
 
 test("app-owned list reorder keeps the focused keyed input", async ({page}) => {
-  await page.goto("/native-list?rows=3");
+  await gotoLiveLift(page, "/native-list?rows=3");
   const root = page.locator("#native-list");
   const third = root.locator("#row-3 input[name='label']");
   await third.fill("Draft Three");
@@ -139,7 +140,7 @@ test("app-owned list reorder keeps the focused keyed input", async ({page}) => {
 });
 
 test("native form handles a change event without a preceding input event", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const input = root.locator('#row-1 input[name="label"]');
   await input.evaluate((field) => {
@@ -151,7 +152,7 @@ test("native form handles a change event without a preceding input event", async
 });
 
 test("native list adds and removes rows with dynamic phx-value-id", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   await expect(root.locator("li")).toHaveCount(2);
   await page.evaluate(() => window.liveSocket.enableLatencySim(450));
@@ -165,7 +166,7 @@ test("native list adds and removes rows with dynamic phx-value-id", async ({page
 });
 
 test("native list replaces and deletes its last row by index", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   await root.getByRole("button", {name: "Reset last row"}).click();
   await expect(root.locator("li").last().getByRole("textbox")).toHaveValue("Reset");
@@ -177,7 +178,7 @@ test("native list replaces and deletes its last row by index", async ({page}) =>
 });
 
 test("native Enum.find predicts the first matching row and converges", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const match = root.getByRole("status", {name: "First new row"});
   await expect(match).toHaveText("None");
@@ -194,7 +195,7 @@ test("native Enum.find predicts the first matching row and converges", async ({p
 });
 
 test("native Enum.reduce combines app-owned rows and converges", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const combined = root.getByRole("status", {name: "Combined labels"});
   await expect(combined).toHaveText("");
@@ -208,7 +209,7 @@ test("native Enum.reduce combines app-owned rows and converges", async ({page}) 
 });
 
 test("native Enum.sort_by preserves keyed focus and server order", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   await root.getByRole("button", {name: "Add row"}).click();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
@@ -221,7 +222,7 @@ test("native Enum.sort_by preserves keyed focus and server order", async ({page}
 });
 
 test("native Enum.count predicts app-owned row counts", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const count = root.getByRole("status", {name: "New row count"});
   await expect(count).toHaveText("0");
@@ -235,7 +236,7 @@ test("native Enum.count predicts app-owned row counts", async ({page}) => {
 });
 
 test("native Enum.join renders app-owned labels and converges", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const joined = root.getByRole("status", {name: "Combined labels"});
   await root.getByRole("button", {name: "Join labels"}).click();
@@ -248,7 +249,7 @@ test("native Enum.join renders app-owned labels and converges", async ({page}) =
 });
 
 test("native Enum.flat_map expands app-owned labels and converges", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const result = root.getByRole("status", {name: "Combined labels"});
   await root.getByRole("button", {name: "Add row"}).click();
@@ -259,7 +260,7 @@ test("native Enum.flat_map expands app-owned labels and converges", async ({page
 });
 
 test("native Enum.with_index numbers app-owned labels and converges", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   const result = root.getByRole("status", {name: "Combined labels"});
   await root.getByRole("button", {name: "Number labels"}).click();
@@ -268,7 +269,7 @@ test("native Enum.with_index numbers app-owned labels and converges", async ({pa
 });
 
 test("native String.downcase follows Elixir's Greek sigma behavior", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   await root.locator('#row-1 input[name="label"]').fill("ΟΣ");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
@@ -278,7 +279,7 @@ test("native String.downcase follows Elixir's Greek sigma behavior", async ({pag
 });
 
 test("native String.split handles app-owned labels and converges", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   await root.locator('#row-1 input[name="label"]').fill("A,B");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
@@ -288,7 +289,7 @@ test("native String.split handles app-owned labels and converges", async ({page}
 });
 
 test("native String.replace changes only the first comma and converges", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   await root.locator('#row-1 input[name="label"]').fill("A,B");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
@@ -298,7 +299,7 @@ test("native String.replace changes only the first comma and converges", async (
 });
 
 test("native map projections order field names and count values", async ({page}) => {
-  await page.goto("/native-list");
+  await gotoLiveLift(page, "/native-list");
   const root = page.locator("#native-list");
   await root.getByRole("button", {name: "Summarize fields"}).click();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
@@ -306,13 +307,13 @@ test("native map projections order field names and count values", async ({page})
 });
 
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
-  await page.goto("/");
+  await gotoLiveLift(page, "/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   expect(results.violations).toEqual([]);
 });
 
 test("server HTML and client render produce the same island DOM", async ({page}) => {
-  await page.goto("/");
+  await gotoLiveLift(page, "/");
   await expect(page.locator("#local-counter [data-live-lift-text]")).toHaveCount(0);
   await expect(page.locator("#local-counter .client-panel")).toHaveAttribute("title", "Score & activity");
   await expect(page.locator("#local-counter progress")).toHaveAttribute("title", 'A & B "<demo>"');
@@ -336,7 +337,7 @@ test("server HTML and client render produce the same island DOM", async ({page})
 });
 
 test("checkbox, select and textarea retain native form behavior", async ({page}) => {
-  await page.goto("/form-parity");
+  await gotoLiveLift(page, "/form-parity");
   const root = page.locator("#form-parity");
   const checkbox = root.getByRole("checkbox", {name: "Enabled"});
   const select = root.getByRole("combobox", {name: "Choice"});
@@ -361,7 +362,7 @@ test("checkbox, select and textarea retain native form behavior", async ({page})
 });
 
 test("a normal LiveComponent runs a marked handler locally and converges with the server", async ({page}) => {
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   const count = root.locator("output");
   await expect(count).toHaveText("0");
@@ -377,7 +378,7 @@ test("a normal LiveComponent runs a marked handler locally and converges with th
 });
 
 test("pending native component clicks converge after server replies", async ({page}) => {
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   const count = root.locator("output");
   await page.evaluate(() => window.liveSocket.enableLatencySim(300));
@@ -418,7 +419,7 @@ test("native actions recover reordered requests and ignore duplicates", async ({
     });
   });
 
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   await page.waitForFunction(() => window.liveSocket.isConnected());
   const root = page.locator("#native-counter");
   const add = root.getByRole("button", {name: "Add one"});
@@ -432,7 +433,7 @@ test("native actions recover reordered requests and ignore duplicates", async ({
 });
 
 test("an unmarked save reads authoritative component state", async ({page}) => {
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   await page.evaluate(() => window.liveSocket.enableLatencySim(350));
   await root.getByRole("button", {name: "Add one"}).click();
@@ -444,7 +445,7 @@ test("an unmarked save reads authoritative component state", async ({page}) => {
 });
 
 test("server-only component saves the same authoritative count", async ({page}) => {
-  await page.goto("/native-counter-server");
+  await gotoLiveLift(page, "/native-counter-server");
   const serverRoot = page.locator('section[aria-label="Native LiveComponent counter"]');
   await expect(serverRoot.locator("output")).toHaveText("0");
   await page.waitForFunction(() => window.liveSocket.isConnected());
@@ -455,7 +456,7 @@ test("server-only component saves the same authoritative count", async ({page}) 
 });
 
 test("server reset interleaved with pending predictions converges", async ({page}) => {
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   const count = root.locator("output");
   await page.evaluate(() => window.liveSocket.enableLatencySim(250));
@@ -469,7 +470,7 @@ test("server reset interleaved with pending predictions converges", async ({page
 });
 
 test("native component reconnects from the server snapshot", async ({page}) => {
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   const count = root.locator("output");
   await root.getByRole("button", {name: "Add one"}).click();
@@ -487,7 +488,7 @@ test("native component reconnects from the server snapshot", async ({page}) => {
 });
 
 test("a pending prediction is discarded after a connection cut", async ({page}) => {
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   const count = root.locator("output");
   await page.evaluate(() => window.liveSocket.enableLatencySim(500));
@@ -502,7 +503,7 @@ test("a pending prediction is discarded after a connection cut", async ({page}) 
 });
 
 test("offline clicks replay in order after the fresh LiveView snapshot", async ({page}) => {
-  await page.goto("/native-counter");
+  await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   const count = root.locator("output");
   await page.evaluate(() => window.liveSocket.disconnect());
@@ -518,7 +519,7 @@ test("offline clicks replay in order after the fresh LiveView snapshot", async (
 });
 
 test("the same LiveComponent without opt-in keeps normal server behavior", async ({page}) => {
-  await page.goto("/native-counter-server");
+  await gotoLiveLift(page, "/native-counter-server");
   const root = page.locator('section[aria-label="Native LiveComponent counter"]');
   const count = root.locator("output");
   await expect(root).not.toHaveAttribute("phx-hook", "LiveLift");
@@ -529,7 +530,7 @@ test("the same LiveComponent without opt-in keeps normal server behavior", async
 });
 
 test("native phx-change and phx-submit use the same params on client and server", async ({page}) => {
-  await page.goto("/native-form");
+  await gotoLiveLift(page, "/native-form");
   const root = page.locator("#native-form");
   await expect(root.locator("section")).toHaveAttribute("class", "native-form ");
   await expect(root.getByRole("textbox", {name: "Draft", exact: true})).not.toHaveAttribute("value");
@@ -550,7 +551,7 @@ test("native phx-change and phx-submit use the same params on client and server"
 });
 
 test("native form validates a nested field locally and on the server", async ({page}) => {
-  await page.goto("/native-form");
+  await gotoLiveLift(page, "/native-form");
   const root = page.locator("#native-form");
   const note = root.getByRole("textbox", {name: "Note"});
   await page.evaluate(() => window.liveSocket.enableLatencySim(400));
@@ -571,7 +572,7 @@ test("native form validates a nested field locally and on the server", async ({p
 });
 
 test("native phx-debounce delays prediction and flushes on blur", async ({page}) => {
-  await page.goto("/native-form");
+  await gotoLiveLift(page, "/native-form");
   const root = page.locator("#native-form");
   const draft = root.getByRole("textbox", {name: "Debounced draft"});
   const output = root.locator("output");
@@ -597,7 +598,7 @@ test("native phx-debounce delays prediction and flushes on blur", async ({page})
 });
 
 test("native submit cancels a pending debounced form change", async ({page}) => {
-  await page.goto("/native-form");
+  await gotoLiveLift(page, "/native-form");
   const root = page.locator("#native-form");
   const note = root.getByRole("textbox", {name: "Note"});
   await note.evaluate((input) => input.setAttribute("phx-debounce", "300"));
@@ -611,7 +612,7 @@ test("native submit cancels a pending debounced form change", async ({page}) => 
 });
 
 test("native assign_new reveals an initially absent field and converges", async ({page}) => {
-  await page.goto("/native-optional");
+  await gotoLiveLift(page, "/native-optional");
   const root = page.locator("#native-optional");
   await expect(root).toHaveAttribute("data-live-lift-state", /"prefix":"Fresh"/);
   await expect(root).not.toHaveAttribute("data-live-lift-state", /"draft":/);
@@ -625,7 +626,7 @@ test("native assign_new reveals an initially absent field and converges", async 
 });
 
 test("native floats preserve type and display through optimistic and authoritative updates", async ({page}) => {
-  await page.goto("/native-float");
+  await gotoLiveLift(page, "/native-float");
   const root = page.locator("#native-float");
   const output = root.locator("output");
   await expect(output).toHaveText("-0.0");
@@ -643,7 +644,7 @@ test("native floats preserve type and display through optimistic and authoritati
 });
 
 test("native cond selects a float branch without changing the LiveComponent template", async ({page}) => {
-  await page.goto("/native-float");
+  await gotoLiveLift(page, "/native-float");
   const root = page.locator("#native-float");
   await page.evaluate(() => window.liveSocket.enableLatencySim(400));
   await root.getByRole("button", {name: "Minimum one"}).click();
@@ -653,7 +654,7 @@ test("native cond selects a float branch without changing the LiveComponent temp
 });
 
 test("native case matches a typed float and converges after a prior client action", async ({page}) => {
-  await page.goto("/native-float");
+  await gotoLiveLift(page, "/native-float");
   const root = page.locator("#native-float");
   await page.evaluate(() => window.liveSocket.enableLatencySim(400));
   await root.getByRole("button", {name: "Minimum one"}).click();
@@ -665,7 +666,7 @@ test("native case matches a typed float and converges after a prior client actio
 });
 
 test("native multi-clause helper works after the marked handler", async ({page}) => {
-  await page.goto("/native-float");
+  await gotoLiveLift(page, "/native-float");
   const root = page.locator("#native-float");
   const output = root.locator("output");
   await page.evaluate(() => window.liveSocket.enableLatencySim(400));
@@ -678,7 +679,7 @@ test("native multi-clause helper works after the marked handler", async ({page})
 });
 
 test("100 opted-in islands keep their state and events isolated", async ({page}) => {
-  await page.goto("/many-islands?count=100");
+  await gotoLiveLift(page, "/many-islands?count=100");
   await expect(page.locator('#many-islands [data-live-lift-mode="component"]')).toHaveCount(100);
 
   for (const index of [1, 50, 100]) {

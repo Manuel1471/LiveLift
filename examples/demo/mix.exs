@@ -67,11 +67,11 @@ defmodule LiveLiftDemo.MixProject do
       "assets.setup": ["esbuild.install --if-missing"],
       "assets.build": [
         "compile",
-        "live_lift.compile --output assets/js/generated_views.js",
+        "live_lift.compile --split --output assets/js/generated_views.js",
         "esbuild live_lift_demo --sourcemap=external"
       ],
       "assets.deploy": [
-        "live_lift.compile --output assets/js/generated_views.js",
+        "live_lift.compile --split --output assets/js/generated_views.js",
         "esbuild live_lift_demo --minify",
         "phx.digest"
       ],

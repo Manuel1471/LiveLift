@@ -61,3 +61,9 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+if System.get_env("LIVE_LIFT_TEST_DEPLOY") == "1" do
+  config :live_lift_demo, LiveLiftDemoWeb.Endpoint,
+    cache_static_manifest: "priv/static/cache_manifest.json",
+    watchers: []
+end

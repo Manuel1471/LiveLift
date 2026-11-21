@@ -14,6 +14,10 @@ defmodule LiveLiftDemoWeb.NativeCounterLive do
     ~H"""
     <main>
       <h1>Native component migration</h1>
+      <nav aria-label="Counter examples">
+        <.link navigate={~p"/native-counter"}>Optimistic counter</.link>
+        <.link navigate={~p"/native-counter-server"}>Server counter</.link>
+      </nav>
       <.live_component
         module={@component}
         id="native-counter"
