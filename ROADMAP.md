@@ -9,74 +9,42 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 5, Funciones con la sintaxis de siempre. Próxima entrega:
-temporizadores.** Las fases S, 0, 1, 2, 3 y 4 están cerradas. La fase 8 es
-opcional y posterior a 1.0.
+**La fase 5 está activa y su entrega 5.1 son los temporizadores.** El siguiente
+paso es probar en el navegador un temporizador de LiveComponent con
+`send_update_after/3` y su reconciliación con el servidor.
 
-**Estados:** `Hecho` significa funcionalidad implementada, documentada y
-probada en su alcance; `En curso` es la única entrega activa; `En espera`
-depende de una entrega anterior; `Bloqueada` depende de cerrar otra fase.
-Una funcionalidad hecha no cierra su fase: la puerta de aceptación requiere
-verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
+### Orden de cierre
+
+| Fase | Estado | Criterio de cierre o evidencia |
+|---|---|---|
+| S, 0 y 1 | Cerradas | Spikes de API, paridad base y el mismo componente en modo servidor y cliente. Ver las fases correspondientes |
+| 2 | Cerrada | Tres casos nativos de aceptación y paridad Elixir/JS. Ver evidencia en fase 2 |
+| 3 | Cerrada | Convergencia ante reordenamiento, duplicados y reconexión. Ver evidencia en fase 3 |
+| 4 | Cerrada | Carga por isla y presupuestos de runtime y 1,000 filas verificados. Ver evidencia en fase 4 |
+| 5 | **En curso** | Cumplir 5.1 a 5.4 y repetir la regresión integral |
+| 6 | En espera de 5 | Migración, diagnóstico e instalación completos y verificados en otra app |
+| 7 y 1.0 | En espera de 6 | Compatibilidad, seguridad y operación verificadas, con revisión cruzada y dos apps reales |
+| 8 | Opcional, posterior a 1.0 | Decidir con datos de las apps piloto |
+
+### Cola de la fase 5
 
 | Orden | Entrega | Estado | Para cerrarla |
 |---|---|---|---|
-| 2.1 | Spikes, superficie nativa, plantillas, decimales, `case`, `cond`, `defp` y `\|>` | Hecho | Commits y pruebas descritos en fase 2 |
-| 2.2 | `Enum.find`, `reduce`, `sort_by`, `count`, `join`, `flat_map`, `with_index` | Hecho | Paridad y rechazos por operación |
-| 2.3a | `String.downcase` y `String.split` | Hecho | Paridad Unicode, demo y límites documentados |
-| 2.3b | `String.replace` | Hecho | Semántica, paridad, rechazos, demo y benchmarks |
-| 2.4a | Proyecciones `Map.keys` y `Map.values` | Hecho | Conteo y nombres ordenados con paridad; rechazos con ubicación |
-| 2.4b | Operaciones `List` | Hecho | Edición por índice y borrado exacto con paridad |
-| 2.5 | IR y normalización del compilador | Hecho | Pipes y condicionales normalizados, tipos de prueba y paridad |
-| 2.6 | Regresión integral y puerta 2 | Hecho | Tres casos, paridad, tres navegadores, benchmarks |
-| 3.1 | Orden de acciones e idempotencia del servidor | Hecho | Duplicados y entrega fuera de orden sin perder acciones |
-| 3.2 | Reconexión y conflictos | Hecho | Reintentos y política de conflictos con límites |
-| 3.3 | Pruebas caóticas y puerta 3 | Hecho | Convergencia y acciones aplicadas exactamente una vez |
-| 4.1 | Medición nativa y render por dependencias | Hecho | Línea base de Chromium y trabajo de DOM medido |
-| 4.2 | Diff con clave y agrupación de renders | Hecho | Foco, identidad y presupuesto de un frame |
-| 4.3 | Carga por isla y puerta 4 | Hecho | Assets y presupuesto total verificados |
-| 5.1 | Temporizadores | **En curso** | API nativa, ciclo de vida y paridad |
-| 5.2 | Validación con Ecto.Changeset | En espera | Formularios y errores equivalentes |
-| 5.3 | Comandos JS locales y lista permitida | En espera | Comandos compatibles y límites verificados |
-| 5.4 | Persistencia local y puerta 5 | En espera | Restauración, límites y regresión integral |
-| 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
-| 7 y 1.0 | Seguridad y operación | Bloqueada por 6 | Compatibilidad, revisión y apps reales |
+| 5.1 | Temporizadores | **En curso** | Ruta de LiveComponent y ruta de LiveView probadas en cliente y servidor, con reconciliación, cancelación al desmontar y política de reconexión |
+| 5.2 | Validación con `Ecto.Changeset` | En espera de 5.1 | Paridad de valores y errores en formularios válidos e inválidos |
+| 5.3 | Comandos `JS` locales y lista permitida | En espera de 5.2 | Comportamiento de los comandos admitidos y rechazo explícito del resto |
+| 5.4 | Persistencia opcional con `sessionStorage` | En espera de 5.3 | Restauración, caducidad, límites y regresión integral de la fase |
 
-**Regla de avance:** cerrar y commitear la primera entrega activa antes de
-empezar la siguiente. Cada commit de funcionalidad incluye semántica,
-paridad, rechazo cercano y documentación. Una regresión o un problema de
-seguridad interrumpe la cola hasta corregirse. La puerta cambia de estado
-solo con evidencia reproducible. `take`, `drop` y `uniq` pasaron antes de fijar
-esta cola; los detalles de fases 3–7 son inventario adelantado.
+Se trabaja en una sola entrega a la vez. Cada entrega se documenta, se
+verifica contra su criterio y se registra en su propio commit antes de activar
+la siguiente. Los pasos de investigación y sus resultados se anotan en la fase
+correspondiente. Los avances de fases futuras quedan como antecedentes
+para su verificación cuando les toque. Cada cierre enlaza evidencia
+reproducible y el commit del cambio.
 
-## Puertas de aceptación
-
-Las casillas de las fases siguientes registran trabajo individual, **no** la
-aceptación de una fase. Se cierra una puerta solo cuando se cumplen todos sus
-criterios y se conserva evidencia reproducible. El trabajo adelantado de fases
-posteriores queda registrado abajo y no cambia este orden.
-
-| Paso | Puerta de aceptación | Estado | Próximo bloqueo |
-|---|---|---|---|
-| S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
-| 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Cerrada | Ninguno |
-| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Cerrada | Ninguno |
-| 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | Cerrada | Ninguno |
-| 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | Cerrada | Ninguno |
-| 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | Abierta | Temporizadores y paridad de efectos |
-| 6. Experiencia | Auditoría, test, telemetría, documentación de migración e instalador verificados en otra app | En espera de 5 | Medición antes de optar, inspector e instalación completa |
-| 7 y 1.0 | Seguridad y compatibilidad verificadas; dos apps reales; revisión cruzada; API estable | En espera de 6 | Revisión externa, apps piloto y política de versiones |
-
-**Regla de ejecución:** terminar la primera puerta abierta antes de ampliar el
-alcance de otra fase. Una casilla adelantada sigue siendo válida como evidencia,
-pero la puerta permanece abierta hasta verificar su conjunto completo.
-
-**Registro de trabajo adelantado:** la fase 2 ya tiene listas nativas con clave,
-eventos dinámicos y formularios con mapas anidados acotados; la fase 3 tiene snapshots y reconexión
-básica; la fase 4 tiene benchmarks de 1,000 filas; las fases 6 y 7 tienen tareas
-de auditoría, paridad, pruebas de accesibilidad y límites. Los detalles y las
-limitaciones están en cada fase y en `docs/liveview-api-spikes.md`. Ninguno de
-estos avances sustituye la puerta anterior.
+Una regresión puede interrumpir la entrega activa. Se registra la corrección y
+se retoma el mismo punto de la cola. Los criterios externos de 1.0, como la
+revisión cruzada y las apps piloto, se verifican por separado.
 
 ## Principios
 
@@ -521,18 +489,23 @@ por isla. El comando reproducible es `python3 bench/island_bundle.py`.
 
 ## Fase 5: Funciones con la sintaxis de siempre (3 a 4 semanas, v0.7)
 
-- **En curso:** Temporizadores. El [spike de enrutamiento](docs/timer-routing-spike.md)
-  confirmó que `Process.send_after(self(), ...)` llega a `handle_info/2` del
-  LiveView padre. Para apuntar directamente a un LiveComponent, Phoenix
-  ofrece `send_update_after/3`. Falta la ejecución en cliente y la paridad
-  del ciclo de vida para ambas rutas.
-- **Falta:** Validación de formularios con la forma de `Ecto.Changeset`
-  (`validate_required`, `validate_length`, `validate_format`), compartida entre cliente
-  y servidor.
-- **Falta:** Comandos `JS` locales y una puerta controlada (lista permitida) hacia JavaScript.
-- **Falta:** Persistencia local opcional (`sessionStorage`).
+### 5.1 Temporizadores
+
+| Paso | Estado | Evidencia o prueba requerida |
+|---|---|---|
+| a. Spike de enrutamiento | Verificado | El [spike de enrutamiento](docs/timer-routing-spike.md) (`e3db6b1`) prueba que `Process.send_after(self(), ...)` llega al `handle_info/2` del LiveView padre. Para apuntar a un LiveComponent, Phoenix ofrece `send_update_after/3` |
+| b. Reconciliación autoritativa de `update` | Verificado | `update/2` y `update_many/1` conservan la revisión inicial y avanzan al cambiar los datos de la isla (`3052a90`). Playwright verifica en los tres navegadores que un temporizador de Phoenix actualiza la isla y que la siguiente acción conserva su secuencia |
+| c. Temporizador en el cliente de un LiveComponent | **Siguiente** | Probar una interacción con latencia, verificar un único efecto visible y la convergencia con `send_update_after/3` |
+| d. Temporizador en el cliente de un LiveView | En espera de c | Probar la ruta nativa `Process.send_after/3` y `handle_info/2` |
+| e. Verificación de ciclo de vida | En espera de d | Probar varios temporizadores, desmontaje, reconexión y rechazos con ubicación, y documentar las formas admitidas |
+
+La validación de formularios (5.2) empieza al cerrar estos pasos. Los comandos
+locales (5.3) y la persistencia (5.4) conservan el alcance de la cola.
+
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
+
+Inventario de trabajo previo para verificar cuando se active la fase.
 
 - **Previo:** `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué
   (auditoría de fuente para `use Phoenix.LiveComponent` y `use AppWeb, :live_component`).
@@ -552,6 +525,8 @@ por isla. El comando reproducible es `python3 bench/island_bundle.py`.
   que el JavaScript generado y el runtime coinciden.
 
 ## Fase 7: Seguridad y operación (4 semanas, v0.9)
+
+Inventario de trabajo previo para verificar cuando se active la fase.
 
 - **Previo:** Modelo de amenazas escrito: el estado va visible en el HTML (sin secretos), el
   estado del cliente no es de fiar, compatibilidad con CSP sin `eval`.
