@@ -14,7 +14,8 @@ restaura borradores de campos elegidos por la app. La auditoría de
 handlers y temporizadores y la medición de frecuencia y latencia
 ya están verificadas. La paridad de migración pasó en una app Phoenix
 nueva. La guía en formato diff y los diagnósticos accionables ya están
-verificados. Sigue el inspector de estado para desarrollo.
+verificados. El inspector de desarrollo también está verificado. Sigue
+la integración con Igniter y los assets versionados.
 
 ### Orden de cierre
 
@@ -606,8 +607,12 @@ compartido quedó en 8,179 bytes gzip.
   corrección y un [catálogo de errores](docs/errors/README.md). Una app Phoenix
   nueva comprobó que la auditoría y la compilación identifican la misma
   llamada rechazada. [Evidencia de diagnósticos](docs/progress/6-compiler-diagnostics.md).
-- **En curso:** Inspector de estado con viaje en el tiempo en desarrollo.
-- **Falta:** Instalador con Igniter, tipos TypeScript, paquete npm versionado, verificación de
+- **Verificado:** `53337a6` añade un inspector de desarrollo para consultar
+  predicciones, correcciones del servidor y estados anteriores. La suite
+  verifica los tres navegadores y los assets desplegados coinciden byte
+  por byte con el baseline. [Spike](docs/devtools-state-spike.md) y
+  [evidencia](docs/progress/6-state-inspector.md).
+- **En curso:** Instalador con Igniter, tipos TypeScript, paquete npm versionado, verificación de
   que el JavaScript generado y el runtime coinciden.
 
 ## Fase 7: Seguridad y operación (4 semanas, v0.9)
