@@ -8,6 +8,83 @@ defmodule LiveLift.TemplateTest do
     client_template("<strong>{@item.name}</strong>")
   end
 
+  test "native focus command pipes retain Phoenix's encoded order and targets" do
+    import Phoenix.LiveView.JS
+
+    expected = focus(to: {:inner, "#input"}) |> focus_first()
+
+    [button] =
+      Template.compile_liveview(
+        ~s'<button phx-click={Phoenix.LiveView.JS.focus(to: {:inner, "#input"}) |> Phoenix.LiveView.JS.focus_first()}>Focus</button>',
+        "focus.ex",
+        []
+      )
+
+    assert button.attrs == [%{name: "phx-click", type: "static", value: Jason.encode!(expected)}]
+  end
+
+  test "native click command allowlist rejects computed commands and nonlocal scopes" do
+    call = "Phoenix.LiveView.JS.focus()"
+    chain = Enum.map_join(1..8, " |> ", fn _ -> call end)
+
+    [button] =
+      Template.compile_liveview("<button phx-click={#{chain}}>Focus</button>", "focus.ex", [])
+
+    assert Enum.count(Jason.decode!(hd(button.attrs).value)) == 8
+
+    for expression <- [
+          "Phoenix.LiveView.JS.toggle_class(\"active\")",
+          "Phoenix.LiveView.JS.dispatch(\"test\")",
+          "Phoenix.LiveView.JS.push(\"save\")",
+          "Phoenix.LiveView.JS.focus(to: \"#global\")",
+          "Phoenix.LiveView.JS.focus(to: {:closest, \".parent\"})",
+          "Phoenix.LiveView.JS.focus(to: {:inner, \".first .second\"})",
+          "Phoenix.LiveView.JS.focus(to: @selector)",
+          "@command",
+          chain <> " |> " <> call
+        ] do
+      assert_raise ArgumentError, ~r/focus.ex:18:.*\(E053\).*outside the LiveLift island/, fn ->
+        Template.compile_liveview(
+          "<button phx-click={#{expression}}>Focus</button>",
+          "focus.ex",
+          [],
+          %{},
+          18
+        )
+      end
+    end
+
+    for prefix <- ["[", "&#91;", "&#x5b;", "&lbrack;"] do
+      assert_raise ArgumentError, ~r/focus.ex:1:.*\(E053\).*named event/, fn ->
+        Template.compile_liveview(
+          "<button phx-click='#{prefix}]'>Focus</button>",
+          "focus.ex",
+          []
+        )
+      end
+    end
+  end
+
+  test "a multiline component reports the source line of a rejected JS binding" do
+    source = ~S'''
+    defmodule LiveLift.TemplateTest.UnsupportedCommand do
+      use Phoenix.LiveComponent
+      use LiveLift
+      def render(assigns) do
+        ~H"""
+        <button phx-click={Phoenix.LiveView.JS.hide()}>Hide</button>
+        """
+      end
+      @client true
+      def handle_event("inc", _params, socket), do: {:noreply, assign(socket, :count, 1)}
+    end
+    '''
+
+    assert_raise ArgumentError, ~r/native_command.ex:6:.*\(E053\)/, fn ->
+      Code.compile_string(source, "native_command.ex")
+    end
+  end
+
   test "compiles app markup to client bindings and renders initial state" do
     compiled =
       Template.compile("<button $click=\"advance\">Add</button><output>{@score}</output>")

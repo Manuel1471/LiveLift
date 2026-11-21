@@ -120,8 +120,9 @@ defmodule LiveLift.Component do
                 "#{file}:#{line}: client function component .#{name} has multiple clauses; move it to the server"
         end
 
-        {source, _} = render_source!(body, file)
-        Map.put(acc, name, %{source: source, file: file, line: line})
+        {source, _line, template_line} = render_source!(body, file)
+
+        Map.put(acc, name, %{source: source, file: file, line: line, template_line: template_line})
       end)
 
     if Module.get_attribute(env.module, :client) == true do
@@ -139,8 +140,17 @@ defmodule LiveLift.Component do
             "#{env.file}: @client requires one handler clause per event; move extra clauses to the server"
     end
 
-    {source, line} = render_source!(render, env.file)
-    template = LiveLift.Template.compile_liveview(source, env.file, events, local_components)
+    {source, line, template_line} = render_source!(render, env.file)
+
+    template =
+      LiveLift.Template.compile_liveview(
+        source,
+        env.file,
+        events,
+        local_components,
+        template_line
+      )
+
     helpers = env.module |> Module.get_attribute(:live_lift_local_helpers) |> Enum.reverse()
 
     action_tuples =
@@ -581,7 +591,9 @@ defmodule LiveLift.Component do
   defp render_source!([do: {:sigil_H, meta, [{:<<>>, _, parts}, []]}], file)
        when is_list(parts) do
     if Enum.all?(parts, &is_binary/1) do
-      {Enum.join(parts), meta[:line] || 1}
+      line = meta[:line] || 1
+      template_line = if meta[:delimiter] == "\"\"\"", do: line + 1, else: line
+      {Enum.join(parts), line, template_line}
     else
       raise ArgumentError,
             "#{file}:#{meta[:line]}: @client requires a literal ~H render; move dynamic template construction to the server"

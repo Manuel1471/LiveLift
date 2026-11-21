@@ -121,6 +121,7 @@
 
 ### Added
 
+- Use native LiveView focus commands in literal `phx-click` bindings inside an island.
 - Preserve Phoenix's used-field markers for optimistic changeset forms.
 - Read displayed values, field usage, and error messages from native changeset forms in marked handlers.
 

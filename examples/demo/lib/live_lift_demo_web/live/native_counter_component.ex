@@ -13,6 +13,14 @@ defmodule LiveLiftDemoWeb.NativeCounterComponent do
       <button type="button" phx-click="schedule" phx-target={@myself}>Schedule label on server</button>
       <button type="button" phx-click="preview_timer" phx-target={@myself}>Schedule label locally</button>
       <span>{@label}</span>
+      <div phx-click={Phoenix.LiveView.JS.focus(to: {:inner, "#js-focus-target"})}>
+        <label>Command focus target <input id="js-focus-target" /></label>
+        <button type="button">Focus target</button>
+      </div>
+      <div phx-click={Phoenix.LiveView.JS.focus_first()}>
+        <label>First focusable field <input id="js-focus-first" /></label>
+        <button type="button">Focus first field</button>
+      </div>
     </section>
     """
   end

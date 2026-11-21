@@ -6,26 +6,26 @@ defmodule LiveLift.Template.Parser do
   alias Phoenix.LiveView.TagEngine.Parser, as: LiveViewParser
   alias LiveLift.Template.FallbackParser
 
-  @spec parse!(String.t(), String.t()) :: list()
-  def parse!(source, file) do
+  @spec parse!(String.t(), String.t(), pos_integer()) :: list()
+  def parse!(source, file, line \\ 1) do
     if System.get_env("LIVE_LIFT_FORCE_TEMPLATE_FALLBACK") == "1" do
-      return_fallback(source, file)
+      return_fallback(source, file, line)
     else
-      parse_with!(source, file, LiveViewParser)
+      parse_with!(source, file, LiveViewParser, line)
     end
   end
 
   @doc false
-  def parse_with!(source, file, parser) do
+  def parse_with!(source, file, parser, line \\ 1) do
     unless Code.ensure_loaded?(parser) and function_exported?(parser, :parse!, 2) do
-      return_fallback(source, file)
+      return_fallback(source, file, line)
     else
-      case parser.parse!(source, tag_handler: Phoenix.LiveView.HTMLEngine, file: file) do
+      case parser.parse!(source, tag_handler: Phoenix.LiveView.HTMLEngine, file: file, line: line) do
         %{nodes: nodes} when is_list(nodes) ->
-          if compatible_nodes?(nodes), do: nodes, else: return_fallback(source, file)
+          if compatible_nodes?(nodes), do: nodes, else: return_fallback(source, file, line)
 
         _ ->
-          return_fallback(source, file)
+          return_fallback(source, file, line)
       end
     end
   rescue
@@ -66,5 +66,5 @@ defmodule LiveLift.Template.Parser do
 
   defp location?(_), do: false
 
-  defp return_fallback(source, file), do: FallbackParser.parse!(source, file)
+  defp return_fallback(source, file, line), do: FallbackParser.parse!(source, file, line)
 end

@@ -83,6 +83,15 @@ Components are referenced by their full module name, for example
 the template subset. Components can contain event bindings; their parent view
 owns the actions and state. Components have no slots or independent state yet.
 
+### Native focus commands
+
+In `phx-click`, use literal, fully qualified `Phoenix.LiveView.JS.focus`
+and `Phoenix.LiveView.JS.focus_first` calls. LiveView executes the command
+on the element carrying the binding. Use a literal
+`to: {:inner, "#id"}` or `to: {:inner, ".class"}` to select a descendant.
+Commands can be piped in order, up to eight calls. [E053](errors/E053.md)
+describes rejected options and command forms.
+
 ## Action expressions
 
 ### Ecto changeset values

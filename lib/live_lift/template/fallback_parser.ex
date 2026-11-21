@@ -6,9 +6,9 @@ defmodule LiveLift.Template.FallbackParser do
   # alter browser output.
   @void_tags ~w(area base br col embed hr img input link meta param source track wbr)
 
-  @spec parse!(String.t(), String.t()) :: list()
-  def parse!(source, file) do
-    state = %{rest: source, line: 1, column: 1, file: file}
+  @spec parse!(String.t(), String.t(), pos_integer()) :: list()
+  def parse!(source, file, line \\ 1) do
+    state = %{rest: source, line: line, column: 1, file: file}
     {nodes, state} = nodes(state, nil, [])
 
     unless state.rest == "", do: error!(state, "unexpected trailing template content")

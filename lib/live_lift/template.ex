@@ -2,6 +2,7 @@ defmodule LiveLift.Template do
   @moduledoc "Parses client templates into a validated tree shared by both runtimes."
 
   alias LiveLift.Template.Expression
+  alias LiveLift.Template.JSCommand
   alias LiveLift.Template.Parser
 
   @dynamic_attributes ~w(class title aria-label value)
@@ -16,10 +17,10 @@ defmodule LiveLift.Template do
   end
 
   @doc false
-  def compile_liveview(source, file, client_events, local_components \\ %{})
+  def compile_liveview(source, file, client_events, local_components \\ %{}, line \\ 1)
       when is_binary(source) do
     source
-    |> Parser.parse!(file)
+    |> Parser.parse!(file, line)
     |> compile_parsed(file, {:liveview, client_events, local_components})
   end
 
@@ -328,8 +329,14 @@ defmodule LiveLift.Template do
         raise ArgumentError,
               "#{file}:#{meta.line}: @client supports phx-target={@myself}; move other targets to a server handler"
 
+      {"phx-click", {:expr, source, value_meta}, meta} ->
+        encoded = JSCommand.compile!(source, file, Map.get(value_meta, :line, meta.line))
+        [{"phx-click", {:string, encoded, value_meta}, meta}]
+
       {event_attr, {:string, event, _} = value, meta} = attr
       when event_attr in ~w(phx-click phx-change phx-submit) ->
+        JSCommand.reject_encoded!(event, file, meta.line)
+
         if event in events do
           directive =
             case event_attr do
@@ -540,7 +547,7 @@ defmodule LiveLift.Template do
 
         body =
           component.source
-          |> Parser.parse!(component.file)
+          |> Parser.parse!(component.file, Map.get(component, :template_line, 1))
           |> Enum.map(&adapt_liveview_node(&1, component.file, events))
           |> Enum.map(&convert_node(&1, component.file))
           |> expand_local_components(components, component.file, events, [name | stack])

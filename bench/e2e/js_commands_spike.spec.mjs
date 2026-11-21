@@ -43,3 +43,26 @@ test("JS command spike measures sticky classes and focus after an island patch",
   await expect(label).not.toHaveClass("spike-active");
   await expect(increment).toBeFocused();
 });
+
+test("native focus commands retain their binding across an optimistic render", async ({page}) => {
+  await gotoLiveLift(page, "/native-counter");
+  const root = page.locator("#native-counter");
+  const target = root.getByRole("textbox", {name: "Command focus target"});
+  const first = root.getByRole("textbox", {name: "First focusable field"});
+  const control = root.getByRole("button", {name: "Focus target", exact: true});
+  const binding = control.locator("..");
+  const original = await binding.getAttribute("phx-click");
+
+  await control.click();
+  await expect(target).toBeFocused();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "0");
+  await root.locator('button[phx-click="label"]').evaluate((button) => button.click());
+  await expect(root.locator("span")).toHaveText("ready");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await expect(target).toBeFocused();
+  await expect(binding).toHaveAttribute("phx-click", original);
+
+  await root.getByRole("button", {name: "Focus first field"}).click();
+  await expect(first).toBeFocused();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+});
