@@ -9,14 +9,15 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**La fase 5 está cerrada y la fase 6 está activa.** La persistencia
+**La fase 5 está cerrada y la fase 6 espera la prueba desde los registros públicos.** La persistencia
 restaura borradores de campos elegidos por la app. La auditoría de
 handlers y temporizadores y la medición de frecuencia y latencia
 ya están verificadas. La paridad de migración pasó en una app Phoenix
 nueva. La guía en formato diff y los diagnósticos accionables ya están
 verificados. El inspector de desarrollo y la instalación con Igniter desde
-un paquete local también están verificados. Siguen los tipos TypeScript y
-los assets versionados.
+un paquete local también están verificados. Los tipos TypeScript, el paquete
+npm y la compatibilidad de assets pasaron con artefactos locales. Falta probar
+la instalación desde Hex y npm tras la publicación humana.
 
 ### Orden de cierre
 
@@ -27,7 +28,7 @@ los assets versionados.
 | 3 | Cerrada | Convergencia ante reordenamiento, duplicados y reconexión. Ver evidencia en fase 3 |
 | 4 | Cerrada | Carga por isla y presupuestos de runtime y 1,000 filas verificados. Ver evidencia en fase 4 |
 | 5 | Cerrada | 5.1 a 5.4 verificadas y 225 pruebas en la regresión integral |
-| 6 | **En curso** | Migración, diagnóstico e instalación completos y verificados en otra app |
+| 6 | **En espera de publicación** | Migración, diagnóstico e instalación completos y verificados en otra app |
 | 7 y 1.0 | En espera de 6 | Compatibilidad, seguridad y operación verificadas, con revisión cruzada y dos apps reales |
 | 8 | Opcional, posterior a 1.0 | Decidir con datos de las apps piloto |
 
@@ -619,8 +620,13 @@ compartido quedó en 8,179 bytes gzip.
   y el rechazo sin cambios parciales. [Spike](docs/igniter-install-spike.md)
   y [evidencia](docs/progress/6-igniter-install.md). La prueba con el
   registro público espera la publicación humana.
-- **En curso:** Tipos TypeScript, paquete npm versionado y verificación de
-  que el JavaScript generado y el runtime coinciden.
+- **Verificado:** `2127494` añade tipos TypeScript y el paquete npm
+  versionado. Una app Phoenix nueva instaló los artefactos locales, compiló
+  con ambos runtimes y rechazó dos paquetes incompatibles. [Spike](docs/asset-compatibility-spike.md)
+  y [evidencia](docs/progress/6-versioned-assets.md).
+- **En espera:** Publicación humana y prueba de instalación desde Hex y
+  npm. El consumidor público está preparado y Hex aún no encuentra el
+  paquete. [Procedimiento de publicación](docs/release.md).
 
 ## Fase 7: Seguridad y operación (4 semanas, v0.9)
 
