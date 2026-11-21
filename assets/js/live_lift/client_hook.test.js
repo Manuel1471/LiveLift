@@ -541,6 +541,59 @@ test("1,000 seeded reply orders converge to the server state", () => {
   }
 });
 
+test("1,000 seeded request and reply schedules converge in action order", () => {
+  for (let seed = 1; seed <= 1_000; seed += 1) {
+    const el = element({count: "", step: 1});
+    el.dataset.liveLiftMode = "component";
+    const requests = [];
+    const replies = [];
+    const hook = {
+      ...createClientHook({"App.Score": {
+        actions: {advance: (state, event) => ({...state, count: state.count + event.params.digit})},
+        template: "<output></output>",
+      }}),
+      el,
+      pushEventTo: (_control, _event, payload, reply) => requests.push({payload, reply}),
+    };
+    hook.mounted();
+    const actions = Array.from({length: 2 + (seed % 7)}, (_, index) => String(index + 1));
+    for (const digit of actions) hook.sendOptimistic(el.controls.advance, "advance", {digit});
+
+    let random = seed;
+    function choose(list) {
+      random = (Math.imul(random, 1664525) + 1013904223) >>> 0;
+      return list.splice(random % list.length, 1)[0];
+    }
+
+    // Lose the first request, deliver a later request twice, and shuffle both directions.
+    requests.shift();
+    requests.push(requests.at(-1));
+    let ack = 0;
+    let server = "";
+    let steps = 0;
+    while (requests.length || replies.length) {
+      assert.ok(++steps < 100, `bounded recovery for seed ${seed}`);
+      if (requests.length && (!replies.length || random % 3 !== 0)) {
+        const {payload, reply} = choose(requests);
+        const sequence = payload._live_lift_seq;
+        if (sequence === ack + 1) {
+          ack = sequence;
+          server += payload.digit;
+        }
+        const snapshot = {ack_seq: ack, revision: ack, state: {count: server, step: 1}};
+        if (sequence > ack) snapshot.expected_seq = ack + 1;
+        replies.push(() => reply(snapshot));
+        if (random % 7 === 0) replies.push(() => reply(snapshot));
+      } else {
+        choose(replies)();
+      }
+    }
+    assert.equal(server, actions.join(""), `server order for seed ${seed}`);
+    assert.equal(hook.state.count, server, `convergence for seed ${seed}`);
+    assert.equal(hook.pending.length, 0, `empty queue for seed ${seed}`);
+  }
+});
+
 test("a disconnected component drops pending predictions and stale replies at snapshot", () => {
   const el = element({count: 0, step: 1});
   el.dataset.liveLiftMode = "component";
