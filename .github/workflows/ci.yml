@@ -59,6 +59,7 @@ jobs:
         run: |
           mix archive.install hex phx_new 1.8.16 --force
           sh test/integration/phoenix_consumer.sh
+          LIVE_LIFT_INTEGRATION_IGNITER=1 sh test/integration/phoenix_consumer.sh
 
   browser:
     runs-on: ubuntu-latest

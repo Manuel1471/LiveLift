@@ -42,6 +42,29 @@ as a separate opt-in and reads source without loading app macros. The
 normal compilation, parity checks and browser tests verify the migrated
 component in context.
 
+## Install with Igniter
+
+For an app that already has Igniter 0.8.5, preview and apply the installer
+using Igniter's standard commands after the matching release is available
+on Hex.
+
+```sh
+mix igniter.install live_lift@0.1.0-rc.1 --dry-run
+mix igniter.install live_lift@0.1.0-rc.1
+mix assets.build
+```
+
+For local development with an unpacked Hex tarball, Igniter accepts
+`live_lift@path:/path/to/package` in place of the registry version.
+The installer adds the generation step before esbuild in both literal
+asset alias lists, retaining existing tasks and comments. The standard
+Phoenix colocated hook map gets the LiveLift hook. For dynamic aliases,
+a custom hook factory, or another bundler, use the manual integration
+below. The asset edits are only applied after Igniter validates the plan.
+Igniter 0.8.5 can report a blocked installer with a successful process exit.
+Use `--check` when verifying an existing installation in CI so issues or
+pending edits cause a nonzero exit.
+
 ## Existing `client_template` apps
 
 The earlier API remains available and emits migration warnings. For a simple

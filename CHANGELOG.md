@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Install LiveLift assets with Igniter previews and preserve existing Phoenix asset tasks.
+
 - Inspect and browse LiveLift state history with an opt-in development panel.
 
 - Report source locations, diagnostic codes, and corrections for rejected native handlers and HEEx.
