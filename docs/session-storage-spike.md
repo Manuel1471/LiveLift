@@ -70,5 +70,23 @@ with `LIVE_LIFT_TEST_DEPLOY=1` on the same local matrix. The test
 injects the restoration. It establishes the behavior of that form
 while records, activation, expiry and other controls remain unverified.
 
+## Storage failure follow-up
+
+A sandboxed iframe with an opaque origin threw `SecurityError` on access
+to `window.sessionStorage`, before any read. In a same-origin page, a
+32 MiB test write to an existing key threw `QuotaExceededError` and left
+the preceding value intact. This measures two browser behaviors.
+The 32 MiB probe is neither a measured quota nor a LiveLift record limit.
+
+These results apply to either restoration scope. Handle access to the
+storage object as well as operations on it. Replace a previous record
+with one write so a rejected replacement leaves the preceding copy
+available.
+
+The expanded spike passed all 15 cases in development and all 15 again
+with `LIVE_LIFT_TEST_DEPLOY=1` on the same three-browser matrix. This
+tests the browser storage primitive. Recovery from these failures in
+the persistence feature remains to be verified.
+
 [ADR-0005](decisions/ADR-0005-session-storage-scope.md) records the
 restoration scopes and their acceptance checks.

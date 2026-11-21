@@ -42,4 +42,6 @@ deduplication lifetime.
 Choose the initial restoration scope before introducing a public opt-in.
 The draft option fits the existing server-authoritative protocol. Both
 options require versioned records, validation, bounded storage and
-an explicit opt-in.
+an explicit opt-in. The [storage failure follow-up](../session-storage-spike.md#storage-failure-follow-up)
+shows that obtaining storage may throw and that a rejected replacement
+can retain the previous value.

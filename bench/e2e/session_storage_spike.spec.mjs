@@ -104,3 +104,33 @@ test("restoring draft text leaves Phoenix state unchanged until native form subm
   await expect(island).toHaveAttribute(ack, "2");
   expect(JSON.parse(await island.getAttribute("data-live-lift-state")).saved).toBe(noteText);
 });
+
+test("session storage can throw before a read when the document has an opaque origin", async ({page}) => {
+  await gotoLiveLift(page, path);
+  await page.evaluate(() => {
+    const frame = document.createElement("iframe");
+    frame.id = "storage-denied";
+    frame.sandbox = "allow-scripts";
+    frame.srcdoc = "<!doctype html><body><script>try { void window.sessionStorage; } " +
+      "catch (error) { document.body.textContent = error.name; }</script></body>";
+    document.body.append(frame);
+  });
+
+  await expect(page.frameLocator("#storage-denied").locator("body")).toHaveText("SecurityError");
+});
+
+test("a rejected session storage write preserves the preceding draft", async ({page}) => {
+  await gotoLiveLift(page, path);
+  const result = await page.evaluate(({key, sample}) => {
+    const storage = window.sessionStorage;
+    storage.setItem(key, sample);
+    try {
+      storage.setItem(key, "x".repeat(32 * 1024 * 1024));
+      return {error: null};
+    } catch (error) {
+      return {error: error.name, retained: storage.getItem(key)};
+    }
+  }, {key, sample});
+
+  expect(result).toEqual({error: "QuotaExceededError", retained: sample});
+});
