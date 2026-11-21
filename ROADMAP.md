@@ -13,7 +13,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 restaura borradores de campos elegidos por la app. La auditoría de
 handlers y temporizadores y la medición de frecuencia y latencia
 ya están verificadas. La paridad de migración pasó en una app Phoenix
-nueva. Sigue la guía en formato diff para migrar desde LiveView.
+nueva. La guía en formato diff ya está verificada. Siguen los
+diagnósticos accionables del compilador.
 
 ### Orden de cierre
 
@@ -597,9 +598,11 @@ compartido quedó en 8,179 bytes gzip.
   con LiveComponent y LiveView, casos de Unicode, `nil` y el límite de
   entero seguro, y fallos de CI por omitir un evento o un módulo.
   [Evidencia de paridad](docs/progress/6-migration-parity.md).
-- **En curso:** Documentación en formato diff ("versión servidor contra versión cliente"),
-  entendible en una o dos lecturas.
-- **Falta:** Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de
+- **Verificado:** La [guía de migración en formato diff](docs/liveview-migration-diff.md)
+  muestra la auditoría, el opt-in, la paridad y la reversión. `4959080`
+  aplica el diff publicado en la app Phoenix de prueba y verifica el
+  estado antes y después. [Evidencia de la guía](docs/progress/6-migration-diff.md).
+- **En curso:** Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de
   servidor").
 - **Falta:** Inspector de estado con viaje en el tiempo en desarrollo.
 - **Falta:** Instalador con Igniter, tipos TypeScript, paquete npm versionado, verificación de
