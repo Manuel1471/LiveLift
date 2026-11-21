@@ -1,11 +1,13 @@
 function createComponentTimers(specs, hook, validateState) {
   const acknowledged = new Map();
   const provisional = new Map();
+  let firedOrder = 0;
 
   function install(entry) {
     entry.timeout = setTimeout(() => {
-      entry.fired = true;
       hook.authoritativeBatch.flush();
+      entry.fired = ++firedOrder;
+      entry.afterSequence = hook.nextSequence - 1;
       // Reproject the current base without replacing the accepted timer snapshot.
       hook.applyAuthoritative(hook.serverRevision, hook.authoritativeState, hook.ackSequence, false);
     }, Math.max(0, entry.due - performance.now()));
@@ -43,13 +45,20 @@ function createComponentTimers(specs, hook, validateState) {
     }
   }
 
-  function project(state) {
+  function replay(actions, state, pending, replayActions) {
     const fired = [...acknowledged.values(), ...provisional.values()]
       .filter(({fired}) => fired)
-      .sort((a, b) => a.due - b.due || a.seq - b.seq);
-    for (const {event} of fired) state = {...state, ...specs[event].patch};
-    if (fired.length) validateState(state);
-    return state;
+      .sort((a, b) => a.fired - b.fired);
+    let index = 0;
+    for (const {event, afterSequence} of fired) {
+      const start = index;
+      while (index < pending.length && pending[index].sequence <= afterSequence) index++;
+      state = replayActions(actions, state, pending.slice(start, index));
+      const spec = specs[event];
+      state = spec.run ? spec.run(state) : {...state, ...spec.patch};
+      validateState(state);
+    }
+    return replayActions(actions, state, pending.slice(index));
   }
 
   function clear() {
@@ -60,5 +69,5 @@ function createComponentTimers(specs, hook, validateState) {
   }
 
   accept(hook.el.dataset.liveLiftTimers, hook.ackSequence);
-  return {start, accept, project, clear};
+  return {start, accept, replay, clear};
 }

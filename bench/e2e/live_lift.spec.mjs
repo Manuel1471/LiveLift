@@ -524,10 +524,48 @@ test("a native LiveView receives root events and reconciles mailbox updates", as
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
   deliver();
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
-  await root.getByRole("button", {name: "Schedule ten"}).click();
+  await root.getByRole("button", {name: "Schedule ten on server"}).click();
   await expect(count).toHaveText("11");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+});
+
+test("a marked LiveView mailbox timer replays after earlier pending actions", async ({page}) => {
+  const delayed = [];
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      if (["predict", "double"].includes(frame?.[4]?.event)) {
+        delayed.push(() => {
+          server.send(message);
+          if (frame[4].event === "predict") server.send(message);
+        });
+      } else {
+        server.send(message);
+      }
+    });
+  });
+  await gotoLiveLift(page, "/native-timer");
+  const root = page.locator("[data-live-lift-module='LiveLiftDemoWeb.NativeTimerLive']");
+  const count = root.locator("output");
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+
+  expect(await root.evaluate((element) => {
+    element.querySelector('[phx-click="predict"]').click();
+    element.querySelector('[phx-click="double"]').click();
+    return element.querySelector("output").textContent;
+  })).toBe("2");
+  await expect(count).toHaveText("12");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  expect(delayed).toHaveLength(2);
+  delayed.forEach((deliver) => deliver());
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "4");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "3");
+  await expect(root).toHaveAttribute("data-live-lift-timers", "[]");
+  expect(JSON.parse(await root.getAttribute("data-live-lift-state")).count).toBe(12);
+  await expect(count).toHaveText("12");
 });
 
 test("server-only component saves the same authoritative count", async ({page}) => {

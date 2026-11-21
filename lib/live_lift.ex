@@ -1,9 +1,9 @@
 defmodule LiveLift do
   @moduledoc """
-  Opt-in browser interactions for Phoenix LiveComponents.
+  Opt-in browser interactions for Phoenix LiveViews and LiveComponents.
 
-  Add `use LiveLift` to a stateful LiveComponent and put `@client true` before a
-  supported `handle_event/3`. LiveLift compiles the marked handler and its
+  Add `use LiveLift` to a routed LiveView or stateful LiveComponent and put
+  `@client true` before a supported `handle_event/3`. LiveLift compiles the handler and its
   existing `~H` template for immediate browser prediction. LiveView still runs
   the original handler on server-owned state and sends the authoritative result.
 
@@ -17,6 +17,7 @@ defmodule LiveLift do
       Module.register_attribute(__MODULE__, :live_lift_marked_actions, accumulate: true)
       Module.register_attribute(__MODULE__, :live_lift_local_components, accumulate: true)
       Module.register_attribute(__MODULE__, :live_lift_local_helpers, accumulate: true)
+      Module.register_attribute(__MODULE__, :live_lift_info_callbacks, accumulate: true)
       @on_definition {LiveLift.Component, :on_definition}
       @before_compile LiveLift.Component
     end

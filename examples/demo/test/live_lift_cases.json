@@ -1,5 +1,8 @@
 [
   {"module":"LiveLiftDemoWeb.NativeTimerLive","event":"inc","state":{"count":0}},
+  {"module":"LiveLiftDemoWeb.NativeTimerLive","event":"double","state":{"count":5}},
+  {"module":"LiveLiftDemoWeb.NativeTimerLive","event":"predict","state":{"count":-10}},
+  {"module":"LiveLiftDemoWeb.NativeTimerLive","event":"predict","state":{"count":9007199254740981}},
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"inc","state":{"count":0,"label":""}},
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"inc","state":{"count":9007199254740990,"label":"ready"}},
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"label","state":{"count":1,"label":""},"params":{"label":"é 😀 <&>"}},

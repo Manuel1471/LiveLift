@@ -547,7 +547,7 @@ function frameBatch(apply) {
 }
 
 function replay(actions, state, pending, timers) {
-  if (timers) state = timers.project(state);
+  if (timers) return timers.replay(actions, state, pending, replay);
   for (const {action, eventData} of pending) {
     state = actions[action](state, eventData);
     validateState(state);

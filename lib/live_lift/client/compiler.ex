@@ -475,6 +475,7 @@ defmodule LiveLift.Client.Compiler do
       "export const actions = {\n" <>
       Enum.map_join(entries, ",\n", &("  " <> &1)) <>
       "\n};\n" <>
+      "export const timers = #{timer_specs(component_timers(module))};\n" <>
       if(is_list(template),
         do: "export const template = #{Jason.encode!(template)};\n",
         else: ""
@@ -514,10 +515,23 @@ defmodule LiveLift.Client.Compiler do
         ""
 
       timers ->
-        encoded = timers |> LiveLift.FloatWire.encode() |> Jason.encode!()
-        ", timers: (hook, validate) => createComponentTimers(#{encoded}, hook, validate)"
+        ", timers: (hook, validate) => createComponentTimers(#{timer_specs(timers)}, hook, validate)"
     end
   end
+
+  defp timer_specs(timers) do
+    bindings =
+      Enum.map_join(timers, ", ", fn {event, timer} ->
+        "#{Jason.encode!(event)}: #{timer_spec(timer)}"
+      end)
+
+    "{#{bindings}}"
+  end
+
+  defp timer_spec(%{delay: delay, action: {name, args, body}}),
+    do: "{delay: #{delay}, #{compile_action(name, args, body)}}"
+
+  defp timer_spec(timer), do: timer |> LiveLift.FloatWire.encode() |> Jason.encode!()
 
   defp component_timers(module) do
     if function_exported?(module, :__live_lift_component_timers__, 0),

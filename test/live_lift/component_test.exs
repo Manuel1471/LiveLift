@@ -609,6 +609,36 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  test "process timer rejections identify the scheduling source and native alternative" do
+    for {behaviour, call, callback, reason} <- [
+          {"LiveComponent", "self(), :tick, 0", "", "use send_update_after/3"},
+          {"LiveView", "self(), {:tick, 1}, 0", "", "literal atom message"},
+          {"LiveView", "self(), :tick, 0", "", "define an unguarded handle_info"},
+          {"LiveView", "self(), :tick, 0",
+           "def handle_info(_other, socket), do: {:noreply, socket}\n" <>
+             "def handle_info(:tick, socket), do: {:noreply, assign(socket, :value, 1)}",
+           "before any catch-all"}
+        ] do
+      source = """
+      defmodule LiveLift.ComponentTest.UnsupportedProcessTimer do
+        use Phoenix.#{behaviour}
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@value}</output>"
+        @client true
+        def handle_event("run", _params, socket) do
+          Process.send_after(#{call})
+          {:noreply, socket}
+        end
+        #{callback}
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/process_timer.ex:7: unsupported @client Process.send_after\/3:.*#{reason}.*keep scheduling on the server/,
+                   fn -> Code.compile_string(source, "process_timer.ex") end
+    end
+  end
+
   test "unpublished handler forms fail at their source before generating JavaScript" do
     expressions = [
       "Float.round(1.5, 1)",

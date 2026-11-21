@@ -48,6 +48,14 @@ defmodule LiveLift.Component.Timer do
   def extract(_body, _params, _socket, _env), do: nil
 
   def validate!(%{patch: patch}, fields, env, line) do
+    if Phoenix.LiveView in (Module.get_attribute(env.module, :behaviour) || []) do
+      error!(
+        env.file,
+        line,
+        "use Process.send_after/3 to schedule a callback on the LiveView itself"
+      )
+    end
+
     if Module.defines?(env.module, {:update, 2}, :def) or
          Module.defines?(env.module, {:update_many, 1}, :def) do
       error!(env.file, line, "the component must use Phoenix's default update callback")
@@ -61,7 +69,9 @@ defmodule LiveLift.Component.Timer do
     end
   end
 
-  def schedule(socket, event, seq, %{delay: delay, patch: patch}) do
+  def validate!(%{message: _}, _fields, _env, _line), do: :ok
+
+  def schedule(socket, event, seq, %{delay: delay} = spec) do
     timers = timers(socket.assigns)
 
     if map_size(timers) >= @max_pending do
@@ -69,33 +79,45 @@ defmodule LiveLift.Component.Timer do
     else
       id = Map.get(socket.assigns, :__live_lift_revision, 0) + 1
       token = make_ref()
-      timer = %{token: token, event: event, seq: seq, due: now() + delay, patch: patch}
+      effect = Map.take(spec, [:message, :patch])
+      timer = %{token: token, event: event, seq: seq, due: now() + delay, effect: effect}
 
-      Phoenix.LiveView.send_update_after(
-        socket.assigns.myself,
-        %{@delivery => {id, token}},
-        delay
-      )
-
+      send_delivery(socket, effect, id, token, delay)
       {:noreply, Phoenix.Component.assign(socket, @queue, Map.put(timers, id, timer))}
     end
   end
 
   def update(%{@delivery => {id, token}}, socket) when is_reference(token) do
-    timers = timers(socket.assigns)
-
-    case Map.get(timers, id) do
-      %{token: ^token, patch: patch} ->
-        socket
-        |> Phoenix.Component.assign(patch)
-        |> Phoenix.Component.assign(@queue, Map.delete(timers, id))
-
-      _ ->
-        socket
+    case take_delivery(socket, id, token) do
+      {:ok, %{patch: patch}, updated} -> Phoenix.Component.assign(updated, patch)
+      :error -> socket
     end
   end
 
   def update(assigns, socket), do: Phoenix.Component.assign(socket, assigns)
+
+  def take_delivery(socket, id, token) do
+    timers = timers(socket.assigns)
+
+    case Map.get(timers, id) do
+      %{token: ^token, effect: effect} ->
+        {:ok, effect, Phoenix.Component.assign(socket, @queue, Map.delete(timers, id))}
+
+      _ ->
+        :error
+    end
+  end
+
+  defp send_delivery(_socket, %{message: _}, id, token, delay),
+    do: Process.send_after(self(), {@delivery, id, token}, delay)
+
+  defp send_delivery(socket, %{patch: _}, id, token, delay),
+    do:
+      Phoenix.LiveView.send_update_after(
+        socket.assigns.myself,
+        %{@delivery => {id, token}},
+        delay
+      )
 
   def snapshot(assigns) do
     time = now()

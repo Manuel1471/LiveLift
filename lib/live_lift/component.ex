@@ -2,7 +2,7 @@ defmodule LiveLift.Component do
   @moduledoc false
 
   alias LiveLift.FloatWire
-  alias LiveLift.Component.Timer
+  alias LiveLift.Component.{ProcessTimer, Timer}
 
   def on_definition(env, :def, :render, [_assigns], _guards, body) do
     if Module.get_attribute(env.module, :client) == true do
@@ -20,7 +20,9 @@ defmodule LiveLift.Component do
               "#{env.file}:#{env.line}: @client requires a literal event name and no guard; move this handler to the server"
       end
 
-      timer = Timer.extract(body, params, socket, env)
+      timer =
+        Timer.extract(body, params, socket, env) ||
+          ProcessTimer.extract(body, params, socket, env)
 
       action =
         if timer do
@@ -44,6 +46,19 @@ defmodule LiveLift.Component do
     end
 
     Module.delete_attribute(env.module, :client)
+  end
+
+  def on_definition(env, :def, :handle_info, [message, socket], guards, body) do
+    if Module.get_attribute(env.module, :client) == true do
+      raise ArgumentError,
+            "#{env.file}:#{env.line}: mark the scheduling handle_event/3; LiveLift derives the referenced handle_info/2"
+    end
+
+    Module.put_attribute(
+      env.module,
+      :live_lift_info_callbacks,
+      {message, socket, guards, body, env.file, env.line}
+    )
   end
 
   def on_definition(env, kind, name, [assigns_arg], guards, body)
@@ -136,12 +151,22 @@ defmodule LiveLift.Component do
         action
       end)
 
-    fields = state_fields(template, action_tuples)
-    optional_fields = optional_state_fields(action_tuples)
+    callbacks = env.module |> Module.get_attribute(:live_lift_info_callbacks) |> Enum.reverse()
+
+    timers =
+      for {event, _action, {timer, line}, file, _} <- actions,
+          into: %{},
+          do: {event, {resolve_timer(timer, callbacks, helpers, file, line), line}}
+
+    state_actions =
+      action_tuples ++ for {_event, {%{action: action}, _line}} <- timers, do: action
+
+    fields = state_fields(template, state_actions)
+    optional_fields = optional_state_fields(state_actions)
 
     timers =
       Map.new(
-        for {event, _action, {timer, line}, _file, _} <- actions do
+        for {event, {timer, line}} <- timers do
           Timer.validate!(timer, fields, env, line)
           {event, timer}
         end
@@ -149,7 +174,7 @@ defmodule LiveLift.Component do
 
     lifecycle =
       if live_view?(env.module) do
-        live_view_wrappers(env.module)
+        live_view_wrappers(env.module, map_size(timers) > 0)
       else
         [component_mount_wrapper(env.module), update_wrapper(env.module, map_size(timers) > 0)]
       end
@@ -260,6 +285,11 @@ defmodule LiveLift.Component do
   defp live_view?(module),
     do: Phoenix.LiveView in (Module.get_attribute(module, :behaviour) || [])
 
+  defp resolve_timer(%{message: _} = timer, callbacks, helpers, file, line),
+    do: ProcessTimer.compile!(timer, callbacks, helpers, file, line)
+
+  defp resolve_timer(timer, _callbacks, _helpers, _file, _line), do: timer
+
   defp component_mount_wrapper(module) do
     if Module.defines?(module, {:mount, 1}, :def) do
       quote do
@@ -276,7 +306,7 @@ defmodule LiveLift.Component do
     end
   end
 
-  defp live_view_wrappers(module) do
+  defp live_view_wrappers(module, timed?) do
     mount =
       if Module.defines?(module, {:mount, 3}, :def) do
         quote do
@@ -294,26 +324,54 @@ defmodule LiveLift.Component do
         end
       end
 
-    callbacks =
-      for {callback, args} <- [
-            {:handle_info, Macro.generate_arguments(2, __MODULE__)},
-            {:handle_params, Macro.generate_arguments(3, __MODULE__)}
-          ],
-          Module.defines?(module, {callback, length(args)}, :def) do
+    params =
+      if Module.defines?(module, {:handle_params, 3}, :def) do
         quote do
-          defoverridable [{unquote(callback), unquote(length(args))}]
+          defoverridable handle_params: 3
 
-          def unquote(callback)(unquote_splicing(args)) do
+          def handle_params(params, url, socket) do
             LiveLift.Component.sync_view_callback(
-              super(unquote_splicing(args)),
-              unquote(List.last(args)),
+              super(params, url, socket),
+              socket,
               __MODULE__
             )
           end
         end
       end
 
-    [mount | callbacks]
+    [mount, params, live_view_message_wrapper(module, timed?)]
+  end
+
+  defp live_view_message_wrapper(module, timed?) do
+    if Module.defines?(module, {:handle_info, 2}, :def) do
+      timer_delivery =
+        if timed? do
+          quote do
+            def handle_info({:__live_lift_timer, id, token}, socket) when is_reference(token) do
+              case LiveLift.Component.Timer.take_delivery(socket, id, token) do
+                {:ok, %{message: message}, updated} ->
+                  LiveLift.Component.sync_view_callback(
+                    super(message, updated),
+                    socket,
+                    __MODULE__
+                  )
+
+                :error ->
+                  {:noreply, socket}
+              end
+            end
+          end
+        end
+
+      quote do
+        defoverridable handle_info: 2
+        unquote(timer_delivery)
+
+        def handle_info(message, socket) do
+          LiveLift.Component.sync_view_callback(super(message, socket), socket, __MODULE__)
+        end
+      end
+    end
   end
 
   defp update_wrapper(module, timed?) do

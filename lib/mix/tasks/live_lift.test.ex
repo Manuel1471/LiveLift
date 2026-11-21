@@ -128,7 +128,7 @@ defmodule Mix.Tasks.LiveLift.Test do
     unless Code.ensure_loaded?(module) and
              function_exported?(module, :__live_lift_client_actions__, 0) and
              function_exported?(module, :__live_lift_component_fields__, 0) do
-      Mix.raise("#{module_name} is not an opted-in LiveLift LiveComponent")
+      Mix.raise("#{module_name} is not an opted-in LiveLift LiveView or LiveComponent")
     end
 
     unless LiveLift.Component.enabled?(module) do
@@ -187,30 +187,55 @@ defmodule Mix.Tasks.LiveLift.Test do
 
     socket = %Phoenix.LiveView.Socket{assigns: assigns}
 
-    {:reply, %{state: elixir_state}, _socket} =
+    elixir_result =
       Task.async(fn ->
-        module.handle_event(event, Map.put(params, "_live_lift_seq", 1), socket)
+        {:reply, %{state: state}, next} =
+          module.handle_event(event, Map.put(params, "_live_lift_seq", 1), socket)
+
+        %{state: state, delayed: delayed_state(module, event, next, fields, optional)}
       end)
       |> Task.await()
 
+    event_key = Jason.encode!(event)
+
     source =
       LiveLift.Client.Compiler.compile_module(module) <>
-        "\nconsole.log(JSON.stringify(actions[#{Jason.encode!(event)}](#{state |> LiveLift.FloatWire.encode() |> Jason.encode!()}, {params: #{Jason.encode!(params)}, value: null, checked: false})));\n"
+        "\nconst state = actions[#{event_key}](#{state |> LiveLift.FloatWire.encode() |> Jason.encode!()}, {params: #{Jason.encode!(params)}, value: null, checked: false});\n" <>
+        "console.log(JSON.stringify({state, delayed: timers[#{event_key}]?.run?.(state) ?? null}));\n"
 
     output = run_javascript!(source)
 
-    javascript_state = Jason.decode!(output)
-    elixir_state = elixir_state |> Jason.encode!() |> Jason.decode!()
+    javascript_result = Jason.decode!(output)
+    elixir_result = elixir_result |> Jason.encode!() |> Jason.decode!()
 
-    if javascript_state != elixir_state do
+    if javascript_result != elixir_result do
       Mix.raise(
         "Elixir/JavaScript mismatch for #{module_name}.#{event}: " <>
-          "Elixir=#{inspect(elixir_state)} JavaScript=#{inspect(javascript_state)}"
+          "Elixir=#{inspect(elixir_result)} JavaScript=#{inspect(javascript_result)}"
       )
     end
 
     Mix.shell().info("Parity passed: #{module_name}.handle_event(#{inspect(event)})")
     {module, event}
+  end
+
+  defp delayed_state(module, event, socket, fields, optional) do
+    timers =
+      if function_exported?(module, :__live_lift_component_timers__, 0),
+        do: module.__live_lift_component_timers__(),
+        else: %{}
+
+    case Map.get(timers, event) do
+      %{message: message} ->
+        {:noreply, delivered} = module.handle_info(message, socket)
+
+        delivered.assigns
+        |> LiveLift.Component.state!(fields, optional)
+        |> LiveLift.FloatWire.encode()
+
+      _ ->
+        nil
+    end
   end
 
   defp decode_map!(json, label) do

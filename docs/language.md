@@ -93,6 +93,22 @@ synchronous handler state is unchanged. See the
 the supported patch shape. Process mailbox callbacks are outside this
 LiveComponent form.
 
+A routed LiveView can opt in with `use LiveLift` beneath its LiveView
+declaration. A marked event can call `Process.send_after(self(), :tick, 250)`
+and return `{:noreply, socket}`. The first matching `handle_info(:tick, socket)`
+must be unguarded and return a socket updated by the supported synchronous
+operations. LiveLift derives that callback automatically. Both the message
+atom and the delay (0 to 60,000 milliseconds) are literals. The scheduler
+handles one message per call and shares the 32-timer instance limit.
+Other destinations, dynamic payloads, and callbacks using effects such as
+I/O belong in unmarked server code.
+
+The browser applies the callback in the order the local timer fires, after
+any pending actions already taken. The LiveView runs the original
+`handle_info/2` on its current assigns when its own process timer fires. The
+result is authoritative when network delay changes the execution order.
+Try the native timer demo at `/native-timer` in the example app.
+
 `defclient` supports safe integer, finite binary64 float, string, boolean, and `nil` literals;
 atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);
 numeric `+`, `-`, `*`, integer-only `rem/2`, and numeric comparisons; `==`, `!=`;
