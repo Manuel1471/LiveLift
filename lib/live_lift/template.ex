@@ -330,8 +330,15 @@ defmodule LiveLift.Template do
               "#{file}:#{meta.line}: @client supports phx-target={@myself}; move other targets to a server handler"
 
       {"phx-click", {:expr, source, value_meta}, meta} ->
-        encoded = JSCommand.compile!(source, file, Map.get(value_meta, :line, meta.line))
-        [{"phx-click", {:string, encoded, value_meta}, meta}]
+        line = Map.get(value_meta, :line, meta.line)
+        {encoded, preserves_classes?} = JSCommand.compile!(source, file, line)
+
+        if preserves_classes?, do: JSCommand.reject_delayed!(attrs, file, line)
+
+        [
+          {"phx-click",
+           {:string, encoded, Map.put(value_meta, :preserves_classes, preserves_classes?)}, meta}
+        ]
 
       {event_attr, {:string, event, _} = value, meta} = attr
       when event_attr in ~w(phx-click phx-change phx-submit) ->
@@ -722,6 +729,9 @@ defmodule LiveLift.Template do
 
   defp parse_loop({_, _, meta}, file),
     do: raise(ArgumentError, "#{file}:#{meta.line}: :for requires an Elixir expression")
+
+  defp convert_attr({"phx-click", {:string, value, %{preserves_classes: true}}, _}, _file),
+    do: %{name: "phx-click", value: value, type: "static", preserves_classes: true}
 
   defp convert_attr({name, {:string, value, _}, meta}, file) do
     validate_phx_value_name!(name, file, meta.line)

@@ -66,3 +66,49 @@ test("native focus commands retain their binding across an optimistic render", a
   await expect(first).toBeFocused();
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
 });
+
+test("native class commands match LiveView across optimistic and server patches", async ({page}) => {
+  for (const route of ["/native-counter-server", "/native-counter"]) {
+    await gotoLiveLift(page, route);
+    const root = page.getByRole("region", {name: "Native LiveComponent counter"});
+    const add = root.locator("#class-add");
+    const remove = root.locator("#class-remove");
+    const toggle = root.locator("#class-toggle");
+
+    // Cancel after LiveLift sees the click and before Phoenix can execute it.
+    await add.evaluate((target) => {
+      const island = target.closest("#native-counter") ?? target.closest("section");
+      island.parentElement.addEventListener("click", (event) => event.stopPropagation(), {once: true});
+    });
+    await add.click();
+    await add.evaluate((button) => {
+      button.disabled = true;
+      button.dispatchEvent(new MouseEvent("click", {bubbles: true}));
+      button.disabled = false;
+    });
+    await root.getByRole("button", {name: "Set label"}).click();
+    await expect(toggle).toHaveText("ready");
+    await expect(add).toHaveClass("class-sample ready");
+
+    await add.click();
+    await root.getByRole("button", {name: "Remove initial style"}).click();
+    await root.getByRole("button", {name: "Toggle accent"}).click();
+    await expect(add).toHaveClass("class-sample ready accent");
+    await expect(remove).toHaveClass("class-sample ready");
+    await expect(toggle).toHaveClass("class-sample ready accent");
+
+    await root.getByRole("button", {name: "Save on server"}).click();
+    await expect(toggle).toHaveText("Saved 0");
+    await expect(add).toHaveClass("class-sample Saved 0 accent");
+    await expect(remove).toHaveClass("class-sample Saved 0");
+    await expect(toggle).toHaveClass("class-sample Saved 0 accent");
+
+    await root.getByRole("button", {name: "Toggle accent"}).click();
+    await expect(toggle).toHaveClass("class-sample Saved 0");
+    await root.getByRole("button", {name: "Set label"}).click();
+    await expect(toggle).toHaveText("ready");
+    await expect(add).toHaveClass("class-sample ready accent");
+    await expect(remove).toHaveClass("class-sample ready");
+    await expect(toggle).toHaveClass("class-sample ready");
+  }
+});

@@ -10,6 +10,22 @@ defmodule LiveLiftDemoWeb.NativeCounterServerComponent do
       <output aria-live="polite">{@count}</output>
       <button type="button" phx-click="label" phx-value-label="ready" phx-target={@myself}>Set label</button>
       <span>{@label}</span>
+      <button
+        type="button"
+        id="class-add"
+        class={["class-sample", @label]}
+        phx-click={Phoenix.LiveView.JS.add_class("accent")}
+      >
+        Add accent
+      </button>
+      <div phx-click={Phoenix.LiveView.JS.remove_class("initial", to: {:inner, ".class-sample"})}>
+        <button type="button">Remove initial style</button>
+        <p id="class-remove" class={["class-sample", "initial", @label]}>{@label}</p>
+      </div>
+      <div phx-click={Phoenix.LiveView.JS.toggle_class("accent", to: {:inner, ".class-sample"})}>
+        <button type="button">Toggle accent</button>
+        <p id="class-toggle" class={["class-sample", @label]}>{@label}</p>
+      </div>
     </section>
     """
   end

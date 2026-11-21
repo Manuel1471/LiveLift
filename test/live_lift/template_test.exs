@@ -23,6 +23,45 @@ defmodule LiveLift.TemplateTest do
     assert button.attrs == [%{name: "phx-click", type: "static", value: Jason.encode!(expected)}]
   end
 
+  test "native class command pipes retain Phoenix's encoded order and targets" do
+    import Phoenix.LiveView.JS
+
+    expected =
+      add_class("active selected", to: {:inner, ".target"})
+      |> remove_class("old")
+      |> toggle_class("active")
+
+    [element] =
+      Template.compile_liveview(
+        ~s'<div phx-click={Phoenix.LiveView.JS.add_class("active selected", to: {:inner, ".target"}) |> Phoenix.LiveView.JS.remove_class("old") |> Phoenix.LiveView.JS.toggle_class("active")}><div class="target"></div></div>',
+        "classes.ex",
+        []
+      )
+
+    assert element.attrs == [
+             %{
+               name: "phx-click",
+               type: "static",
+               value: Jason.encode!(expected),
+               preserves_classes: true
+             }
+           ]
+
+    for attr <- ~w(phx-debounce phx-throttle) do
+      assert_raise ArgumentError,
+                   ~r/classes.ex:7:.*\(E053\).*without phx-debounce or phx-throttle/,
+                   fn ->
+                     Template.compile_liveview(
+                       ~s'<input #{attr}="100" phx-click={Phoenix.LiveView.JS.add_class("active")} />',
+                       "classes.ex",
+                       [],
+                       %{},
+                       7
+                     )
+                   end
+    end
+  end
+
   test "native click command allowlist rejects computed commands and nonlocal scopes" do
     call = "Phoenix.LiveView.JS.focus()"
     chain = Enum.map_join(1..8, " |> ", fn _ -> call end)
@@ -33,7 +72,12 @@ defmodule LiveLift.TemplateTest do
     assert Enum.count(Jason.decode!(hd(button.attrs).value)) == 8
 
     for expression <- [
-          "Phoenix.LiveView.JS.toggle_class(\"active\")",
+          ~s'Phoenix.LiveView.JS.toggle_class("active", transition: "fade")',
+          ~s'Phoenix.LiveView.JS.add_class("active", to: "body")',
+          ~s'Phoenix.LiveView.JS.add_class("a b c d e f g h i")',
+          ~s'Phoenix.LiveView.JS.remove_class("")',
+          ~s'Phoenix.LiveView.JS.toggle_class("active:focus")',
+          "Phoenix.LiveView.JS.toggle_class(@classes)",
           "Phoenix.LiveView.JS.dispatch(\"test\")",
           "Phoenix.LiveView.JS.push(\"save\")",
           "Phoenix.LiveView.JS.focus(to: \"#global\")",

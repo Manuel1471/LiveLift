@@ -83,14 +83,22 @@ Components are referenced by their full module name, for example
 the template subset. Components can contain event bindings; their parent view
 owns the actions and state. Components have no slots or independent state yet.
 
-### Native focus commands
+### Native click commands
 
-In `phx-click`, use literal, fully qualified `Phoenix.LiveView.JS.focus`
-and `Phoenix.LiveView.JS.focus_first` calls. LiveView executes the command
-on the element carrying the binding. Use a literal
-`to: {:inner, "#id"}` or `to: {:inner, ".class"}` to select a descendant.
-Commands can be piped in order, up to eight calls. [E053](errors/E053.md)
-describes rejected options and command forms.
+In `phx-click`, use literal, fully qualified `Phoenix.LiveView.JS` calls to
+`focus`, `focus_first`, `add_class`, `remove_class`, or `toggle_class`.
+Use the bound element or select descendants with `to: {:inner, "#id"}`
+or `to: {:inner, ".class"}`. Pipes run in native LiveView order, with up to
+eight calls. The [native counter fixture](../examples/demo/lib/live_lift_demo_web/live/native_counter_component.ex)
+uses these same bindings.
+
+Phoenix executes the commands. A class effect stays on its target while
+LiveLift reuses that DOM node. Changes to the template's other classes
+still apply. Each class call accepts one to eight space-separated names
+with letters, digits, underscores or hyphens, starting with a letter or
+underscore and limited to 64 characters per name. Class persistence uses
+the default LiveView selector behavior and requires immediate click bindings.
+[E053](errors/E053.md) lists unsupported forms.
 
 ## Action expressions
 

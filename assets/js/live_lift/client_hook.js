@@ -482,27 +482,29 @@ function reconcile(parent, desired) {
 }
 
 function patchNode(current, next) {
-  if (current.nodeType === 3 || current.nodeType === 8) {
+  if (current.nodeType !== 1) {
     if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
     return;
   }
   renderedTemplates.set(current, renderedTemplates.get(next));
-  const hadValueAttribute = current.nodeType === 1 && current.hasAttribute("value");
+  current.__liveLiftPatch?.(next);
+  const hadValueAttribute = current.hasAttribute("value");
   for (const attr of [...current.attributes]) {
     // The component CID belongs to LiveView and is supplied by its original ~H render.
     if (attr.name === "phx-target") continue;
     if (!next.hasAttribute(attr.name)) current.removeAttribute(attr.name);
   }
-  for (const attr of [...next.attributes]) {
+  for (const attr of next.attributes) {
     if (current.getAttribute(attr.name) !== attr.value) current.setAttribute(attr.name, attr.value);
   }
-  if (current.tagName === "INPUT" && next.hasAttribute("value") && current.value !== next.value) {
-    current.value = next.value;
+  if (current.tagName === "INPUT") {
+    if (next.hasAttribute("value")) {
+      if (current.value !== next.value) current.value = next.value;
+    } else if (hadValueAttribute) {
+      current.value = "";
+    }
+    if (current.checked !== next.checked) current.checked = next.checked;
   }
-  if (current.tagName === "INPUT" && !next.hasAttribute("value") && hadValueAttribute) {
-    current.value = "";
-  }
-  if (current.tagName === "INPUT" && current.checked !== next.checked) current.checked = next.checked;
   if (current.tagName === "OPTION" && current.selected !== next.selected) current.selected = next.selected;
   if (current.hidden !== next.hidden) current.hidden = next.hidden;
   reconcile(current, [...next.childNodes]);
@@ -602,7 +604,7 @@ export function createClientHook(views) {
     },
 
     mountView(view, views, refresh = false) {
-      const formParams = view.form?.(this.el, serializeForm) ?? serializeForm;
+      const formParams = view.prepare?.(this.el, serializeForm) ?? serializeForm;
       this.view = view;
       this.viewRegistry = views;
       this.state = JSON.parse(this.el.dataset.liveLiftState);
