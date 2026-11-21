@@ -9,9 +9,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**La fase 5 está activa y su entrega 5.2 es la validación con `Ecto.Changeset`.**
-El siguiente paso es verificar un formulario nativo completo, incluida la
-generación de metadatos de campos usados durante la interacción.
+**La fase 5 está activa y su entrega 5.3 aborda los comandos `JS` locales.**
+El siguiente paso es comprobar qué comandos nativos se pueden conservar
+al reconciliar una isla y delimitar la lista permitida.
 
 ### Orden de cierre
 
@@ -31,8 +31,8 @@ generación de metadatos de campos usados durante la interacción.
 | Orden | Entrega | Estado | Para cerrarla |
 |---|---|---|---|
 | 5.1 | Temporizadores | Cerrada | Ruta de LiveComponent y ruta de LiveView probadas en cliente y servidor, con reconciliación, cancelación al desmontar y política de reconexión |
-| 5.2 | Validación con `Ecto.Changeset` | **En curso** | Paridad de valores y errores en formularios válidos e inválidos |
-| 5.3 | Comandos `JS` locales y lista permitida | En espera de 5.2 | Comportamiento de los comandos admitidos y rechazo explícito del resto |
+| 5.2 | Validación con `Ecto.Changeset` | Cerrada | Paridad de valores y errores en formularios válidos e inválidos |
+| 5.3 | Comandos `JS` locales y lista permitida | **En curso** | Comportamiento de los comandos admitidos y rechazo explícito del resto |
 | 5.4 | Persistencia opcional con `sessionStorage` | En espera de 5.3 | Restauración, caducidad, límites y regresión integral de la fase |
 
 Se trabaja en una sola entrega a la vez. Cada entrega se documenta, se
@@ -531,11 +531,17 @@ con Ecto y Phoenix. La primera proyección compila `.valid?` y
 `Ecto.Changeset.get_field/2` tras `validate_required/3`,
 `validate_length/3` y `validate_format/4`. El arnés
 `elixir bench/changeset_parity.exs` compara 1,440 entradas con Ecto real.
-`2b80b10` verifica además la proyección del valor mostrado, los errores
-con su conteo y la lectura de campos usados. Los mismos 1,440 casos pasaron
-en Chromium, Firefox y WebKit. Quedan por generar los metadatos de campos
-usados al interactuar con el formulario y verificar el flujo completo.
+`2b80b10` verifica además la proyección del valor mostrado, los errores con
+su conteo y la lectura de campos usados. Los mismos 1,440 casos pasaron
+en Chromium, Firefox y WebKit.
 [Evidencia y límites de la proyección](docs/progress/5.2-changeset-form-projection.md).
+
+`2a1d8aa` verificó el formulario nativo completo por WebSocket. El navegador
+muestra el error antes de entregar el evento, luego converge con Ecto al
+confirmar el resultado. Los tres navegadores comprobaron campos sin usar,
+espacios en blanco, entradas válidas y envío del formulario. El núcleo
+quedó en 8,182 bytes gzip.
+[Evidencia de cierre](docs/progress/5.2-changeset-verification.md).
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
