@@ -72,6 +72,51 @@ defmodule ConsumerLiftWeb.CounterComponent do
 end
 EOF
 
+cat > "$consumer_dir/consumer_lift/lib/consumer_lift_web/live/mailbox_live.ex" <<'EOF'
+defmodule ConsumerLiftWeb.MailboxLive do
+  use Phoenix.LiveView
+  use LiveLift
+
+  def render(assigns) do
+    ~H"""
+    <button phx-click="preview">{@label}</button>
+    """
+  end
+
+  @client true
+  def handle_event("preview", _params, socket) do
+    Process.send_after(self(), :ready, 50)
+    {:noreply, socket}
+  end
+
+  def handle_info(:ready, socket) do
+    {:noreply, assign(socket, :label, "Prêt 👩‍👩‍👧‍👦")}
+  end
+end
+EOF
+
+python3 - "$consumer_dir/consumer_lift/test" <<'PYTHON'
+from pathlib import Path
+import json
+import sys
+
+directory = Path(sys.argv[1])
+counter = "ConsumerLiftWeb.CounterComponent"
+mailbox = "ConsumerLiftWeb.MailboxLive"
+cases = [
+    {"module": counter, "event": "inc", "state": {"count": 9007199254740990, "saved": None}},
+    {"module": counter, "event": "preview", "state": {"count": 0, "saved": "Déjà"}},
+    {"module": mailbox, "event": "preview", "state": {"label": None}},
+]
+variants = {
+    "live_lift_cases.json": cases,
+    "missing_event.json": [case for case in cases if case["module"] != counter or case["event"] != "preview"],
+    "missing_module.json": [case for case in cases if case["module"] != mailbox],
+}
+for name, selected in variants.items():
+    (directory / name).write_text(json.dumps(selected), encoding="utf-8")
+PYTHON
+
 mkdir -p "$consumer_dir/consumer_lift/test/consumer_lift_web/live"
 cat > "$consumer_dir/consumer_lift/test/consumer_lift_web/live/counter_live_test.exs" <<'EOF'
 defmodule ConsumerLiftWeb.CounterLiveTest do
@@ -112,7 +157,20 @@ EOF
   mix test test/consumer_lift_web/live/counter_live_test.exs
   mix live_lift.audit --path lib/consumer_lift_web/live/counter_component.ex >audit.log
   rg -q 'ConsumerLiftWeb.CounterComponent.handle_event\("preview"\): compatible' audit.log
-  mix live_lift.test ConsumerLiftWeb.CounterComponent --event inc --state '{"count":0,"saved":""}'
+  mix live_lift.test --cases test/live_lift_cases.json >parity.log
+  rg -q '3 parity cases passed across 2 modules' parity.log
+  if mix live_lift.test --cases test/missing_event.json >missing-event.log 2>&1; then
+    echo 'Expected parity to fail for a missing marked event' >&2
+    exit 1
+  fi
+  rg -q 'marked events without cases: preview' missing-event.log
+  if mix live_lift.test --cases test/missing_module.json >missing-module.log 2>&1; then
+    echo 'Expected parity to fail for a missing opted-in module' >&2
+    exit 1
+  fi
+  rg -q 'without parity cases: ConsumerLiftWeb.MailboxLive' missing-module.log
+  cat parity.log
+  printf '%s\n' 'Verified missing event and missing module failures.'
   mix assets.build
   mix assets.deploy
 )

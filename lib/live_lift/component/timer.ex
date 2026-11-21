@@ -118,16 +118,31 @@ defmodule LiveLift.Component.Timer do
     end
   end
 
+  # Drive the actual callback in the parity task without waiting for the delay.
+  @doc false
+  def deliver_for_parity(module, socket, id, token, %{message: _}) do
+    {:noreply, delivered} = module.handle_info(mailbox_delivery(id, token), socket)
+    delivered
+  end
+
+  def deliver_for_parity(module, socket, id, token, %{patch: _}) do
+    {:ok, delivered} = module.update(component_delivery(id, token), socket)
+    delivered
+  end
+
   defp send_delivery(_socket, %{message: _}, id, token, delay),
-    do: Process.send_after(self(), {@delivery, id, token}, delay)
+    do: Process.send_after(self(), mailbox_delivery(id, token), delay)
 
   defp send_delivery(socket, %{patch: _}, id, token, delay),
     do:
       Phoenix.LiveView.send_update_after(
         socket.assigns.myself,
-        %{@delivery => {id, token}},
+        component_delivery(id, token),
         delay
       )
+
+  defp mailbox_delivery(id, token), do: {@delivery, id, token}
+  defp component_delivery(id, token), do: %{@delivery => {id, token}}
 
   def snapshot(assigns) do
     time = now()

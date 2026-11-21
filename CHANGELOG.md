@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Check exact JSON types and authoritative queued timer delivery in handler parity cases.
+
 - Document the native event baseline and compare browser update and acknowledgment latency in an interleaved benchmark.
 
 - Audit native LiveComponent and LiveView timer handlers before opting them into LiveLift.

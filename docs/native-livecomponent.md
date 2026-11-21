@@ -80,9 +80,11 @@ mix live_lift.test MyAppWeb.Form --event draft \
 mix live_lift.test --cases test/live_lift_cases.json
 ```
 
-The task runs the original server handler and the generated action once with
-the supplied state and string parameters (including bounded nested maps), then compares their returned
-client fields. A cases file is a JSON array such as:
+The task runs the original server handler and the generated action with
+the supplied state and parameters. Parameters can be strings or bounded
+nested maps. The task compares the exact JSON types of their client fields.
+For a supported timer it also checks the authoritative queued delivery
+against the generated timer result, without waiting for the delay. A cases file is a JSON array such as:
 
 ```json
 [
@@ -91,8 +93,9 @@ client fields. A cases file is a JSON array such as:
 ]
 ```
 
-For each listed component, the task requires a case for every marked event.
-It also fails if the app contains an opted-in component omitted from the file.
+For each listed LiveView and LiveComponent, the task requires a case for
+every marked event. It also fails if the app contains an opted-in module
+omitted from the file.
 Run it in CI with representative and boundary cases. A finite corpus cannot
 prove parity for every input or replace browser tests.
 

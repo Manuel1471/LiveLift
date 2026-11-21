@@ -1,21 +1,21 @@
 defmodule Mix.Tasks.LiveLift.Test do
   @moduledoc """
-  Compares marked LiveComponent handlers in Elixir and generated JavaScript.
+  Compares marked LiveView and LiveComponent handlers in Elixir and generated JavaScript.
 
       mix live_lift.test MyAppWeb.Counter --event inc --state '{"count":0}'
       mix live_lift.test MyAppWeb.Form --event draft --state '{"draft":null}' --params '{"value":"Hi"}'
       mix live_lift.test --cases test/live_lift_cases.json
 
-  State keys must match the component's client fields. Parameters are flat
-  strings, as required by the current native component subset. A cases file is
+  State keys must match the client fields. Parameters support strings and
+  bounded nested maps. A cases file is
   a nonempty JSON array of objects with `module`, `event`, `state`, and optional
   `params`. Every marked event of each listed module needs at least one case.
-  The cases file must also include every opted-in component in the current app.
+  The cases file must also include every opted-in LiveView and LiveComponent in the current app.
   """
 
   use Mix.Task
 
-  @shortdoc "Checks a marked LiveComponent handler against generated JavaScript"
+  @shortdoc "Checks a marked LiveView or LiveComponent handler against generated JavaScript"
 
   @impl Mix.Task
   @spec run([String.t()]) :: :ok
@@ -55,7 +55,7 @@ defmodule Mix.Tasks.LiveLift.Test do
 
       app = Mix.Project.config()[:app]
 
-      app_components =
+      app_modules =
         (Application.spec(app, :modules) || [])
         |> Enum.filter(fn module ->
           Code.ensure_loaded?(module) and
@@ -65,14 +65,14 @@ defmodule Mix.Tasks.LiveLift.Test do
         |> MapSet.new()
 
       missing_modules =
-        app_components
+        app_modules
         |> MapSet.difference(MapSet.new(Map.keys(covered)))
         |> MapSet.to_list()
         |> Enum.sort()
 
       if missing_modules != [] do
         Mix.raise(
-          "app has opted-in components without parity cases: " <>
+          "app has opted-in modules without parity cases: " <>
             Enum.map_join(missing_modules, ", ", &inspect/1)
         )
       end
@@ -187,14 +187,19 @@ defmodule Mix.Tasks.LiveLift.Test do
 
     socket = %Phoenix.LiveView.Socket{assigns: assigns}
 
-    elixir_result =
+    {result_state, next} =
       Task.async(fn ->
         {:reply, %{state: state}, next} =
           module.handle_event(event, Map.put(params, "_live_lift_seq", 1), socket)
 
-        %{state: state, delayed: delayed_state(module, event, next, fields, optional)}
+        {state, next}
       end)
       |> Task.await()
+
+    elixir_result = %{
+      state: result_state,
+      delayed: delayed_state(module, event, next, fields, optional)
+    }
 
     event_key = Jason.encode!(event)
 
@@ -210,7 +215,7 @@ defmodule Mix.Tasks.LiveLift.Test do
     javascript_result = Jason.decode!(output)
     elixir_result = elixir_result |> Jason.encode!() |> Jason.decode!()
 
-    if javascript_result != elixir_result do
+    if javascript_result !== elixir_result do
       Mix.raise(
         "Elixir/JavaScript mismatch for #{module_name}.#{event}: " <>
           "Elixir=#{inspect(elixir_result)} JavaScript=#{inspect(javascript_result)}"
@@ -227,28 +232,32 @@ defmodule Mix.Tasks.LiveLift.Test do
         do: module.__live_lift_component_timers__(),
         else: %{}
 
-    case deliver_timer(module, Map.get(timers, event), socket) do
-      nil ->
-        nil
+    if Map.has_key?(timers, event) do
+      socket = deliver_queued_timer!(module, event, socket)
 
-      delivered ->
-        delivered.assigns
-        |> LiveLift.Component.state!(fields, optional)
-        |> LiveLift.FloatWire.encode()
+      socket.assigns
+      |> LiveLift.Component.state!(fields, optional)
+      |> LiveLift.FloatWire.encode()
     end
   end
 
-  defp deliver_timer(module, %{message: message}, socket) do
-    {:noreply, delivered} = module.handle_info(message, socket)
-    delivered
-  end
+  defp deliver_queued_timer!(module, event, socket) do
+    alias LiveLift.Component.Timer
 
-  defp deliver_timer(module, %{patch: patch}, socket) do
-    {:ok, delivered} = module.update(patch, socket)
-    delivered
-  end
+    case Map.to_list(Timer.timers(socket.assigns)) do
+      [{id, %{event: ^event, token: token, effect: effect}}] ->
+        delivered = Timer.deliver_for_parity(module, socket, id, token, effect)
 
-  defp deliver_timer(_module, nil, _socket), do: nil
+        if map_size(Timer.timers(delivered.assigns)) != 0 do
+          Mix.raise("#{inspect(module)}.#{event} did not consume its scheduled LiveLift timer")
+        end
+
+        delivered
+
+      _ ->
+        Mix.raise("#{inspect(module)}.#{event} did not schedule exactly one LiveLift timer")
+    end
+  end
 
   defp decode_map!(json, label) do
     case Jason.decode(json) do

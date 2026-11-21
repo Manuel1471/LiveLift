@@ -30,13 +30,31 @@ defmodule LiveLift.TestTaskTest do
 
   defmodule Drift do
     def __live_lift_client_actions__,
-      do: [{:inc, :state, quote(do: %{count: state.count + 1})}]
+      do: [
+        {:inc, :state, quote(do: %{count: state.count + 1})},
+        {:typed, :state, quote(do: state)}
+      ]
 
     def __live_lift_component_fields__, do: [:count]
     def __live_lift_client_template__, do: []
 
     def handle_event("inc", _params, socket),
       do: {:reply, %{state: %{count: socket.assigns.count}}, socket}
+
+    def handle_event("typed", _params, socket),
+      do: {:reply, %{state: %{count: socket.assigns.count / 1}}, socket}
+  end
+
+  defmodule MissingTimer do
+    def __live_lift_client_actions__, do: [{:preview, :state, quote(do: state)}]
+    def __live_lift_component_fields__, do: [:count]
+    def __live_lift_client_template__, do: []
+    def __live_lift_component_timers__, do: %{"preview" => %{delay: 10, patch: %{count: 1}}}
+
+    def handle_event("preview", _params, socket),
+      do: {:reply, %{state: %{count: socket.assigns.count}}, socket}
+
+    def update(patch, socket), do: {:ok, Phoenix.Component.assign(socket, patch)}
   end
 
   defmodule Multi do
@@ -259,6 +277,30 @@ defmodule LiveLift.TestTaskTest do
         "LiveLift.TestTaskTest.Drift",
         "--event",
         "inc",
+        "--state",
+        ~s({"count":0})
+      ])
+    end
+  end
+
+  test "fails if equal-looking JSON numbers have different wire types" do
+    assert_raise Mix.Error, ~r/Elixir\/JavaScript mismatch.*typed/, fn ->
+      Mix.Tasks.LiveLift.Test.run([
+        "LiveLift.TestTaskTest.Drift",
+        "--event",
+        "typed",
+        "--state",
+        ~s({"count":1})
+      ])
+    end
+  end
+
+  test "fails when a declared timer never enters the authoritative queue" do
+    assert_raise Mix.Error, ~r/did not schedule exactly one LiveLift timer/, fn ->
+      Mix.Tasks.LiveLift.Test.run([
+        "LiveLift.TestTaskTest.MissingTimer",
+        "--event",
+        "preview",
         "--state",
         ~s({"count":0})
       ])
