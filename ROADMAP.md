@@ -10,8 +10,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 ## Estado de ejecución
 
 **La fase 5 está activa y su entrega 5.2 es la validación con `Ecto.Changeset`.**
-El siguiente paso es un spike de proyección de valores y errores de un
-formulario nativo.
+El siguiente paso es verificar un formulario nativo completo, incluida la
+generación de metadatos de campos usados durante la interacción.
 
 ### Orden de cierre
 
@@ -531,8 +531,11 @@ con Ecto y Phoenix. La primera proyección compila `.valid?` y
 `Ecto.Changeset.get_field/2` tras `validate_required/3`,
 `validate_length/3` y `validate_format/4`. El arnés
 `elixir bench/changeset_parity.exs` compara 1,440 entradas con Ecto real.
-Faltan valores de presentación, metadatos de errores, seguimiento de
-campos usados y verificación del formulario completo en navegador.
+`2b80b10` verifica además la proyección del valor mostrado, los errores
+con su conteo y la lectura de campos usados. Los mismos 1,440 casos pasaron
+en Chromium, Firefox y WebKit. Quedan por generar los metadatos de campos
+usados al interactuar con el formulario y verificar el flujo completo.
+[Evidencia y límites de la proyección](docs/progress/5.2-changeset-form-projection.md).
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
