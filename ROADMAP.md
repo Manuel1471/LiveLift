@@ -9,9 +9,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 3, Sincronización optimista. Próxima entrega: pruebas de
-convergencia y cierre de la fase.** Las fases S, 0, 1 y 2 están cerradas. La fase 8 es opcional y
-posterior a 1.0. Los avances antiguos de fases 4–7 se conservan como inventario.
+**Fase activa: 4, Rendimiento. Próxima entrega: medir la ruta nativa y evitar
+trabajo de render que no cambia el DOM.** Las fases S, 0, 1, 2 y 3 están
+cerradas. La fase 8 es opcional y posterior a 1.0.
 
 **Estados:** `Hecho` significa funcionalidad implementada, documentada y
 probada en su alcance; `En curso` es la única entrega activa; `En espera`
@@ -31,8 +31,10 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.6 | Regresión integral y puerta 2 | Hecho | Tres casos, paridad, tres navegadores, benchmarks |
 | 3.1 | Orden de acciones e idempotencia del servidor | Hecho | Duplicados y entrega fuera de orden sin perder acciones |
 | 3.2 | Reconexión y conflictos | Hecho | Reintentos y política de conflictos con límites |
-| 3.3 | Pruebas caóticas y puerta 3 | **En curso** | Convergencia y acciones aplicadas exactamente una vez |
-| 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
+| 3.3 | Pruebas caóticas y puerta 3 | Hecho | Convergencia y acciones aplicadas exactamente una vez |
+| 4.1 | Medición nativa y render por dependencias | **En curso** | Línea base de Chromium y trabajo de DOM medido |
+| 4.2 | Diff con clave y agrupación de renders | En espera | Foco, identidad y presupuesto de un frame |
+| 4.3 | Carga por isla y puerta 4 | En espera | Assets y presupuesto total verificados |
 | 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
 | 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
 | 7 y 1.0 | Seguridad y operación | Bloqueada por 6 | Compatibilidad, revisión y apps reales |
@@ -56,8 +58,8 @@ posteriores queda registrado abajo y no cambia este orden.
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
 | 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Cerrada | Ninguno |
 | 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Cerrada | Ninguno |
-| 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | Abierta | Orden e idempotencia de acciones, reconexión y política de conflictos |
-| 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
+| 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | Cerrada | Ninguno |
+| 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | Abierta | Render por dependencias, agrupación y carga diferida |
 | 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
 | 6. Experiencia | Auditoría, test, telemetría, documentación de migración e instalador verificados en otra app | En espera de 5 | Medición antes de optar, inspector e instalación completa |
 | 7 y 1.0 | Seguridad y compatibilidad verificadas; dos apps reales; revisión cruzada; API estable | En espera de 6 | Revisión externa, apps piloto y política de versiones |
@@ -441,14 +443,20 @@ reintentar sin ejecutar dos veces un handler.
 Playwright y una propiedad de **convergencia**: en reposo, cliente y servidor tienen el
 mismo estado.
 
-La reconciliación aplica la respuesta de forma atómica. Un arnés con 1,000
-órdenes de respuesta, respuestas duplicadas y correcciones generadas prueba
-convergencia; Chromium prueba eventos pendientes intercalados con un reset de
-servidor y un corte de conexión con predicción pendiente. Chromium también
-prueba dos clics sin conexión que se reenvían en orden tras el snapshot; faltan
-una cola durable y una prueba caótica de entrega de eventos al servidor.
-Si una acción offline ya no se puede aplicar al snapshot fresco, se descarta
-la cola con un error explícito y se conserva el estado autoritativo.
+**Evidencia de cierre (código hasta `dddcd98`).** Dos arneses con 1,000
+semillas comprobaron respuestas reordenadas y duplicadas, y entrega alterada
+en ambas direcciones con una solicitud perdida. Las secuencias usan acciones
+que producen resultados distintos si se invierte su orden. Playwright
+confirmó los huecos y duplicados en el WebSocket real y la reconexión con
+acciones offline en Chromium, Firefox y WebKit. La reanudación de la misma
+instancia se comprobó en Node, y los tres navegadores comprobaron que una
+reconexión que monta otra instancia usa su snapshot. El almacenamiento entre
+recargas de página se desarrolla en la fase 5.
+
+Pasaron 122 pruebas Elixir, 31 del runtime, 7 del demo y 129 en navegador.
+La paridad del demo y la compilación de assets también pasaron. Se repitieron
+las cuatro mediciones del repositorio. El paquete Phoenix de referencia
+midió 54,545 bytes gzip con LiveLift y 47,351 bytes sin LiveLift.
 
 ## Fase 4: Rendimiento (3 a 4 semanas, v0.6)
 
