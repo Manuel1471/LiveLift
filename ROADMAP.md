@@ -11,8 +11,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 **La fase 5 está activa y su entrega 5.4 aborda la persistencia opcional con
 `sessionStorage`.** La entrega 5.3 cerró con foco, clases y eventos nativos
-para el JavaScript de la app. 5.4 empieza por verificar qué ocurre al
-recargar y abrir otra pestaña antes de decidir qué datos restaurar.
+para el JavaScript de la app. El spike de 5.4 confirmó que una recarga
+monta otra isla y que una pestaña con `opener` puede copiar los datos. Sigue
+definir el contrato de restauración y probar sus límites.
 
 ### Orden de cierre
 
@@ -567,7 +568,10 @@ digeridos, y el runtime compartido quedó en 8,179 bytes gzip.
 ### 5.4 Persistencia local opcional
 
 Cierra con restauración probada, caducidad, límites y la regresión integral
-de la fase 5.
+de la fase 5. El [spike de almacenamiento](docs/session-storage-spike.md)
+pasó en tres navegadores y constató que una copia en otra pestaña puede
+coexistir con la original. El contrato debe evitar aplicar dos veces una
+mutación y conservar el estado autoritativo de Phoenix.
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
