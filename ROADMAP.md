@@ -9,7 +9,7 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 2, Compilador v2. Próxima entrega: `Map.keys` y `Map.values`.** Las fases
+**Fase activa: 2, Compilador v2. Próxima entrega: operaciones `List`.** Las fases
 S, 0 y 1 están cerradas. La fase 8 es opcional y posterior a 1.0. Los avances
 antiguos de fases 3–7 se conservan como inventario, pero no abren esas fases.
 
@@ -25,7 +25,8 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.2 | `Enum.find`, `reduce`, `sort_by`, `count`, `join`, `flat_map`, `with_index` | Hecho | Paridad y rechazos por operación |
 | 2.3a | `String.downcase` y `String.split` | Hecho | Paridad Unicode, demo y límites documentados |
 | 2.3b | `String.replace` | Hecho | Semántica, paridad, rechazos, demo y benchmarks |
-| 2.4 | `Map.keys`, `Map.values` y operaciones `List` | **En curso** | Orden de mapas resuelto; paridad |
+| 2.4a | Proyecciones `Map.keys` y `Map.values` | Hecho | Conteo y nombres ordenados con paridad; rechazos con ubicación |
+| 2.4b | Operaciones `List` | **En curso** | Casos de uso, semántica y paridad |
 | 2.5 | Regresión integral y puerta 2 | En espera | Tres casos, paridad, tres navegadores, benchmarks |
 | 3 | Sincronización | Bloqueada por 2 | Convergencia ante entrega caótica |
 | 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
@@ -274,8 +275,12 @@ el segundo evento `change` genere una petición nativa duplicada con `_target`.
 Los formularios con parámetros de mapa anidados hasta cuatro segmentos ya pasan
 paridad y navegador; los arrays y controles especiales siguen pendientes.
 `Map.take/2` ya acepta una lista literal de claves átomo; la paridad se comprueba
-con estados generados. `Map.keys/1` y `Map.values/1` siguen pendientes por el
-orden de iteración diferente entre mapas de Elixir y objetos de JavaScript.
+con estados generados. El [spike de mapas](docs/map-iteration-spike.md)
+demostró que el orden observado al extraer claves o valores depende de la
+representación del mapa. Se admiten las proyecciones bajo `length/1` o
+`Enum.count/1`, y los nombres de claves si se convierten a texto y se ordenan
+de forma explícita. Las proyecciones sin ordenar ni contar se rechazan con
+ubicación de origen.
 `String.contains?/2`, `String.trim/1` y `String.length/1` ya tienen paridad
 en el corpus probado, incluidos espacios Unicode y grafemas complejos. La
 segmentación de grafemas depende de `Intl.Segmenter` y de la versión Unicode del
@@ -346,8 +351,8 @@ esta decisión, el bloque `Enum` de la fase queda resuelto; la puerta 2 sigue
 abierta por `String`, `Map`/`List` y la regresión final. El paquete de referencia,
 que no usa `with_index`, midió `54,049` bytes gzip; se repitieron los benchmarks
 de render, evento Phoenix y DOM.
-`Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las otras
-operaciones de `Map` y `List` de esta fase siguen pendientes.
+`Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las
+formas de `List` de esta fase siguen pendientes.
 
 Trampas de paridad a probar a propósito: `String.length` por grafemas (`Intl.Segmenter`),
 orden de strings fuera del plano básico, `downcase` con Unicode, redondeo y formato de

@@ -116,6 +116,10 @@ defmodule LiveLift.PropertyParityTest do
         added: Map.put(state.optional, :added, state.flag),
         merged: Map.merge(state.optional, %{present: state.flag, label: state.label}),
         removed: Map.delete(state.optional, :present),
+        key_count: state.optional |> Map.keys() |> length(),
+        value_count: Enum.count(Map.values(state.optional)),
+        ordered_key_names:
+          state.optional |> Map.keys() |> Enum.map(&Atom.to_string/1) |> Enum.sort(),
         picked: Map.take(state.optional, [:present, :missing]),
         integer_label: Integer.to_string(state.count)
       }
@@ -383,6 +387,8 @@ defmodule LiveLift.PropertyParityTest do
           }
         end) ++ (state |> StreamData.seeded(20_261_106) |> Enum.take(1_000))
 
+    large_map = Map.new(1..40, fn index -> {String.to_atom("key_#{index}"), index} end)
+    cases = [Map.replace!(hd(cases), :optional, large_map) | cases]
     Enum.each(cases, &LiveLift.State.validate!/1)
     expected = Enum.map(cases, &Actions.check/1) |> Jason.encode!() |> Jason.decode!()
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Compile map projection counts and explicitly sorted atom key names with Elixir parity.
+
 - Compile `String.replace/3,4` with Elixir pattern, grapheme, callback iodata, and `global` semantics; verify seeded parity and native browser behavior.
 - Compile `String.split/1,2,3` with Elixir whitespace, grapheme, pattern-list, trim, and parts semantics, backed by a Unicode spike, seeded parity, and native browser coverage.
 - Compile `String.downcase/1` with Elixir's context-free Unicode mapping, a full scalar parity spike, seeded strings, and three-browser native coverage.

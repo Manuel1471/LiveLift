@@ -111,7 +111,13 @@ state values;
 (including negative counts), `Enum.uniq/1`; `Map.put/3`; and
 `Map.get/2,3` and `Map.delete/2` with atom keys; shallow `Map.merge/2`;
 `Map.take/2` with a literal list of atom keys (missing keys are omitted);
-`Integer.to_string/1` for safe integers;
+counting `Map.keys/1` or `Map.values/1` with `length/1` or `Enum.count/1`;
+`map |> Map.keys() |> Enum.map(&Atom.to_string/1) |> Enum.sort()` for sorted
+names from safe atom-keyed state maps. Bare projections are rejected because
+map iteration order is unspecified. Use an explicitly ordered list when the
+order of values matters. See the [map iteration spike](map-iteration-spike.md).
+
+Also supported are `Integer.to_string/1` for safe integers;
 `String.trim/1`; `String.length/1`; `String.downcase/1`; `String.split/1,2,3`;
 `String.replace/3,4`; and
 `String.contains?/2` with a string or list

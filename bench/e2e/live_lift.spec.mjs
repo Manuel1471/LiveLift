@@ -238,6 +238,14 @@ test("native String.replace changes only the first comma and converges", async (
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
 });
 
+test("native map projections order field names and count values", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  await root.getByRole("button", {name: "Summarize fields"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(root.getByRole("status", {name: "Combined labels"})).toHaveText("next_id · rows (2)");
+});
+
 test("demo has no WCAG A or AA violations detected by axe", async ({page}) => {
   await page.goto("/");
   const results = await new AxeBuilder({page}).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

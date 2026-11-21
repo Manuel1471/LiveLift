@@ -649,10 +649,38 @@ defmodule LiveLift.Client.Compiler do
   end
 
   defp compile_expr({:length, _, [value]}, arg),
-    do: "__liveLiftList(#{compile_expr(value, arg)}).length"
+    do: compile_list_count(value, arg)
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :reverse]}, _, [list]}, arg),
     do: "[...__liveLiftList(#{compile_expr(list, arg)})].reverse()"
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, operation]}, _, [_map]}, _args)
+       when operation in [:keys, :values] do
+    raise ArgumentError,
+          "unsupported client expression: Map.#{operation}/1 has no portable iteration order; " <>
+            "use Enum.count/1 or an explicitly ordered list"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :sort]}, _, [list]}, args) do
+    case without_pipes(list) do
+      {{:., _, [{:__aliases__, _, [:Enum]}, :map]}, _,
+       [
+         key_call,
+         {:&, _, [{:/, _, [{{:., _, [{:__aliases__, _, [:Atom]}, :to_string]}, _, []}, 1]}]}
+       ]} ->
+        case without_pipes(key_call) do
+          {{:., _, [{:__aliases__, _, [:Map]}, :keys]}, _, [map]} ->
+            "Object.keys(__liveLiftMap(#{compile_expr(map, args)})).sort()"
+
+          _ ->
+            raise ArgumentError, "unsupported client expression: #{Macro.to_string(list)}"
+        end
+
+      _ ->
+        raise ArgumentError,
+              "unsupported client expression: Enum.sort/1; use Enum.sort_by/2 for lists"
+    end
+  end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Map]}, :put]}, _, [map, key, value]}, arg)
        when is_atom(key) do
@@ -782,7 +810,7 @@ defmodule LiveLift.Client.Compiler do
   end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :count]}, _, [list]}, args) do
-    "__liveLiftList(#{compile_expr(list, args)}).length"
+    compile_list_count(list, args)
   end
 
   defp compile_expr(
@@ -1008,6 +1036,23 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr(other, _arg) do
     raise ArgumentError, "unsupported client expression: #{Macro.to_string(other)}"
   end
+
+  defp compile_list_count(list, args) do
+    case without_pipes(list) do
+      {{:., _, [{:__aliases__, _, [:Map]}, operation]}, _, [map]}
+      when operation in [:keys, :values] ->
+        "Object.keys(__liveLiftMap(#{compile_expr(map, args)})).length"
+
+      _ ->
+        "__liveLiftList(#{compile_expr(list, args)}).length"
+    end
+  end
+
+  defp without_pipes({:|>, _, [source, {callee, metadata, arguments}]})
+       when is_list(arguments),
+       do: {callee, metadata, [without_pipes(source) | arguments]}
+
+  defp without_pipes(expression), do: expression
 
   defp split_options!(options) do
     unless Keyword.keyword?(options) do

@@ -17,6 +17,7 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <button type="button" phx-click="lower_labels" phx-target={@myself}>Lower labels</button>
       <button type="button" phx-click="split_labels" phx-target={@myself}>Split labels</button>
       <button type="button" phx-click="replace_labels" phx-target={@myself}>Replace first comma</button>
+      <button type="button" phx-click="summarize_fields" phx-target={@myself}>Summarize fields</button>
       <output aria-label="Combined labels">{@combined_labels}</output>
       <button type="button" phx-click="count_new" phx-target={@myself}>Count new rows</button>
       <output aria-label="New row count">{@new_count}</output>
@@ -163,6 +164,23 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
        |> Enum.map(fn item -> item.label end)
        |> Enum.join(",")
        |> String.replace(",", " · ", global: false)
+     )}
+  end
+
+  @client true
+  def handle_event("summarize_fields", _params, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :combined_labels,
+       (%{rows: socket.assigns.items, next_id: socket.assigns.next_id}
+        |> Map.keys()
+        |> Enum.map(&Atom.to_string/1)
+        |> Enum.sort()
+        |> Enum.join(" · ")) <>
+         " (" <>
+         Integer.to_string(Enum.count(Map.values(%{rows: socket.assigns.items, next_id: socket.assigns.next_id}))) <>
+         ")"
      )}
   end
 
