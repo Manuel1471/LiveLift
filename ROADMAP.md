@@ -230,8 +230,6 @@ midió cinco lotes de 50 clics: mediana de 16 µs por acción flotante en esta
 máquina, frente a 40 µs para el contador entero de otra plantilla; son cargas
 distintas y no una comparación de velocidad de tipos. El paquete de referencia
 subió 511 bytes gzip respecto del commit anterior (`53,539` a `54,050` bytes).
-La puerta 2 continúa abierta por las formas restantes del compilador y la
-regresión final.
 `cond` compila en handlers marcados: el corpus de 1,000 estados, un caso de
 ausencia de rama verdadera y un caso de evaluación perezosa pasan en
 Elixir/JavaScript. El botón «Minimum one» lo verifica en tres navegadores.
@@ -353,8 +351,7 @@ DOM.
 estados; el demo numera etiquetas sin cambiar la sintaxis de LiveView. Las
 variantes que devuelven tuplas (`/1` y `/2` con offset) fallan al compilar con
 una alternativa explícita porque el estado de LiveLift no admite tuplas. Con
-esta decisión, el bloque `Enum` de la fase queda resuelto; la puerta 2 sigue
-abierta por `String`, `Map`/`List` y la regresión final. El paquete de referencia,
+esta decisión, el bloque `Enum` de la fase queda resuelto. El paquete de referencia,
 que no usa `with_index`, midió `54,049` bytes gzip; se repitieron los benchmarks
 de render, evento Phoenix y DOM.
 `Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros.
@@ -416,6 +413,11 @@ La inversión de 1,000 filas en linkedom midió 57.8 ms de mediana y 68.1 ms p95
 El presupuesto de un frame se verifica en navegador real en la fase 4.
 
 ## Fase 3: Sincronización optimista (4 a 6 semanas, v0.5)
+
+El [spike de orden de acciones](docs/action-order-spike.md) reprodujo pérdida
+de una acción al entregar la secuencia 2 antes que la 1. La primera entrega
+de esta fase debe distinguir una secuencia faltante de un duplicado y
+reintentar sin ejecutar dos veces un handler.
 
 - **Previo:** El evento viaja por el canal normal de LiveView; el servidor ejecuta el mismo
   `handle_event` sobre **sus propios assigns**.
