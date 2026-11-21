@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Document the native event baseline and compare browser update and acknowledgment latency in an interleaved benchmark.
+
 - Audit native LiveComponent and LiveView timer handlers before opting them into LiveLift.
 
 - Restore opted-in text field drafts after reload and submit them through the existing LiveView form.

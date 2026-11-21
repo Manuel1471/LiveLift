@@ -20,8 +20,8 @@ current client subset and why others are blocked.
 Run `mix live_lift.test --cases test/live_lift_cases.json` in your app's CI to
 compare every marked handler in Elixir and Node; see the
 [native component guide](docs/native-livecomponent.md).
-Use [component event telemetry](docs/telemetry.md) to measure event frequency
-and server handler time after opting in.
+Use the [event telemetry guide](docs/telemetry.md) to measure frequency and
+server time before opting in and compare browser latency after migration.
 
 ## Use it in a Phoenix app
 

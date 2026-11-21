@@ -104,16 +104,15 @@ without a server round trip. A server-backed action still needs LiveView.
 LiveLift does not make Phoenix generally faster, and it adds bundle and render
 costs to pages where an island is mounted.
 
-The native LiveComponent path also has a Chromium benchmark:
-`cd bench && LIVE_LIFT_BENCH=1 npx playwright test -g "benchmark native"`.
-It compares the same counter handler with and without the two-line opt-in,
-injecting 150 ms of LiveSocket latency. On the same machine, 20 samples after
-three warmups gave median Playwright-observed times of 17.5 ms to show the
-client prediction, 806.3 ms to receive its server confirmation, and 813.6 ms
-to show the server-only result. A repeat on 2026-11-06 measured 17 ms, 812.1 ms,
-and 813.8 ms respectively. The local figure includes Playwright command
-overhead; these numbers demonstrate the round-trip avoided for immediate
-feedback, not a universal production latency claim.
+The [native counter benchmark](progress/6-event-telemetry.md#browser-measurement)
+uses Chromium's page clock and interleaves 100 samples per variant after
+warmups, at normal and throttled CPU speeds. With 75 ms of configured
+LiveSocket latency simulation, two runs measured 0.5–0.6 ms to
+update the DOM optimistically, 152.7–156.6 ms for the Phoenix
+acknowledgment and 152.2–155.5 ms for the server-only DOM update
+across the CPU settings. The [telemetry guide](telemetry.md) shows how to
+select an event based on its frequency and measure the server and browser
+parts separately.
 
 The demo route `/many-islands?count=100` mounts 100 independent opted-in
 components; `mode=server` uses the same component in server mode. Run
