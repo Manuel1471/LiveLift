@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move unchanged keyed rows directly during reconciliation without allocating temporary elements.
+
 - Resume unacknowledged actions on the same component instance and configure how offline actions resolve across remounts.
 
 - Recover optimistic actions delivered out of order and suppress duplicate execution.

@@ -134,7 +134,22 @@ test("benchmark 1,000 native LiveComponent row reversals in Chromium", async ({p
       values.push(performance.now() - start);
     }
     values.sort((a, b) => a - b);
+
+    // Count allocations in a separate click so instrumentation does not affect the samples.
+    const createElement = document.createElement;
+    let createdElements = 0;
+    document.createElement = function (...args) {
+      createdElements += 1;
+      return createElement.apply(this, args);
+    };
+    try {
+      button.click();
+    } finally {
+      document.createElement = createElement;
+    }
+
     return {
+      createdElements,
       medianMs: values[12], p95Ms: values[23],
       rows: component.querySelectorAll("li").length,
       preservedInput: component.querySelector('#row-1000 input[name="label"]') === input,

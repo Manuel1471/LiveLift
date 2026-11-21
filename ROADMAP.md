@@ -481,6 +481,13 @@ El ordenamiento nativo de esas filas midió 10.9 ms de mediana y 18.3 ms p95
 en 25 ciclos; el p95 ya excede un frame de 16.7 ms. La puerta de rendimiento
 sigue abierta.
 
+El [spike de asignaciones del DOM](docs/keyed-row-render-spike.md) observó
+1,020 elementos creados al invertir 1,000 filas. Las referencias a las filas
+existentes redujeron ese total a 20 y mantuvieron la identidad del input.
+En la misma máquina, el p95 de inversión bajó de 17.4 a 13.3 ms y el de
+ordenamiento de 19.5 a 15.1 ms. Sigue pendiente saltar subárboles por
+dependencias y medir las actualizaciones que sí cambian filas.
+
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.
 

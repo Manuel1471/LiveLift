@@ -324,12 +324,10 @@ function renderNode(node, scope, views, stack, textOnly) {
       if (keys.has(keyString)) throw new Error(`Duplicate client list key: ${key}`);
       keys.add(keyString);
       if (existing.has(keyString) && previous.has(keyString) && previous.get(keyString) === item) {
-        // Build a placeholder so renderElement cannot detach the live row before reconcile moves it.
-        const placeholder = document.createElement(node.tag);
-        placeholder.setAttribute("data-live-lift-key", keyString);
-        if (node.node_id !== null) placeholder.setAttribute("data-live-lift-node-id", node.node_id);
-        placeholder.__liveLiftReuse = existing.get(keyString);
-        return [placeholder];
+        // Keep the row attached until reconciliation can move it within its live parent.
+        const marker = document.createComment("");
+        marker.__liveLiftReuse = existing.get(keyString);
+        return [marker];
       }
       return renderElement(node, itemScope, key, views, stack);
     });
@@ -385,6 +383,15 @@ function reconcile(parent, desired) {
     else unmarked.push(node);
   }
   desired.forEach((next, index) => {
+    const reuse = next.__liveLiftReuse;
+    if (reuse) {
+      if (reuse.parentNode !== parent || used.has(reuse)) {
+        throw new Error("LiveLift keyed row changed parent before reconciliation");
+      }
+      used.add(reuse);
+      if (parent.childNodes[index] !== reuse) parent.insertBefore(reuse, parent.childNodes[index] || null);
+      return;
+    }
     const key = next.nodeType === 1 ? next.getAttribute("data-live-lift-key") : null;
     const nodeId = next.nodeType === 1 ? next.getAttribute("data-live-lift-node-id") : null;
     const indexed = previous[index];
@@ -396,9 +403,6 @@ function reconcile(parent, desired) {
       : nodeId !== null
         ? identified.get(`${next.tagName}:${nodeId}`)
         : matchesUnmarked(indexed) ? indexed : unmarked.find(matchesUnmarked);
-    if (next.__liveLiftReuse && current !== next.__liveLiftReuse) {
-      throw new Error(`LiveLift keyed node disappeared before reconciliation: ${key}`);
-    }
     const chosen = current || next;
     if (current) patchNode(current, next);
     used.add(chosen);
@@ -408,7 +412,6 @@ function reconcile(parent, desired) {
 }
 
 function patchNode(current, next) {
-  if (next.__liveLiftReuse === current) return;
   if (current.nodeType === 3 || current.nodeType === 8) {
     if (current.nodeValue !== next.nodeValue) current.nodeValue = next.nodeValue;
     return;
