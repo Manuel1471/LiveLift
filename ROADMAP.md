@@ -13,8 +13,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 restaura borradores de campos elegidos por la app. La auditoría de
 handlers y temporizadores y la medición de frecuencia y latencia
 ya están verificadas. La paridad de migración pasó en una app Phoenix
-nueva. La guía en formato diff ya está verificada. Siguen los
-diagnósticos accionables del compilador.
+nueva. La guía en formato diff y los diagnósticos accionables ya están
+verificados. Sigue el inspector de estado para desarrollo.
 
 ### Orden de cierre
 
@@ -602,9 +602,11 @@ compartido quedó en 8,179 bytes gzip.
   muestra la auditoría, el opt-in, la paridad y la reversión. `4959080`
   aplica el diff publicado en la app Phoenix de prueba y verifica el
   estado antes y después. [Evidencia de la guía](docs/progress/6-migration-diff.md).
-- **En curso:** Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de
-  servidor").
-- **Falta:** Inspector de estado con viaje en el tiempo en desarrollo.
+- **Verificado:** `cd471f6` entrega diagnósticos con archivo, línea, causa,
+  corrección y un [catálogo de errores](docs/errors/README.md). Una app Phoenix
+  nueva comprobó que la auditoría y la compilación identifican la misma
+  llamada rechazada. [Evidencia de diagnósticos](docs/progress/6-compiler-diagnostics.md).
+- **En curso:** Inspector de estado con viaje en el tiempo en desarrollo.
 - **Falta:** Instalador con Igniter, tipos TypeScript, paquete npm versionado, verificación de
   que el JavaScript generado y el runtime coinciden.
 
