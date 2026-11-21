@@ -1,6 +1,6 @@
 # ADR-0005 — Decide what persists across a local reload
 
-Proposed for experimental LiveLift 5.4. For app and compiler maintainers.
+Accepted for experimental LiveLift 5.4. For app and compiler maintainers.
 
 The [storage spike](../session-storage-spike.md) found that one stored
 entry can coexist in two tabs while both tabs have independent LiveView
@@ -40,11 +40,31 @@ an interrupted delivery with uncertain acknowledgment, expiry, and real
 server convergence. This path requires agreement on the protocol and
 deduplication lifetime.
 
-## Open decision
+## Decision
 
-Choose the initial restoration scope before introducing a public opt-in.
-The draft option fits the existing server-authoritative protocol. Both
-options require versioned records, validation, bounded storage and
-an explicit opt-in. The [storage failure follow-up](../session-storage-spike.md#storage-failure-follow-up)
-shows that obtaining storage may throw and that a rejected replacement
-can retain the previous value.
+Restore explicitly selected text fields. Use `data-live-lift-draft={@scope}`
+on a named text input or textarea inside an identified `phx-submit` form.
+The app supplies an opaque scope that distinguishes the current signed-in
+session and record. Scope, route, island, form and field identify a draft.
+Restore text as DOM input and keep it through patches for the same identity.
+An explicit form reset clears the form's drafts. Submission uses the
+existing LiveView action and validation. Forms can reject submissions, so
+a submit attempt leaves the draft available until reset, scope change or
+expiry.
+
+Use one versioned record per field. Bound values to 4,096 UTF-16 code units
+and expire them 30 minutes after the last input. Use the existing packaged
+view extension so the shared runtime and the wire protocol stay unchanged.
+The [storage failure follow-up](../session-storage-spike.md#storage-failure-follow-up)
+motivates catching storage access and writes independently of form behavior.
+
+## Verification
+
+- The compiler emits the helper only for views with the attribute and rejects
+  incompatible controls with a source location.
+- Playwright verifies reload, Unicode and empty text, a bound input patch,
+  ordinary native submit with a held acknowledgment, explicit reset and
+  isolation across scope changes.
+- Cover expired, malformed, oversized and wrong-scope records and simulate
+  browser storage denial in the form demo. Run the three-browser matrix in
+  development and with digested assets.

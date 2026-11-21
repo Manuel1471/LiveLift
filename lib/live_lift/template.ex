@@ -6,7 +6,7 @@ defmodule LiveLift.Template do
   alias LiveLift.Template.Parser
 
   @dynamic_attributes ~w(class title aria-label value)
-  @native_dynamic_attributes ~w(class title aria-label value id)
+  @native_dynamic_attributes ~w(class title aria-label value id data-live-lift-draft)
   @events ~w($click $server $input $change $submit)
   @void_tags ~w(area base br col embed hr img input link meta param source track wbr)
   @forbidden_tags ~w(script iframe object embed base link meta style foreignobject animate animatemotion animatetransform set)
@@ -57,6 +57,7 @@ defmodule LiveLift.Template do
             "#{file}: render_slot(@inner_block) requires a local function component call; move this expression to the server"
     end
 
+    validate_draft_forms!(tree, file, false)
     tree
   end
 
@@ -91,7 +92,11 @@ defmodule LiveLift.Template do
       validate_form!(children, file, meta.line)
     end
 
-    {:block, type, tag, attrs |> native_loop_key(file) |> adapt_liveview_attrs(file, events),
+    {:block, type, tag,
+     attrs
+     |> validate_draft_attrs!(tag, file)
+     |> native_loop_key(file)
+     |> adapt_liveview_attrs(file, events),
      Enum.map(children, &adapt_liveview_node(&1, file, events)), meta, close}
   end
 
@@ -105,11 +110,69 @@ defmodule LiveLift.Template do
 
     validate_change_control!(tag, attrs, file, meta.line, events)
 
-    {:self_close, type, tag, attrs |> native_loop_key(file) |> adapt_liveview_attrs(file, events),
-     meta}
+    {:self_close, type, tag,
+     attrs
+     |> validate_draft_attrs!(tag, file)
+     |> native_loop_key(file)
+     |> adapt_liveview_attrs(file, events), meta}
   end
 
   defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp validate_draft_forms!(nodes, file, inside_form?) do
+    Enum.each(nodes, fn
+      %{tag: "form", attrs: attrs, children: children} ->
+        attrs = Map.new(attrs, &{&1.name, &1.value})
+
+        identified? =
+          (is_map(attrs["id"]) or
+             (is_binary(attrs["id"]) and byte_size(attrs["id"]) in 1..128)) and
+            is_binary(attrs["phx-submit"]) and attrs["phx-submit"] != "" and
+            (not Map.has_key?(attrs, "phx-change") or attrs["phx-auto-recover"] == "ignore")
+
+        validate_draft_forms!(children, file, identified?)
+
+      %{attrs: attrs, children: children, line: line} ->
+        if not inside_form? and Enum.any?(attrs, &Map.get(&1, :draft_field, false)) do
+          raise ArgumentError,
+                "#{file}:#{line}: unsupported draft form (E054): use a form with an id and phx-submit. If the form has phx-change, set phx-auto-recover to ignore. See docs/errors/E054.md"
+        end
+
+        validate_draft_forms!(children, file, inside_form?)
+
+      _ ->
+        :ok
+    end)
+  end
+
+  defp validate_draft_attrs!(attrs, tag, file) do
+    Enum.map(attrs, fn
+      {"data-live-lift-draft", value, meta} ->
+        type = Enum.find(attrs, fn {name, _, _} -> name == "type" end)
+        name = Enum.find(attrs, fn {name, _, _} -> name == "name" end)
+
+        if (tag == "textarea" or
+              (tag == "input" and
+                 (is_nil(type) or match?({"type", {:string, "text", _}, _}, type)))) and
+             match?({"name", {:string, field, _}, _} when byte_size(field) in 1..128, name) and
+             not Enum.any?(attrs, &match?({"form", _, _}, &1)) and valid_draft_scope?(value) do
+          {"data-live-lift-draft", value, Map.put(meta, :draft_field, true)}
+        else
+          raise ArgumentError,
+                "#{file}:#{meta.line}: unsupported draft field (E054): use a named text input or textarea with a draft scope inside its form. See docs/errors/E054.md"
+        end
+
+      attr ->
+        attr
+    end)
+  end
+
+  defp valid_draft_scope?({:expr, _, _}), do: true
+
+  defp valid_draft_scope?({:string, value, _}),
+    do: Regex.match?(~r/\A[a-zA-Z0-9_-]{1,128}\z/, value)
+
+  defp valid_draft_scope?(_), do: false
 
   defp validate_native_debounce!(tag, attrs, file, line) do
     Enum.each(attrs, fn
@@ -729,6 +792,12 @@ defmodule LiveLift.Template do
 
   defp parse_loop({_, _, meta}, file),
     do: raise(ArgumentError, "#{file}:#{meta.line}: :for requires an Elixir expression")
+
+  defp convert_attr({"data-live-lift-draft", value, %{draft_field: true} = meta}, file) do
+    {"data-live-lift-draft", value, Map.delete(meta, :draft_field)}
+    |> convert_attr(file)
+    |> Map.put(:draft_field, true)
+  end
 
   defp convert_attr({"phx-click", {:string, value, %{preserves_classes: true}}, _}, _file),
     do: %{name: "phx-click", value: value, type: "static", preserves_classes: true}

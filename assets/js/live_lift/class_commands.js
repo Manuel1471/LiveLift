@@ -12,11 +12,16 @@ function __liveLiftPrepareClasses(root, bindings) {
         .concat(adds.filter((name) => !prior.adds.includes(name) && !target.classList.contains(name)));
       const nextRemoves = prior.removes.filter((name) => !adds.includes(name))
         .concat(removes.filter((name) => !prior.removes.includes(name) && target.classList.contains(name)));
+      if (prior === empty) {
+        const priorPatch = target.__liveLiftPatch;
+        target.__liveLiftPatch = (next) => {
+          priorPatch?.(next);
+          const {adds, removes} = effects.get(target);
+          next.classList.remove(...removes);
+          next.classList.add(...adds);
+        };
+      }
       effects.set(target, {adds: nextAdds, removes: nextRemoves});
-      target.__liveLiftPatch = (next) => {
-        next.classList.remove(...nextRemoves);
-        next.classList.add(...nextAdds);
-      };
     });
   }
 

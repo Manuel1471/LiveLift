@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Restore opted-in text field drafts after reload and submit them through the existing LiveView form.
+
 - Send app-owned DOM events with literal native Phoenix `JS.dispatch` bindings inside an island.
 
 - Preserve supported Phoenix class commands across LiveLift updates on the same DOM node.

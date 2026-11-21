@@ -115,6 +115,42 @@ a separate binding. App code can listen on the target or during the capture
 phase, as in the [demo's dialog listener](../examples/demo/assets/js/app.js).
 The native event includes `detail.dispatcher`.
 
+### Optional form drafts
+
+Add `data-live-lift-draft={@draft_scope}` to each text input or textarea
+whose contents should survive a reload in the current tab. Give the
+field a unique name within its form. Use an `id` and `phx-submit` on the
+form. If it also uses `phx-change`, set `phx-auto-recover="ignore"` for
+that form. This keeps reconnect recovery from sending a restored draft
+as a validation event. Ordinary edits can still run `phx-change`.
+[E054](errors/E054.md) documents incompatible markup.
+
+```heex
+<form id="native-note" phx-change="validate" phx-submit="save" phx-auto-recover="ignore" phx-target={@myself}>
+  <label>Note <input name="profile[note]" value={@note_value} data-live-lift-draft={@draft_scope} /></label>
+  <button type="submit">Save note</button>
+  <button type="reset">Discard draft</button>
+</form>
+```
+
+Set the scope from the app to a stable, opaque identifier for the
+signed-in session and the record. Scopes use 1 to 128 ASCII letters, digits,
+underscores or hyphens. For instance, a server-generated digest of the
+session and record IDs can be used. Form IDs and field names are bounded
+to 128 characters. Keep sensitive fields outside the opt-in. The
+[native demo](../examples/demo/lib/live_lift_demo_web/live/native_form_component.ex)
+uses a synthetic scope.
+
+LiveLift stores one versioned record per field in `sessionStorage`. A
+draft has up to 4,096 UTF-16 code units and is eligible for restore for
+30 minutes after the last edit. The existing server value supplies the
+form when storage is unavailable or the record is invalid. An eligible
+draft survives renders of its field. Restoring changes the displayed
+text without triggering a LiveView event. The normal form submit sends
+the current text to Phoenix for validation. A native form reset clears
+the stored drafts. A submit attempt keeps the draft available because
+server validation can reject it.
+
 ## Action expressions
 
 ### Ecto changeset values

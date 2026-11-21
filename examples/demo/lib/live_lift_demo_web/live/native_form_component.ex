@@ -13,9 +13,17 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
       <label>Debounced draft
       <input name="value" value={@draft} phx-change="draft" phx-debounce="300" phx-target={@myself} /></label>
       <output aria-live="polite">{@draft}</output>
-      <form phx-change="validate" phx-submit="save" phx-target={@myself}>
-        <label>Note <input name="profile[note]" /></label>
+      <form
+        id="native-note"
+        phx-change="validate"
+        phx-submit="save"
+        phx-auto-recover="ignore"
+        phx-target={@myself}
+      >
+        <label>Note
+        <input name="profile[note]" value={@note_value} data-live-lift-draft={@draft_scope} /></label>
         <button type="submit">Save note</button>
+        <button type="reset">Discard draft</button>
       </form>
       <.feedback title={@saved}><.validation_error invalid={@invalid} /></.feedback>
       <p>Saved: {@saved}</p>

@@ -8,6 +8,44 @@ defmodule LiveLift.TemplateTest do
     client_template("<strong>{@item.name}</strong>")
   end
 
+  test "draft markers keep dynamic scope in identified native submit forms" do
+    [form] =
+      Template.compile_liveview(
+        ~S(<form id="note" phx-submit="save"><textarea name="note" data-live-lift-draft={@scope}></textarea></form>),
+        "draft.ex",
+        ["save"]
+      )
+
+    assert [%{tag: "textarea", attrs: attrs}] = form.children
+
+    assert %{name: "data-live-lift-draft", draft_field: true, type: "native_dynamic"} =
+             Enum.find(attrs, &(&1.name == "data-live-lift-draft"))
+
+    assert Phoenix.HTML.safe_to_string(Template.render_server([form], %{"scope" => "record-8"})) =~
+             ~s(data-live-lift-draft="record-8")
+  end
+
+  test "draft markers reject ineligible fields and forms with a source location" do
+    field = ~s(<input name="note" data-live-lift-draft="note" />)
+    root = ~s(<form id="note" phx-submit="save">)
+
+    for template <- [
+          field,
+          ~s(<form phx-submit="save">#{field}</form>),
+          ~s(<form id="note">#{field}</form>),
+          ~s(<form id="note" phx-submit="save" phx-change="validate">#{field}</form>),
+          root <> ~s(<input type="password" name="note" data-live-lift-draft="note" /></form>),
+          root <> ~s(<input data-live-lift-draft="note" /></form>),
+          root <> ~s(<input name="note" form="other" data-live-lift-draft="note" /></form>),
+          root <> ~s(<input name="note" data-live-lift-draft="has whitespace" /></form>),
+          root <> ~s(<input name="note" data-live-lift-draft="trailing\n" /></form>)
+        ] do
+      assert_raise ArgumentError, ~r/draft.ex:21:.*\(E054\).*docs\/errors\/E054.md/, fn ->
+        Template.compile_liveview(template, "draft.ex", ["save"], %{}, 21)
+      end
+    end
+  end
+
   test "native focus command pipes retain Phoenix's encoded order and targets" do
     import Phoenix.LiveView.JS
 
