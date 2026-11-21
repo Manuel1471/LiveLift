@@ -13,8 +13,9 @@ Run `mix deps.get` and `mix live_lift.install`. The installer checks the
 standard Phoenix 1.8 colocated hook and both asset aliases before writing.
 It repairs a missing compile step if only one alias was previously integrated;
 an unsupported hook layout fails with an explanation and leaves the files
-unchanged. For a new component, keep
-ordinary LiveView syntax and add two opt-in lines:
+unchanged. Follow the [verified migration diff](liveview-migration-diff.md)
+to opt in an existing component. For a new component, keep ordinary LiveView
+syntax and add two opt-in lines:
 
 ```elixir
 defmodule MyAppWeb.Counter do

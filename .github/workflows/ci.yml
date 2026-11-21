@@ -54,6 +54,11 @@ jobs:
           LIVE_LIFT_FORCE_TEMPLATE_FALLBACK: '1'
       - run: npm run dom
         working-directory: bench
+      - name: Verify the documented migration in a fresh Phoenix app
+        if: matrix.otp == '29'
+        run: |
+          mix archive.install hex phx_new 1.8.16 --force
+          sh test/integration/phoenix_consumer.sh
 
   browser:
     runs-on: ubuntu-latest

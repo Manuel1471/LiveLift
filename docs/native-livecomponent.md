@@ -1,5 +1,8 @@
 # Opt in a LiveComponent
 
+For a full workflow, see the [verified migration diff](liveview-migration-diff.md)
+from audit through CI and asset generation.
+
 The experimental component path keeps the original LiveView render and event
 handler. Start with a normal stateful component:
 

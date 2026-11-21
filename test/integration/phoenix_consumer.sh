@@ -41,36 +41,8 @@ defmodule ConsumerLiftWeb.CounterLive do
 end
 EOF
 
-cat > "$consumer_dir/consumer_lift/lib/consumer_lift_web/live/counter_component.ex" <<'EOF'
-defmodule ConsumerLiftWeb.CounterComponent do
-  use Phoenix.LiveComponent
-  use LiveLift
-
-  def render(assigns) do
-    ~H"""
-    <section>
-      <button id="inc" phx-click="inc" phx-target={@myself}>Add</button>
-      <button id="save" phx-click="save" phx-target={@myself}>Save</button>
-      <output id="count">{@count}</output>
-      <span id="saved">{@saved}</span>
-    </section>
-    """
-  end
-
-  @client true
-  def handle_event("inc", _params, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
-
-  @client true
-  def handle_event("preview", _params, socket) do
-    Phoenix.LiveView.send_update_after(socket.assigns.myself, [saved: "Ready"], 50)
-    {:noreply, socket}
-  end
-
-  def handle_event("save", _params, socket) do
-    {:noreply, assign(socket, :saved, "Saved #{socket.assigns.count}")}
-  end
-end
-EOF
+cp "$repo_dir/test/integration/fixtures/counter_component.ex" \
+  "$consumer_dir/consumer_lift/lib/consumer_lift_web/live/counter_component.ex"
 
 cat > "$consumer_dir/consumer_lift/lib/consumer_lift_web/live/mailbox_live.ex" <<'EOF'
 defmodule ConsumerLiftWeb.MailboxLive do
@@ -125,10 +97,31 @@ defmodule ConsumerLiftWeb.CounterLiveTest do
 
   test "saves authoritative server state", %{conn: conn} do
     {:ok, view, html} = live(conn, "/counter")
-    assert html =~ ~s(phx-hook="LiveLift")
-    assert view |> element("#count") |> render() =~ ">3</output>"
+    baseline? = System.get_env("LIVE_LIFT_MIGRATION_BASELINE") == "1"
+    assert String.contains?(html, ~s(phx-hook="LiveLift")) == not baseline?
+
+    assert_state(view, baseline?, 3, "")
+    view |> element("#inc") |> render_click()
+    assert_state(view, baseline?, 4, "")
     view |> element("#save") |> render_click()
-    assert view |> element("#counter") |> render() =~ "Saved 3"
+    assert_state(view, baseline?, 4, "Saved 4")
+  end
+
+  defp assert_state(view, true, count, saved) do
+    assert view |> element("#count") |> render() =~ ">#{count}</output>"
+    assert view |> element("#saved") |> render() =~ ">#{saved}</span>"
+  end
+
+  defp assert_state(view, false, count, saved) do
+    [state] =
+      view
+      |> element("#counter")
+      |> render()
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query("#counter")
+      |> LazyHTML.attribute("data-live-lift-state")
+
+    assert Jason.decode!(state) == %{"count" => count, "saved" => saved}
   end
 end
 EOF
@@ -154,9 +147,29 @@ EOF
   test ! -e lib/consumer_lift_web/live/legacy_score_component.ex
   mix format
   mix format --check-formatted
-  mix test test/consumer_lift_web/live/counter_live_test.exs
+  LIVE_LIFT_MIGRATION_BASELINE=1 mix test test/consumer_lift_web/live/counter_live_test.exs
   mix live_lift.audit --path lib/consumer_lift_web/live/counter_component.ex >audit.log
+  rg -q 'ConsumerLiftWeb.CounterComponent.handle_event\("inc"\): compatible' audit.log
   rg -q 'ConsumerLiftWeb.CounterComponent.handle_event\("preview"\): compatible' audit.log
+  python3 - "$repo_dir/docs/liveview-migration-diff.md" <<'PYTHON'
+from pathlib import Path
+import subprocess
+import sys
+
+guide = Path(sys.argv[1]).read_text()
+diff = guide.split('```diff\n', 1)[1].split('```\n', 1)[0]
+component = Path("lib/consumer_lift_web/live/counter_component.ex")
+before = component.read_text().splitlines()
+subprocess.run(["git", "apply", "--check"], input=diff, text=True, check=True)
+subprocess.run(["git", "apply"], input=diff, text=True, check=True)
+after = component.read_text().splitlines()
+assert after.count("  use LiveLift") == 1
+assert after.count("  @client true") == 2
+assert [line for line in after if line not in ("  use LiveLift", "  @client true")] == before
+PYTHON
+  mix format --check-formatted
+  LIVE_LIFT_MIGRATION_BASELINE=0 mix test test/consumer_lift_web/live/counter_live_test.exs
+  printf '%s\n' 'Verified the documented migration diff before and after opt-in.'
   mix live_lift.test --cases test/live_lift_cases.json >parity.log
   rg -q '3 parity cases passed across 2 modules' parity.log
   if mix live_lift.test --cases test/missing_event.json >missing-event.log 2>&1; then
