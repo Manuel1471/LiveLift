@@ -14,8 +14,9 @@ restaura borradores de campos elegidos por la app. La auditoría de
 handlers y temporizadores y la medición de frecuencia y latencia
 ya están verificadas. La paridad de migración pasó en una app Phoenix
 nueva. La guía en formato diff y los diagnósticos accionables ya están
-verificados. El inspector de desarrollo también está verificado. Sigue
-la integración con Igniter y los assets versionados.
+verificados. El inspector de desarrollo y la instalación con Igniter desde
+un paquete local también están verificados. Siguen los tipos TypeScript y
+los assets versionados.
 
 ### Orden de cierre
 
@@ -612,7 +613,13 @@ compartido quedó en 8,179 bytes gzip.
   verifica los tres navegadores y los assets desplegados coinciden byte
   por byte con el baseline. [Spike](docs/devtools-state-spike.md) y
   [evidencia](docs/progress/6-state-inspector.md).
-- **En curso:** Instalador con Igniter, tipos TypeScript, paquete npm versionado, verificación de
+- **Verificado:** `4a07695` integra los assets con Igniter 0.8.5 en una app
+  Phoenix nueva usando un paquete Hex local desempaquetado. Verificó la
+  vista previa, la conservación de tareas y comentarios, la idempotencia
+  y el rechazo sin cambios parciales. [Spike](docs/igniter-install-spike.md)
+  y [evidencia](docs/progress/6-igniter-install.md). La prueba con el
+  registro público espera la publicación humana.
+- **En curso:** Tipos TypeScript, paquete npm versionado y verificación de
   que el JavaScript generado y el runtime coinciden.
 
 ## Fase 7: Seguridad y operación (4 semanas, v0.9)
