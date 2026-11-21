@@ -65,3 +65,11 @@ measure from `examples/demo/` after building assets:
 livelift_esbuild=$(mix run --no-start --no-compile -e 'IO.puts(Esbuild.bin_path())')
 "$livelift_esbuild" --minify < ../../assets/js/live_lift/client_hook.js | gzip -cn | wc -c
 ```
+
+
+A sibling cursor in reconciliation removed repeated indexing into the
+live child list as nodes move. In the next 25-sample run, p95 was
+13.1 ms for reversal, 16.2 ms for sort and 7.3 ms for a row edit. The
+linkedom reversal median fell from 48.8 ms to 2.2 ms. The linkedom result
+demonstrates the effect of indexing on that DOM implementation, and the
+Chromium result verifies the browser budget for these fixtures.

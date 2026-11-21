@@ -443,6 +443,7 @@ function reconcile(parent, desired) {
     else if (id !== null) identified.set(`${node.tagName}:${id}`, node);
     else unmarked.push(node);
   }
+  let cursor = parent.firstChild;
   desired.forEach((next, index) => {
     const reuse = next.__liveLiftReuse;
     if (reuse) {
@@ -450,7 +451,8 @@ function reconcile(parent, desired) {
         throw new Error("LiveLift node changed parent before reconciliation");
       }
       used.add(reuse);
-      if (parent.childNodes[index] !== reuse) parent.insertBefore(reuse, parent.childNodes[index] || null);
+      if (cursor !== reuse) parent.insertBefore(reuse, cursor);
+      cursor = reuse.nextSibling;
       return;
     }
     const key = next.nodeType === 1 ? next.getAttribute("data-live-lift-key") : null;
@@ -474,7 +476,8 @@ function reconcile(parent, desired) {
     const chosen = current || next;
     if (current) patchNode(current, next);
     used.add(chosen);
-    if (parent.childNodes[index] !== chosen) parent.insertBefore(chosen, parent.childNodes[index] || null);
+    if (cursor !== chosen) parent.insertBefore(chosen, cursor);
+    cursor = chosen.nextSibling;
   });
   previous.forEach((node) => { if (!used.has(node)) node.remove(); });
 }

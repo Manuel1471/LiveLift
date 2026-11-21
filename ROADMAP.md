@@ -494,7 +494,10 @@ tres navegadores. La reutilización de subárboles fuera de listas redujo los
 elementos creados en la inversión a dos. La medición aislada de 25 muestras
 dio p95 de 13.5 ms para invertir, 17.7 ms para ordenar y 8.3 ms para editar.
 La regresión completa pasó 132 pruebas en los tres navegadores.
-El ordenamiento aún requiere ajuste para cumplir el presupuesto.
+El siguiente cambio sustituyó el acceso a la lista viva de hijos por un
+cursor entre hermanos. En la corrida de 25 muestras, el p95 fue 13.1 ms al
+invertir, 16.2 ms al ordenar y 7.3 ms al editar. Sigue la agrupación de
+respuestas autoritativas por frame.
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.
