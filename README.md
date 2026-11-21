@@ -15,7 +15,7 @@ legacy client views inside a regular LiveView. From `examples/demo`, run `mix se
 For an existing Phoenix app, follow the [integration guide](docs/phoenix-integration.md).
 For the experimental two-line migration of a normal LiveComponent, see
 [Opt in a LiveComponent](docs/native-livecomponent.md).
-Run `mix live_lift.audit` to see which existing LiveComponent handlers fit the
+Run `mix live_lift.audit` to see which existing LiveView and LiveComponent handlers fit the
 current client subset and why others are blocked.
 Run `mix live_lift.test --cases test/live_lift_cases.json` in your app's CI to
 compare every marked handler in Elixir and Node; see the

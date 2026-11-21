@@ -148,4 +148,126 @@ defmodule LiveLift.AuditTaskTest do
       File.rm_rf!(directory)
     end
   end
+
+  test "audits component and mailbox timers without evaluating their source" do
+    directory = tmp_dir!()
+    file = Path.join(directory, "timers.ex")
+
+    source = """
+    defmodule Demo.ComponentTimer do
+      use Phoenix.LiveComponent
+      alias Phoenix.LiveView, as: LV
+      raise "audit evaluated the module"
+      def render(assigns), do: ~H"<output>{@label}</output>"
+      def handle_event("preview", _params, socket) do
+        LV.send_update_after(socket.assigns.myself, [label: "Ready"], 50)
+        {:noreply, socket}
+      end
+      def handle_event("missing", _params, socket) do
+        LV.send_update_after(socket.assigns.myself, [unused: "Ready"], 50)
+        {:noreply, socket}
+      end
+      def handle_event("delay", _params, socket) do
+        LV.send_update_after(socket.assigns.myself, [label: "Ready"], 60_001)
+        {:noreply, socket}
+      end
+      def handle_event("mailbox", _params, socket) do
+        Process.send_after(self(), :ready, 50)
+        {:noreply, socket}
+      end
+    end
+
+    defmodule Demo.ViewTimer do
+      use DemoWeb, :live_view
+      alias Process, as: Mailbox
+      def render(assigns), do: ~H"<output>{@count}</output>"
+      def handle_event("preview", _params, socket) do
+        Mailbox.send_after(self(), :ready, 50)
+        {:noreply, socket}
+      end
+      def handle_event("missing", _params, socket) do
+        Mailbox.send_after(self(), :missing, 50)
+        {:noreply, socket}
+      end
+      def handle_event("guarded", _params, socket) do
+        Mailbox.send_after(self(), :guarded, 50)
+        {:noreply, socket}
+      end
+      def handle_event("component", _params, socket) do
+        Phoenix.LiveView.send_update_after(socket.assigns.myself, [count: 1], 50)
+        {:noreply, socket}
+      end
+      def handle_info(:ready, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
+      def handle_info(:guarded, socket) when is_map(socket), do: {:noreply, socket}
+    end
+
+    defmodule Demo.ShadowedSelf do
+      use Phoenix.LiveView
+      import Kernel, except: [self: 0]
+      def render(assigns), do: ~H"<output>{@count}</output>"
+      defp self(), do: Kernel.self()
+      def handle_event("preview", _params, socket) do
+        Process.send_after(self(), :ready, 50)
+        {:noreply, socket}
+      end
+      def handle_info(:ready, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
+    end
+    """
+
+    File.write!(file, source)
+    output = capture_io(fn -> Mix.Tasks.LiveLift.Audit.run(["--path", file]) end)
+    assert output =~ ~s|Demo.ComponentTimer.handle_event("preview"): compatible|
+    assert output =~ ~s|Demo.ViewTimer.handle_event("preview"): compatible|
+    assert output =~ "#{file}:11: unsupported @client send_update_after/3: assign only fields"
+    assert output =~ "literal delay from 0 to 60000 ms"
+    assert output =~ "the LiveView owns the mailbox"
+    assert output =~ "define an unguarded handle_info(:missing, socket)"
+    assert output =~ "define an unguarded handle_info(:guarded, socket)"
+    assert output =~ "use Process.send_after/3 to schedule a callback on the LiveView itself"
+    assert output =~ "use a plain params argument, self(), a literal atom message"
+    assert output =~ "2/9 handlers compatible"
+    assert File.read!(file) == source
+  end
+
+  test "audits custom updates and mailbox callback order" do
+    file = Path.join(tmp_dir!(), "timers.ex")
+
+    File.write!(
+      file,
+      """
+      defmodule Demo.CustomUpdate do
+        use DemoWeb, :live_component
+        def render(assigns), do: ~H"<output>{@label}</output>"
+        def update_many(entries), do: entries
+        def handle_event("preview", _params, socket) do
+          Phoenix.LiveView.send_update_after(socket.assigns.myself, [label: "Ready"], 50)
+          {:noreply, socket}
+        end
+      end
+
+      defmodule Demo.CatchAll do
+        use Phoenix.LiveView
+        def render(assigns), do: ~H"<output>{@label}</output>"
+        def handle_info(_, socket), do: {:noreply, socket}
+        def handle_info(:ready, socket), do: {:noreply, assign(socket, :label, "Ready")}
+        def handle_event("preview", _params, socket) do
+          Process.send_after(self(), :ready, 50)
+          {:noreply, socket}
+        end
+      end
+      """
+    )
+
+    output = capture_io(fn -> Mix.Tasks.LiveLift.Audit.run(["--path", file]) end)
+    assert output =~ "the component must use Phoenix's default update callback"
+    assert output =~ "define an unguarded handle_info(:ready, socket) clause before any catch-all"
+    assert output =~ "0/2 handlers compatible"
+  end
+
+  defp tmp_dir! do
+    dir = Path.join(System.tmp_dir!(), "live_lift_audit_#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
+    on_exit(fn -> File.rm_rf!(dir) end)
+    dir
+  end
 end

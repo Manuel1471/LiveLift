@@ -60,6 +60,12 @@ defmodule ConsumerLiftWeb.CounterComponent do
   @client true
   def handle_event("inc", _params, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
 
+  @client true
+  def handle_event("preview", _params, socket) do
+    Phoenix.LiveView.send_update_after(socket.assigns.myself, [saved: "Ready"], 50)
+    {:noreply, socket}
+  end
+
   def handle_event("save", _params, socket) do
     {:noreply, assign(socket, :saved, "Saved #{socket.assigns.count}")}
   end
@@ -104,6 +110,8 @@ EOF
   mix format
   mix format --check-formatted
   mix test test/consumer_lift_web/live/counter_live_test.exs
+  mix live_lift.audit --path lib/consumer_lift_web/live/counter_component.ex >audit.log
+  rg -q 'ConsumerLiftWeb.CounterComponent.handle_event\("preview"\): compatible' audit.log
   mix live_lift.test ConsumerLiftWeb.CounterComponent --event inc --state '{"count":0,"saved":""}'
   mix assets.build
   mix assets.deploy

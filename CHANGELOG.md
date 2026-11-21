@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Audit native LiveComponent and LiveView timer handlers before opting them into LiveLift.
+
 - Restore opted-in text field drafts after reload and submit them through the existing LiveView form.
 
 - Send app-owned DOM events with literal native Phoenix `JS.dispatch` bindings inside an island.

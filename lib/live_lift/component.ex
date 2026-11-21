@@ -605,7 +605,8 @@ defmodule LiveLift.Component do
           "#{file}: @client requires render/1 to return a literal ~H template; move delegated rendering to the server"
   end
 
-  defp state_fields(tree, actions) do
+  @doc false
+  def state_fields(tree, actions) do
     action_fields =
       Enum.flat_map(actions, fn {_name, _arg, body} ->
         {_body, fields} =

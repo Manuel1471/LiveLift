@@ -3,16 +3,25 @@ defmodule LiveLift.Component.ProcessTimer do
 
   alias LiveLift.Component.{Compiler, Helpers}
 
+  def extract(body, params, socket, env) do
+    live_view? = Phoenix.LiveView in (Module.get_attribute(env.module, :behaviour) || [])
+    kernel_self? = {:function, Kernel} in Macro.Env.lookup_import(env, {:self, 0})
+
+    extract(body, params, socket, env, live_view?, kernel_self?)
+  end
+
   def extract(
         [do: {:__block__, _, [{{:., _, [mod, :send_after]}, meta, args}, result]}],
         params,
         {socket, _, _},
-        env
+        env,
+        live_view?,
+        kernel_self?
       ) do
     if Macro.expand(mod, env) == Process do
       line = Keyword.get(meta, :line, env.line)
 
-      unless Phoenix.LiveView in (Module.get_attribute(env.module, :behaviour) || []) do
+      unless live_view? do
         error!(
           env.file,
           line,
@@ -22,7 +31,7 @@ defmodule LiveLift.Component.ProcessTimer do
 
       with {name, _, context} when is_atom(name) and is_atom(context) <- params,
            [{:self, _, []}, message, delay] <- args,
-           true <- {:function, Kernel} in Macro.Env.lookup_import(env, {:self, 0}),
+           true <- kernel_self?,
            true <- is_atom(message) and message not in [nil, true, false],
            true <- is_integer(delay) and delay in 0..60_000,
            {:noreply, {^socket, _, _}} <- result do
@@ -38,7 +47,7 @@ defmodule LiveLift.Component.ProcessTimer do
     end
   end
 
-  def extract(_body, _params, _socket, _env), do: nil
+  def extract(_body, _params, _socket, _env, _live_view?, _kernel_self?), do: nil
 
   def compile!(%{message: message} = timer, callbacks, helpers, file, line) do
     case Enum.find(callbacks, fn {pattern, _, _, _, _, _} -> matches_atom?(pattern, message) end) do

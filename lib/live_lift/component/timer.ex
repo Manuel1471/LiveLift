@@ -47,29 +47,39 @@ defmodule LiveLift.Component.Timer do
 
   def extract(_body, _params, _socket, _env), do: nil
 
-  def validate!(%{patch: patch}, fields, env, line) do
-    if Phoenix.LiveView in (Module.get_attribute(env.module, :behaviour) || []) do
-      error!(
-        env.file,
-        line,
-        "use Process.send_after/3 to schedule a callback on the LiveView itself"
-      )
+  def validate!(%{patch: _} = timer, fields, env, line) do
+    custom_update? =
+      Module.defines?(env.module, {:update, 2}, :def) or
+        Module.defines?(env.module, {:update_many, 1}, :def)
+
+    validate_target!(
+      timer,
+      fields,
+      Phoenix.LiveView in (Module.get_attribute(env.module, :behaviour) || []),
+      custom_update?,
+      env.file,
+      line
+    )
+  end
+
+  def validate!(%{message: _}, _fields, _env, _line), do: :ok
+
+  def validate_target!(%{patch: patch}, fields, live_view?, custom_update?, file, line) do
+    if live_view? do
+      error!(file, line, "use Process.send_after/3 to schedule a callback on the LiveView itself")
     end
 
-    if Module.defines?(env.module, {:update, 2}, :def) or
-         Module.defines?(env.module, {:update_many, 1}, :def) do
-      error!(env.file, line, "the component must use Phoenix's default update callback")
+    if custom_update? do
+      error!(file, line, "the component must use Phoenix's default update callback")
     end
 
     unless Enum.all?(Map.keys(patch), fn key ->
              key in fields and key not in [:id, :myself] and
                not String.starts_with?(Atom.to_string(key), "__")
            end) do
-      error!(env.file, line, "assign only fields used in the client template or handlers")
+      error!(file, line, "assign only fields used in the client template or handlers")
     end
   end
-
-  def validate!(%{message: _}, _fields, _env, _line), do: :ok
 
   def schedule(socket, event, seq, %{delay: delay} = spec) do
     timers = timers(socket.assigns)

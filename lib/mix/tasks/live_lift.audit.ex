@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.LiveLift.Audit do
   @moduledoc """
-  Reports which LiveComponent handlers fit LiveLift's current client subset.
+  Reports which LiveView and LiveComponent handlers fit LiveLift's current client subset.
 
       mix live_lift.audit
       mix live_lift.audit --path lib/my_app_web
@@ -11,7 +11,9 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
   use Mix.Task
 
-  @shortdoc "Reports client-compatible LiveComponent handlers"
+  alias LiveLift.Component.{Compiler, Helpers, ProcessTimer, Timer}
+
+  @shortdoc "Reports client-compatible LiveView and LiveComponent handlers"
 
   @impl Mix.Task
   def run(args) do
@@ -65,52 +67,136 @@ defmodule Mix.Tasks.LiveLift.Audit do
   defp audit_module(file, name, body) do
     expressions = if match?({:__block__, _, _}, body), do: elem(body, 2), else: [body]
 
-    if Enum.any?(expressions, &live_component_use?/1) do
-      template = Enum.find_value(expressions, &render_source/1)
+    case Enum.find_value(expressions, &view_kind/1) do
+      nil ->
+        []
 
-      handlers =
-        for {:def, meta, [{:handle_event, _, [event, params, socket]}, [do: result]]} <-
-              expressions,
-            do: {meta[:line], event, params, socket, result}
+      kind ->
+        template = Enum.find_value(expressions, &render_source/1)
+        definitions = source_definitions(expressions, file)
 
-      helpers = Enum.flat_map(expressions, &helper_definition(&1, file))
+        handlers =
+          for {:handle_event, [event, params, socket], guards, body, env} <- definitions,
+              do: {event, params, socket, guards, body, env}
 
-      duplicates =
-        handlers
-        |> Enum.map(&elem(&1, 1))
-        |> Enum.frequencies()
+        callbacks =
+          for {:handle_info, [message, socket], guards, body, env} <- definitions,
+              do: {message, socket, guards, body, file, env.line}
 
-      for {line, event, params, socket, result} <- handlers do
-        status =
-          cond do
-            not is_binary(event) ->
-              "blocked: use a literal event name or keep this handler on the server"
+        context = %{
+          helpers: Enum.flat_map(expressions, &helper_definition(&1, file)),
+          callbacks: callbacks,
+          live_view?: kind == :view,
+          custom_update?: Enum.any?(definitions, &custom_update?/1),
+          kernel_self?: Enum.all?(expressions, &preserves_kernel_self?/1)
+        }
 
-            Map.get(duplicates, event) > 1 ->
-              "blocked: multiple clauses for this event; keep it on the server"
+        duplicates = Enum.frequencies_by(handlers, &elem(&1, 0))
 
-            template == nil ->
-              "blocked: render/1 must return a literal ~H template"
+        for {event, params, socket, guards, body, env} <- handlers do
+          status =
+            cond do
+              not is_binary(event) or guards != [] ->
+                "blocked: use a literal event name without a guard or keep this handler on the server"
 
-            true ->
-              check_handler(file, line, event, params, socket, result, template, helpers)
-          end
+              Map.get(duplicates, event) > 1 ->
+                "blocked: multiple clauses for this event; keep it on the server"
 
-        {file, line, name, event, status}
-      end
-    else
-      []
+              template == nil ->
+                "blocked: render/1 must return a literal ~H template"
+
+              true ->
+                check_handler(env, event, params, socket, body, template, context)
+            end
+
+          {file, env.line, name, event, status}
+        end
     end
   end
 
-  defp live_component_use?({:use, _, [{:__aliases__, _, [:Phoenix, :LiveComponent]}]}), do: true
-  defp live_component_use?({:use, _, [_module, :live_component]}), do: true
-  defp live_component_use?(_), do: false
+  defp view_kind({:use, _, [{:__aliases__, _, [:Phoenix, :LiveComponent]} | _]}), do: :component
+  defp view_kind({:use, _, [{:__aliases__, _, [:Phoenix, :LiveView]} | _]}), do: :view
+  defp view_kind({:use, _, [_module, :live_component]}), do: :component
+  defp view_kind({:use, _, [_module, :live_view]}), do: :view
+  defp view_kind(_), do: nil
+
+  defp source_definitions(expressions, file) do
+    source_env = %{__ENV__ | file: file, module: nil, aliases: [], macros: [], requires: []}
+
+    {definitions, _env} =
+      Enum.flat_map_reduce(expressions, source_env, fn
+        {:alias, _, [{:__aliases__, _, parts} = target | options]}, env ->
+          {[], source_alias(env, target, parts, List.first(options, []))}
+
+        {:def, meta, [head, [do: _] = body]}, env ->
+          case function_head(head) do
+            {name, args, guards} ->
+              {[{name, args, guards, body, %{env | line: meta[:line]}}], env}
+
+            nil ->
+              {[], env}
+          end
+
+        _, env ->
+          {[], env}
+      end)
+
+    definitions
+  end
+
+  defp source_alias(env, target, parts, opts) do
+    with true <- Keyword.keyword?(opts) and Enum.all?(parts, &is_atom/1),
+         module when is_atom(module) <- Macro.expand(target, env),
+         {:__aliases__, _, [name]} when is_atom(name) <-
+           Keyword.get(opts, :as, {:__aliases__, [], [List.last(parts)]}) do
+      name = Module.concat([name])
+      %{env | aliases: Keyword.put(env.aliases, name, module)}
+    else
+      _ -> env
+    end
+  end
+
+  defp function_head({:when, _, [{name, _, args} | guards]}) when is_list(args),
+    do: {name, args, guards}
+
+  defp function_head({name, _, args}) when is_list(args), do: {name, args, []}
+  defp function_head({name, _, nil}) when is_atom(name), do: {name, [], []}
+  defp function_head(_), do: nil
+
+  defp custom_update?({name, args, _, _, _}) when name in [:update, :update_many] do
+    arity = if name == :update, do: 2, else: 1
+    minimum = length(args) - Enum.count(args, &match?({:\\, _, _}, &1))
+    arity in minimum..length(args)
+  end
+
+  defp custom_update?(_), do: false
+
+  defp preserves_kernel_self?({:import, _, [{:__aliases__, _, [:Kernel]}, opts]}) do
+    if Keyword.keyword?(opts) do
+      case {Keyword.get(opts, :only), Keyword.get(opts, :except, [])} do
+        {only, _} when is_list(only) -> {:self, 0} in only
+        {:macros, _} -> false
+        {_, except} when is_list(except) -> {:self, 0} not in except
+        _ -> false
+      end
+    else
+      false
+    end
+  end
+
+  defp preserves_kernel_self?({kind, _, [head | _]})
+       when kind in [:def, :defp, :defmacro, :defmacrop],
+       do: not match?({:self, [], _}, function_head(head))
+
+  defp preserves_kernel_self?(_), do: true
 
   defp render_source({:def, _, [{:render, _, [_assigns]}, [do: body]]}) do
     case body do
       {:sigil_H, meta, [{:<<>>, _, parts}, []]} when is_list(parts) ->
-        if Enum.all?(parts, &is_binary/1), do: {Enum.join(parts), meta[:line] || 1}
+        if Enum.all?(parts, &is_binary/1) do
+          line = meta[:line] || 1
+          {Enum.join(parts), if(meta[:delimiter] == "\"\"\"", do: line + 1, else: line)}
+        end
 
       _ ->
         nil
@@ -132,22 +218,50 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
   defp helper_definition(_, _file), do: []
 
-  defp check_handler(file, line, event, params, socket, result, {template, render_line}, helpers) do
+  defp check_handler(env, event, params, socket, body, {template, render_line}, context) do
     try do
-      {name, args, body} =
-        LiveLift.Component.Compiler.action_unchecked!(
-          event,
-          params,
-          socket,
-          [do: result],
-          file,
-          line
-        )
+      timer =
+        Timer.extract(body, params, socket, env) ||
+          ProcessTimer.extract(
+            body,
+            params,
+            socket,
+            env,
+            context.live_view?,
+            context.kernel_self?
+          )
 
-      expanded = LiveLift.Component.Helpers.expand!(body, helpers, file, line)
-      LiveLift.Component.Compiler.validate_action!({name, args, expanded}, file, line)
-      source = String.duplicate("\n", max(render_line - 1, 0)) <> template
-      LiveLift.Template.compile_liveview(source, file, [event])
+      case timer do
+        {%{message: _} = spec, timer_line} ->
+          ProcessTimer.compile!(spec, context.callbacks, context.helpers, env.file, timer_line)
+
+        {%{patch: _}, _line} ->
+          :ok
+
+        nil ->
+          {name, args, action} =
+            Compiler.action_unchecked!(event, params, socket, body, env.file, env.line)
+
+          expanded = Helpers.expand!(action, context.helpers, env.file, env.line)
+          Compiler.validate_action!({name, args, expanded}, env.file, env.line)
+      end
+
+      tree = LiveLift.Template.compile_liveview(template, env.file, [event], %{}, render_line)
+
+      if match?({%{patch: _}, _}, timer) do
+        {spec, timer_line} = timer
+        fields = LiveLift.Component.state_fields(tree, [])
+
+        Timer.validate_target!(
+          spec,
+          fields,
+          context.live_view?,
+          context.custom_update?,
+          env.file,
+          timer_line
+        )
+      end
+
       "compatible"
     rescue
       error in ArgumentError -> "blocked: #{Exception.message(error)}"

@@ -32,11 +32,14 @@ end
 
 Without `use LiveLift` and `@client true`, this is a normal server component.
 The [native component guide](native-livecomponent.md) lists the currently
-supported templates and handlers. To check existing components before editing
-them, run `mix live_lift.audit --path lib/my_app_web`. It prints a file and
-line for each handler, with either `compatible` or the reason it is blocked.
-This source audit does not change files; test a migrated component in the
-browser before shipping it.
+supported templates and handlers. Run `mix live_lift.audit --path lib/my_app_web`
+to check existing LiveViews and LiveComponents before editing them.
+Each event has a location and either `compatible` or the reason it is blocked.
+The audit checks literal component update timers and LiveView mailbox
+timers, including their `handle_info/2` clauses. It checks each candidate
+as a separate opt-in and reads source without loading app macros. The
+normal compilation, parity checks and browser tests verify the migrated
+component in context.
 
 ## Existing `client_template` apps
 
