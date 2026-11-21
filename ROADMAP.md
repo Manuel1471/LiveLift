@@ -526,9 +526,10 @@ y comprobó que no se emite una segunda solicitud de programación.
 
 ### 5.2 Validación con Ecto.Changeset
 
-El spike debe comparar valores y errores que usa el formulario cuando
-recibe parámetros válidos, vacíos o inválidos. Las operaciones candidatas
-son `validate_required/3`, `validate_length/3` y `validate_format/4`.
+El [spike de formularios](docs/changeset-form-spike.md) comprobó siete casos
+con Ecto y Phoenix. El siguiente paso es compilar una proyección acotada
+para `validate_required/3`, `validate_length/3` y `validate_format/4`, con
+paridad de los valores visibles, los errores y los campos usados.
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
