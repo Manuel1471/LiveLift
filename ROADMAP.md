@@ -12,8 +12,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 **La fase 5 está cerrada y la fase 6 está activa.** La persistencia
 restaura borradores de campos elegidos por la app. La auditoría de
 handlers y temporizadores y la medición de frecuencia y latencia
-ya están verificadas. Sigue verificar la paridad de migración con
-`mix live_lift.test`.
+ya están verificadas. La paridad de migración pasó en una app Phoenix
+nueva. Sigue la guía en formato diff para migrar desde LiveView.
 
 ### Orden de cierre
 
@@ -592,10 +592,12 @@ compartido quedó en 8,179 bytes gzip.
   antes y después de optar. `de4c741` verificó ese baseline y midió por separado
   el cambio del DOM y la confirmación, con muestras intercaladas y assets
   digeridos. [Evidencia de telemetría](docs/progress/6-event-telemetry.md).
-- **En curso:** `mix live_lift.test`: ejecuta los handlers marcados en Elixir y en Node
-  con casos declarativos; exige cobertura de eventos y componentes de la app.
-  El demo ejecuta casos de Unicode, `nil` y el límite de entero seguro en CI.
-- **Falta:** Documentación en formato diff ("versión servidor contra versión cliente"),
+- **Verificado:** `mix live_lift.test` compara tipos JSON y la entrega
+  autoritativa de temporizadores. `f429316` verificó una app Phoenix nueva
+  con LiveComponent y LiveView, casos de Unicode, `nil` y el límite de
+  entero seguro, y fallos de CI por omitir un evento o un módulo.
+  [Evidencia de paridad](docs/progress/6-migration-parity.md).
+- **En curso:** Documentación en formato diff ("versión servidor contra versión cliente"),
   entendible en una o dos lecturas.
 - **Falta:** Errores accionables ("esto no se soporta en `@client`, muévelo a un handler de
   servidor").
