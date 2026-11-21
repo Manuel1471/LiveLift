@@ -14,6 +14,9 @@ allows for a stable form within its session scope. Rehydrate the draft in
 the browser. Let the person's next edit or submit follow the normal
 LiveView path. This preserves typed input across a reload. It also means
 that restored text has the same authority as input typed in the browser.
+The [form restore follow-up](../session-storage-spike.md#form-restore-follow-up)
+verified the normal submit path with an existing nested input in three
+browsers.
 
 Acceptance requires preserving an eligible draft across reload, keeping
 Phoenix state and action sequences untouched before user interaction, and

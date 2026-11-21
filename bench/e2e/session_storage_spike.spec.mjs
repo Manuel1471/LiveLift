@@ -53,3 +53,54 @@ test("an opener can copy session storage into another LiveView tab", async ({pag
   await gotoLiveLift(independent, path);
   expect(await independent.evaluate((key) => sessionStorage.getItem(key), key)).toBeNull();
 });
+
+test("restoring draft text leaves Phoenix state unchanged until native form submission", async ({page}) => {
+  const observedEvents = [];
+  let save;
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      const event = frame?.[4]?.event;
+      if (event) observedEvents.push(event);
+      if (event === "save") {
+        save = {params: frame[4].value, forward: () => server.send(message)};
+      } else {
+        server.send(message);
+      }
+    });
+  });
+
+  const noteText = "Résumé — ready & unsaved";
+  await gotoLiveLift(page, "/native-form");
+  await page.evaluate(({key, noteText}) => sessionStorage.setItem(key, noteText), {key, noteText});
+  await page.reload();
+
+  const island = page.locator("#native-form");
+  const note = island.getByRole("textbox", {name: "Note", exact: true});
+  const saved = island.locator("p").last();
+  const ack = "data-live-lift-ack-seq";
+  await expect(island).toHaveAttribute("data-live-lift-load", "ready");
+  const snapshot = await island.getAttribute("data-live-lift-state");
+  await note.evaluate((input, key) => { input.value = sessionStorage.getItem(key); }, key);
+  await expect(note).toHaveValue(noteText);
+  await expect(island).toHaveAttribute("data-live-lift-state", snapshot);
+  await expect(island).toHaveAttribute(ack, "0");
+  expect(observedEvents).toEqual([]);
+
+  // Force a real island render between restoring the field and submitting it.
+  await island.getByRole("textbox", {name: "Draft", exact: true}).fill("Separate update");
+  await expect(island).toHaveAttribute(ack, "1");
+  await expect(note).toHaveValue(noteText);
+  expect(observedEvents).toEqual(["draft"]);
+
+  await island.getByRole("button", {name: "Save note"}).click();
+  await expect.poll(() => save?.params.profile.note).toBe(noteText);
+  await expect(saved).toHaveText(`Saved: ${noteText}`);
+  await expect(island).toHaveAttribute(ack, "1");
+  expect(observedEvents).toEqual(["draft", "save"]);
+
+  save.forward();
+  await expect(island).toHaveAttribute(ack, "2");
+  expect(JSON.parse(await island.getAttribute("data-live-lift-state")).saved).toBe(noteText);
+});
