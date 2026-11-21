@@ -9,11 +9,10 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**La fase 5 está activa y su entrega 5.4 aborda la persistencia opcional con
-`sessionStorage`.** La entrega 5.3 cerró con foco, clases y eventos nativos
-para el JavaScript de la app. El spike de 5.4 confirmó que una recarga
-monta otra isla y que una pestaña con `opener` puede copiar los datos. Sigue
-definir el contrato de restauración y probar sus límites.
+**La fase 5 está cerrada y la fase 6 está activa.** La persistencia
+restaura borradores de campos elegidos por la app. La fase 6 comienza
+por verificar la auditoría de handlers, incluidos los temporizadores
+publicados durante la fase 5.
 
 ### Orden de cierre
 
@@ -23,8 +22,8 @@ definir el contrato de restauración y probar sus límites.
 | 2 | Cerrada | Tres casos nativos de aceptación y paridad Elixir/JS. Ver evidencia en fase 2 |
 | 3 | Cerrada | Convergencia ante reordenamiento, duplicados y reconexión. Ver evidencia en fase 3 |
 | 4 | Cerrada | Carga por isla y presupuestos de runtime y 1,000 filas verificados. Ver evidencia en fase 4 |
-| 5 | **En curso** | Cumplir 5.1 a 5.4 y repetir la regresión integral |
-| 6 | En espera de 5 | Migración, diagnóstico e instalación completos y verificados en otra app |
+| 5 | Cerrada | 5.1 a 5.4 verificadas y 225 pruebas en la regresión integral |
+| 6 | **En curso** | Migración, diagnóstico e instalación completos y verificados en otra app |
 | 7 y 1.0 | En espera de 6 | Compatibilidad, seguridad y operación verificadas, con revisión cruzada y dos apps reales |
 | 8 | Opcional, posterior a 1.0 | Decidir con datos de las apps piloto |
 
@@ -35,7 +34,7 @@ definir el contrato de restauración y probar sus límites.
 | 5.1 | Temporizadores | Cerrada | Ruta de LiveComponent y ruta de LiveView probadas en cliente y servidor, con reconciliación, cancelación al desmontar y política de reconexión |
 | 5.2 | Validación con `Ecto.Changeset` | Cerrada | Paridad de valores y errores en formularios válidos e inválidos |
 | 5.3 | Comandos `JS` locales y lista permitida | Cerrada | Comportamiento de los comandos admitidos y rechazo explícito del resto |
-| 5.4 | Persistencia opcional con `sessionStorage` | **En curso** | Restauración, caducidad, límites y regresión integral de la fase |
+| 5.4 | Persistencia opcional con `sessionStorage` | Cerrada | Restauración, caducidad, límites y regresión integral de la fase |
 
 Se trabaja en una sola entrega a la vez. Cada entrega se documenta, se
 verifica contra su criterio y se registra en su propio commit antes de activar
@@ -567,11 +566,19 @@ digeridos, y el runtime compartido quedó en 8,179 bytes gzip.
 
 ### 5.4 Persistencia local opcional
 
-Cierra con restauración probada, caducidad, límites y la regresión integral
-de la fase 5. El [spike de almacenamiento](docs/session-storage-spike.md)
-pasó en tres navegadores y constató que una copia en otra pestaña puede
-coexistir con la original. El contrato debe evitar aplicar dos veces una
-mutación y conservar el estado autoritativo de Phoenix.
+El [spike de almacenamiento](docs/session-storage-spike.md) verificó que
+una recarga monta otra isla, que una pestaña con `opener` puede copiar
+datos y que un parche puede sobrescribir un campo enlazado aunque
+reutilice el nodo. La [decisión](docs/decisions/ADR-0005-session-storage-scope.md)
+elige restaurar borradores de campos marcados y usar el envío normal de
+LiveView.
+
+`24fae86` verificó restauración tras recargar, conservación
+durante parches, aislamiento de registros, caducidad, límites y envío
+normal en Chromium, Firefox y WebKit. La regresión integral de la fase 5
+pasó 225 pruebas y la corrida con assets digeridos pasó 42. El runtime
+compartido quedó en 8,179 bytes gzip.
+[Evidencia de cierre](docs/progress/5.4-draft-persistence.md).
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
