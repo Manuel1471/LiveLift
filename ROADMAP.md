@@ -467,7 +467,10 @@ midió 54,545 bytes gzip con LiveLift y 47,351 bytes sin LiveLift.
   preserva identidad y foco. Las respuestas autoritativas se agrupan con
   `requestAnimationFrame`, con temporizador de respaldo. La predicción y
   recuperación de huecos siguen siendo inmediatas.
-- **Falta:** Carga diferida de vistas por isla.
+- **En curso:** Carga diferida de vistas por isla. El [spike de assets](docs/island-loading-spike.md)
+  verificó que esbuild separa el módulo y que Phoenix conserva el archivo
+  referenciado después de digerir la entrada. Falta implementar el manifiesto,
+  el ciclo de vida del hook y la prueba de descarga por ruta.
 - **Previo:** Benchmarks en navegador real, no solo en linkedom (contador nativo en
   Chromium, con latencia simulada y comandos reproducibles).
 
