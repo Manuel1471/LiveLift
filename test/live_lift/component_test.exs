@@ -55,6 +55,31 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule UpdatedCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def update(%{value: value}, socket), do: {:ok, assign(socket, :count, value * 2)}
+    def render(assigns), do: ~H"<output>{@count}</output>"
+
+    @client true
+    def handle_event("inc", _, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
+  end
+
+  defmodule BatchedCounter do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def update_many(entries) do
+      Enum.map(entries, fn {assigns, socket} -> assign(socket, assigns) end)
+    end
+
+    def render(assigns), do: ~H"<output>{@count}</output>"
+
+    @client true
+    def handle_event("inc", _, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
+  end
+
   defmodule PatternCounter do
     use Phoenix.LiveComponent
     use LiveLift
@@ -267,6 +292,28 @@ defmodule LiveLift.ComponentTest do
     assert {:ok, custom, [temporary_assigns: []]} = ChainedCounter.mount(initial)
     assert custom.assigns.label == "mounted"
     assert is_binary(custom.assigns.__live_lift_instance)
+  end
+
+  test "custom updates keep the first revision and advance only for rendered state" do
+    {:ok, initial} = UpdatedCounter.mount(%Phoenix.LiveView.Socket{})
+    {:ok, mounted} = UpdatedCounter.update(%{value: 2}, initial)
+    assert mounted.assigns.count == 4
+    assert Map.get(mounted.assigns, :__live_lift_revision, 0) == 0
+
+    {:ok, changed} = UpdatedCounter.update(%{value: 3}, mounted)
+    assert changed.assigns.count == 6
+    assert changed.assigns.__live_lift_revision == 1
+    assert {:ok, ^changed} = UpdatedCounter.update(%{value: 3}, changed)
+  end
+
+  test "batched updates advance the revision of only the changed component" do
+    {:ok, a} = BatchedCounter.mount(%Phoenix.LiveView.Socket{})
+    {:ok, b} = BatchedCounter.mount(%Phoenix.LiveView.Socket{})
+    [a, b] = BatchedCounter.update_many([{%{count: 1}, a}, {%{count: 2}, b}])
+    [updated, unchanged] = BatchedCounter.update_many([{%{count: 3}, a}, {%{count: 2}, b}])
+    assert updated.assigns.count == 3
+    assert updated.assigns.__live_lift_revision == 1
+    assert unchanged == b
   end
 
   test "reply returns the server's authoritative state" do

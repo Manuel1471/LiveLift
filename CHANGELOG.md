@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Reconcile server updates to native LiveComponents without advancing the browser's action sequence, including Phoenix `send_update_after/3`.
 - Support per-island view chunks with an opt-in split registry and preserve native events during loading.
 
 - Batch authoritative renders by animation frame while keeping local predictions immediate.

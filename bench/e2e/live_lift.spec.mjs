@@ -444,6 +444,20 @@ test("an unmarked save reads authoritative component state", async ({page}) => {
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
 });
 
+test("a server timer updates the island and keeps its action sequence", async ({page}) => {
+  await gotoLiveLift(page, "/native-counter");
+  const root = page.locator("#native-counter");
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await root.getByRole("button", {name: "Schedule label on server"}).click();
+  await expect(root.locator("span")).toHaveText("Timer fired");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root.locator("output")).toHaveText("2");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "2");
+});
+
 test("server-only component saves the same authoritative count", async ({page}) => {
   await gotoLiveLift(page, "/native-counter-server");
   const serverRoot = page.locator('section[aria-label="Native LiveComponent counter"]');

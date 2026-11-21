@@ -1,6 +1,8 @@
 defmodule LiveLift.Component do
   @moduledoc false
 
+  alias LiveLift.FloatWire
+
   def on_definition(env, :def, :render, [_assigns], _guards, body) do
     if Module.get_attribute(env.module, :client) == true do
       raise ArgumentError,
@@ -145,8 +147,11 @@ defmodule LiveLift.Component do
         end
       end
 
+    update = update_wrapper(env.module)
+
     quote do
       unquote(mount)
+      unquote(update)
 
       @doc false
       def __live_lift_client_actions__, do: unquote(Macro.escape(action_tuples))
@@ -231,6 +236,77 @@ defmodule LiveLift.Component do
           )
         end
       end
+    end
+  end
+
+  defp update_wrapper(module) do
+    cond do
+      Module.defines?(module, {:update_many, 1}, :def) ->
+        quote do
+          defoverridable update_many: 1
+
+          def update_many(entries) do
+            LiveLift.Component.sync_updates(super(entries), entries, __MODULE__)
+          end
+        end
+
+      Module.defines?(module, {:update, 2}, :def) ->
+        quote do
+          defoverridable update: 2
+
+          def update(assigns, socket) do
+            LiveLift.Component.sync_update(super(assigns, socket), socket, __MODULE__)
+          end
+        end
+
+      true ->
+        quote do
+          def update(assigns, socket) do
+            result = {:ok, Phoenix.Component.assign(socket, assigns)}
+            LiveLift.Component.sync_update(result, socket, __MODULE__)
+          end
+        end
+    end
+  end
+
+  @doc false
+  def sync_update({:ok, %Phoenix.LiveView.Socket{} = next}, previous, module),
+    do: {:ok, sync_updated_socket(next, previous, module)}
+
+  def sync_update(result, _previous, _module), do: result
+
+  @doc false
+  def sync_updates(results, entries, module)
+      when is_list(results) and length(results) == length(entries) do
+    Enum.zip_with(results, entries, fn
+      %Phoenix.LiveView.Socket{} = next, {_assigns, previous} ->
+        sync_updated_socket(next, previous, module)
+
+      other, _entry ->
+        other
+    end)
+  end
+
+  def sync_updates(results, _entries, _module), do: results
+
+  defp sync_updated_socket(next, previous, module) do
+    cond do
+      not enabled?(module) ->
+        next
+
+      not Map.get(previous.assigns, :__live_lift_updated, false) ->
+        Phoenix.Component.assign(next, :__live_lift_updated, true)
+
+      true ->
+        fields = module.__live_lift_component_fields__()
+
+        if FloatWire.encode(Map.take(next.assigns, fields)) ===
+             FloatWire.encode(Map.take(previous.assigns, fields)) do
+          next
+        else
+          revision = Map.get(previous.assigns, :__live_lift_revision, 0) + 1
+          Phoenix.Component.assign(next, :__live_lift_revision, revision)
+        end
     end
   end
 

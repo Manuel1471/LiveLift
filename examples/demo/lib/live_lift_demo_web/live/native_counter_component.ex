@@ -10,6 +10,7 @@ defmodule LiveLiftDemoWeb.NativeCounterComponent do
       <button type="button" phx-click="save" phx-target={@myself}>Save on server</button>
       <output aria-live="polite">{@count}</output>
       <button type="button" phx-click="label" phx-value-label="ready" phx-target={@myself}>Set label</button>
+      <button type="button" phx-click="schedule" phx-target={@myself}>Schedule label on server</button>
       <span>{@label}</span>
     </section>
     """
@@ -26,6 +27,11 @@ defmodule LiveLiftDemoWeb.NativeCounterComponent do
 
   def handle_event("save", _params, socket) do
     {:noreply, assign(socket, :label, "Saved #{socket.assigns.count}")}
+  end
+
+  def handle_event("schedule", _params, socket) do
+    Phoenix.LiveView.send_update_after(socket.assigns.myself, [label: "Timer fired"], 50)
+    {:noreply, socket}
   end
 
   @client true

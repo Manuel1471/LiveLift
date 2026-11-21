@@ -37,6 +37,13 @@ on its own socket and replies with its authoritative assigns. Unmarked
 handlers continue through LiveView normally. After reconnect, the browser
 reconciles its predictions with the server snapshot.
 
+After mount, changes to client-rendered fields from `update/2` or
+`update_many/1` also reach the browser as authoritative snapshots. For example,
+an unmarked handler can call
+`Phoenix.LiveView.send_update_after(socket.assigns.myself, [label: "Ready"], 50)`.
+This uses Phoenix's server timer and leaves the browser's action sequence intact.
+Keep the scheduling call in an unmarked handler.
+
 Check a marked handler against the generated JavaScript from your Phoenix app:
 
 ```sh
