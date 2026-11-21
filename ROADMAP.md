@@ -10,8 +10,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 ## Estado de ejecución
 
 **La fase 5 está activa y su entrega 5.1 son los temporizadores.** El siguiente
-paso es probar en el navegador un temporizador de LiveComponent con
-`send_update_after/3` y su reconciliación con el servidor.
+paso es probar y compilar la ruta de LiveView con `Process.send_after/3`
+y `handle_info/2`.
 
 ### Orden de cierre
 
@@ -495,12 +495,20 @@ por isla. El comando reproducible es `python3 bench/island_bundle.py`.
 |---|---|---|
 | a. Spike de enrutamiento | Verificado | El [spike de enrutamiento](docs/timer-routing-spike.md) (`e3db6b1`) prueba que `Process.send_after(self(), ...)` llega al `handle_info/2` del LiveView padre. Para apuntar a un LiveComponent, Phoenix ofrece `send_update_after/3` |
 | b. Reconciliación autoritativa de `update` | Verificado | `update/2` y `update_many/1` conservan la revisión inicial y avanzan al cambiar los datos de la isla (`3052a90`). Playwright verifica en los tres navegadores que un temporizador de Phoenix actualiza la isla y que la siguiente acción conserva su secuencia |
-| c. Temporizador en el cliente de un LiveComponent | **Siguiente** | Probar una interacción con latencia, verificar un único efecto visible y la convergencia con `send_update_after/3` |
-| d. Temporizador en el cliente de un LiveView | En espera de c | Probar la ruta nativa `Process.send_after/3` y `handle_info/2` |
+| c. Temporizador en el cliente de un LiveComponent | Verificado | `62ac763` ejecuta la predicción con el WebSocket retenido y verifica que una solicitud duplicada produce una sola actualización del servidor y un solo cambio visible |
+| d. Temporizador en el cliente de un LiveView | **Siguiente** | Probar la ruta nativa `Process.send_after/3` y `handle_info/2` |
 | e. Verificación de ciclo de vida | En espera de d | Probar varios temporizadores, desmontaje, reconexión y rechazos con ubicación, y documentar las formas admitidas |
 
 La validación de formularios (5.2) empieza al cerrar estos pasos. Los comandos
 locales (5.3) y la persistencia (5.4) conservan el alcance de la cola.
+
+La prueba de c pasó en Chromium, Firefox y WebKit con assets digeridos
+(`LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- --grep 'a (marked|server) timer'`,
+desde `bench/`). El núcleo minificado midió 8,188 bytes gzip frente a
+8,085 antes del cambio con el mismo comando. La cola del temporizador se
+genera solo en los módulos que la usan. La paridad del arnés de acciones
+comprueba el estado al programar el temporizador. La prueba de navegador
+cubre el efecto diferido y la confirmación de Phoenix.
 
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
@@ -509,6 +517,7 @@ Inventario de trabajo previo para verificar cuando se active la fase.
 
 - **Previo:** `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué
   (auditoría de fuente para `use Phoenix.LiveComponent` y `use AppWeb, :live_component`).
+  Queda incorporar la forma de temporizador publicada en 5.1.
 - **Falta:** Telemetría de latencia y frecuencia por evento, para decidir qué migrar con datos.
   Los componentes con `use LiveLift` ya emiten duración y resultado por evento
   marcado o no marcado. Falta medir componentes antes de optar y el tramo del
