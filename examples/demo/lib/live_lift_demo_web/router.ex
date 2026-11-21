@@ -21,6 +21,7 @@ defmodule LiveLiftDemoWeb.Router do
     live "/form-parity", FormParityLive
     live "/native-counter", NativeCounterLive
     live "/native-counter-server", NativeCounterLive, :server
+    live "/native-timer", NativeTimerLive
     live "/native-form", NativeFormLive
     live "/native-optional", NativeOptionalLive
     live "/native-float", NativeFloatLive

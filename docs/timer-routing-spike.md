@@ -24,3 +24,17 @@ is owned by a LiveView and needs a LiveView opt-in path for
 authoritative server update must refer to the same timer. Verify one-shot
 delivery, cancellation on removal, reconnect behavior and the server-only
 path before marking timer support complete.
+
+## Optimistic root LiveView
+
+A routed LiveView can use an inner LiveLift boundary and keep Phoenix's outer
+root. An ID derived from the mount socket ID lets Phoenix patch the same
+boundary when the browser connects. The existing hook's
+`pushEventTo(this.el, ...)` targets the LiveView without a component ID.
+Wrapping the root's native callbacks with `defoverridable` lets a mailbox
+update publish a new snapshot without acknowledging another browser action.
+
+The Playwright test `a native LiveView receives root events and reconciles
+mailbox updates` holds the event frame before delivery, observes optimistic
+rendering, checks the frame has no component ID, and then runs a server timer
+through `handle_info/2`. It passes in Chromium, Firefox, and WebKit.

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Reuse native optimistic event reconciliation for opted-in root LiveViews, including authoritative mailbox and URL parameter updates.
 - Predict bounded native LiveComponent timers in the browser and reconcile their one-shot updates with Phoenix's `send_update_after/3`.
 - Reconcile server updates to native LiveComponents without advancing the browser's action sequence, including Phoenix `send_update_after/3`.
 - Support per-island view chunks with an opt-in split registry and preserve native events during loading.

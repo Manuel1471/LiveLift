@@ -501,6 +501,35 @@ test("a marked timer predicts before delivery and commits once when duplicated",
   expect(await page.evaluate(() => window.timerLabels)).toEqual(["Local timer fired"]);
 });
 
+test("a native LiveView receives root events and reconciles mailbox updates", async ({page}) => {
+  let deliver;
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      if (frame?.[4]?.event === "inc") {
+        expect(frame[4].cid).toBeUndefined();
+        deliver = () => server.send(message);
+      } else {
+        server.send(message);
+      }
+    });
+  });
+  await gotoLiveLift(page, "/native-timer");
+  const root = page.locator("[data-live-lift-module='LiveLiftDemoWeb.NativeTimerLive']");
+  const count = root.locator("output");
+  await expect(count).toHaveText("0");
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(count).toHaveText("1");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
+  deliver();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await root.getByRole("button", {name: "Schedule ten"}).click();
+  await expect(count).toHaveText("11");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+});
+
 test("server-only component saves the same authoritative count", async ({page}) => {
   await gotoLiveLift(page, "/native-counter-server");
   const serverRoot = page.locator('section[aria-label="Native LiveComponent counter"]');

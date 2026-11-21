@@ -147,22 +147,12 @@ defmodule LiveLift.Component do
         end
       )
 
-    mount =
-      if Module.defines?(env.module, {:mount, 1}, :def) do
-        quote do
-          defoverridable mount: 1
-
-          def mount(socket) do
-            LiveLift.Component.mount_instance(super(socket))
-          end
-        end
+    lifecycle =
+      if live_view?(env.module) do
+        live_view_wrappers(env.module)
       else
-        quote do
-          def mount(socket), do: LiveLift.Component.mount_instance({:ok, socket})
-        end
+        [component_mount_wrapper(env.module), update_wrapper(env.module, map_size(timers) > 0)]
       end
-
-    update = update_wrapper(env.module, map_size(timers) > 0)
 
     event_timer =
       if map_size(timers) > 0,
@@ -170,8 +160,7 @@ defmodule LiveLift.Component do
         else: nil
 
     quote do
-      unquote(mount)
-      unquote(update)
+      unquote_splicing(lifecycle)
 
       @doc false
       def __live_lift_client_actions__, do: unquote(Macro.escape(action_tuples))
@@ -208,6 +197,10 @@ defmodule LiveLift.Component do
             var!(assigns)
             |> Phoenix.Component.assign(:live_lift_inner, inner)
             |> Phoenix.Component.assign(
+              :live_lift_dom_id,
+              Map.get(var!(assigns), :__live_lift_dom_id, var!(assigns)[:id])
+            )
+            |> Phoenix.Component.assign(
               :live_lift_state_json,
               state |> LiveLift.FloatWire.encode() |> Jason.encode!()
             )
@@ -222,7 +215,7 @@ defmodule LiveLift.Component do
 
           ~H"""
           <div
-            id={@id}
+            id={@live_lift_dom_id}
             phx-hook="LiveLift"
             phx-update="ignore"
             data-live-lift-mode="component"
@@ -262,6 +255,65 @@ defmodule LiveLift.Component do
         end
       end
     end
+  end
+
+  defp live_view?(module),
+    do: Phoenix.LiveView in (Module.get_attribute(module, :behaviour) || [])
+
+  defp component_mount_wrapper(module) do
+    if Module.defines?(module, {:mount, 1}, :def) do
+      quote do
+        defoverridable mount: 1
+
+        def mount(socket) do
+          LiveLift.Component.mount_instance(super(socket))
+        end
+      end
+    else
+      quote do
+        def mount(socket), do: LiveLift.Component.mount_instance({:ok, socket})
+      end
+    end
+  end
+
+  defp live_view_wrappers(module) do
+    mount =
+      if Module.defines?(module, {:mount, 3}, :def) do
+        quote do
+          defoverridable mount: 3
+
+          def mount(params, session, socket) do
+            LiveLift.Component.mount_view_instance(super(params, session, socket))
+          end
+        end
+      else
+        quote do
+          def mount(_params, _session, socket) do
+            LiveLift.Component.mount_view_instance({:ok, socket})
+          end
+        end
+      end
+
+    callbacks =
+      for {callback, args} <- [
+            {:handle_info, Macro.generate_arguments(2, __MODULE__)},
+            {:handle_params, Macro.generate_arguments(3, __MODULE__)}
+          ],
+          Module.defines?(module, {callback, length(args)}, :def) do
+        quote do
+          defoverridable [{unquote(callback), unquote(length(args))}]
+
+          def unquote(callback)(unquote_splicing(args)) do
+            LiveLift.Component.sync_view_callback(
+              super(unquote_splicing(args)),
+              unquote(List.last(args)),
+              __MODULE__
+            )
+          end
+        end
+      end
+
+    [mount | callbacks]
   end
 
   defp update_wrapper(module, timed?) do
@@ -328,17 +380,21 @@ defmodule LiveLift.Component do
         Phoenix.Component.assign(next, :__live_lift_updated, true)
 
       true ->
-        fields = module.__live_lift_component_fields__()
-
-        if Timer.timers(next.assigns) == Timer.timers(previous.assigns) and
-             FloatWire.encode(Map.take(next.assigns, fields)) ===
-               FloatWire.encode(Map.take(previous.assigns, fields)) do
-          next
-        else
-          revision = Map.get(previous.assigns, :__live_lift_revision, 0) + 1
-          Phoenix.Component.assign(next, :__live_lift_revision, revision)
-        end
+        if changed_projection?(next, previous, module), do: advance_revision(next), else: next
     end
+  end
+
+  defp changed_projection?(next, previous, module) do
+    fields = module.__live_lift_component_fields__()
+
+    Timer.timers(next.assigns) != Timer.timers(previous.assigns) or
+      FloatWire.encode(Map.take(next.assigns, fields)) !==
+        FloatWire.encode(Map.take(previous.assigns, fields))
+  end
+
+  defp advance_revision(socket) do
+    revision = Map.get(socket.assigns, :__live_lift_revision, 0) + 1
+    Phoenix.Component.assign(socket, :__live_lift_revision, revision)
   end
 
   @doc false
@@ -350,6 +406,28 @@ defmodule LiveLift.Component do
   def mount_instance({:ok, socket}), do: {:ok, put_instance(socket)}
 
   def mount_instance({:ok, socket, options}), do: {:ok, put_instance(socket), options}
+
+  @doc false
+  def mount_view_instance({:ok, socket}), do: {:ok, put_view_instance(socket)}
+
+  def mount_view_instance({:ok, socket, options}), do: {:ok, put_view_instance(socket), options}
+
+  defp put_view_instance(socket),
+    do:
+      socket
+      |> put_instance()
+      |> Phoenix.Component.assign(:__live_lift_dom_id, "#{socket.id}-lift")
+
+  @doc false
+  def sync_view_callback({:noreply, next} = result, previous, module) do
+    if enabled?(module) and changed_projection?(next, previous, module) do
+      {:noreply, advance_revision(next)}
+    else
+      result
+    end
+  end
+
+  def sync_view_callback(result, _previous, _module), do: result
 
   defp put_instance(socket) do
     instance = Base.url_encode64(:crypto.strong_rand_bytes(16), padding: false)
