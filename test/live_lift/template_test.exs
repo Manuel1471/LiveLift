@@ -62,6 +62,55 @@ defmodule LiveLift.TemplateTest do
     end
   end
 
+  test "local native custom events retain Phoenix encoding and reject broader effects" do
+    import Phoenix.LiveView.JS
+
+    for {expression, expected} <- [
+          {~s'Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false)',
+           dispatch("workspace:preview", bubbles: false)},
+          {~s'Phoenix.LiveView.JS.focus() |> Phoenix.LiveView.JS.dispatch("workspace:preview", to: {:inner, "#preview"}, bubbles: false)',
+           focus() |> dispatch("workspace:preview", to: {:inner, "#preview"}, bubbles: false)}
+        ] do
+      [button] =
+        Template.compile_liveview(
+          "<button phx-click={#{expression}}>Preview</button>",
+          "dispatch.ex",
+          []
+        )
+
+      assert button.attrs == [
+               %{name: "phx-click", type: "static", value: Jason.encode!(expected)}
+             ]
+    end
+
+    for expression <- [
+          ~s'Phoenix.LiveView.JS.dispatch("click", bubbles: false)',
+          ~s'Phoenix.LiveView.JS.dispatch("phx:page-loading-start", bubbles: false)',
+          ~s'Phoenix.LiveView.JS.dispatch("live-lift:patch", bubbles: false)',
+          ~s'Phoenix.LiveView.JS.dispatch("workspace:preview")',
+          ~s'Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: true)',
+          ~s'Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false, bubbles: true)',
+          ~s'Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false, detail: %{id: 1})',
+          ~s'Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false, blocking: true)',
+          ~s'Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false, to: "#global")',
+          ~s'Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false, to: {:inner, @selector})',
+          ~s'Phoenix.LiveView.JS.dispatch(@name, bubbles: false)',
+          ~s'Phoenix.LiveView.JS.add_class("active") |> Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false)'
+        ] do
+      assert_raise ArgumentError,
+                   ~r/dispatch.ex:12:.*\(E053\).*outside the LiveLift island/,
+                   fn ->
+                     Template.compile_liveview(
+                       "<button phx-click={#{expression}}>Preview</button>",
+                       "dispatch.ex",
+                       [],
+                       %{},
+                       12
+                     )
+                   end
+    end
+  end
+
   test "native click command allowlist rejects computed commands and nonlocal scopes" do
     call = "Phoenix.LiveView.JS.focus()"
     chain = Enum.map_join(1..8, " |> ", fn _ -> call end)

@@ -48,3 +48,31 @@ test("native dispatch spike reaches an app listener without a LiveView action", 
   await expect(island).toHaveAttribute("data-live-lift-ack-seq", "0");
   await expect(island).toHaveAttribute("data-live-lift-server-revision", "0");
 });
+
+test("compiled native dispatch opens the app dialog before and after an island patch", async ({page}) => {
+  for (const route of ["/native-counter-server", "/native-counter"]) {
+    await gotoLiveLift(page, route);
+
+    const counter = page.getByRole("region", {name: "Native LiveComponent counter"});
+    const dialog = page.getByRole("dialog", {name: "Local preview"});
+    const preview = counter.getByRole("button", {name: "Open local preview"});
+    const encoded = await preview.getAttribute("phx-click");
+
+    await preview.click();
+    await expect(dialog).toBeVisible();
+    if (route === "/native-counter") {
+      await expect(page.locator("#native-counter")).toHaveAttribute("data-live-lift-ack-seq", "0");
+    }
+    await dialog.getByRole("button", {name: "Close preview"}).click();
+    await expect(dialog).toBeHidden();
+
+    await counter.getByRole("button", {name: "Set label"}).click();
+    await expect(counter.locator("span")).toHaveText("ready");
+    await expect(preview).toHaveAttribute("phx-click", encoded);
+    await preview.click();
+    await expect(dialog).toBeVisible();
+    if (route === "/native-counter") {
+      await expect(page.locator("#native-counter")).toHaveAttribute("data-live-lift-ack-seq", "1");
+    }
+  }
+});

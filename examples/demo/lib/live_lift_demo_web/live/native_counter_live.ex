@@ -24,6 +24,13 @@ defmodule LiveLiftDemoWeb.NativeCounterLive do
         count={@count}
         label={@label}
       />
+      <dialog id="native-preview" aria-labelledby="native-preview-title">
+        <h2 id="native-preview-title">Local preview</h2>
+        <p>Phoenix delivered this event in your browser.</p>
+        <form method="dialog">
+          <button type="submit">Close preview</button>
+        </form>
+      </dialog>
     </main>
     """
   end

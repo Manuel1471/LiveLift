@@ -35,6 +35,13 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {...colocatedHooks, LiveLift: createClientHook(views)},
 })
 
+// The preview uses a native custom event from the counter.
+document.addEventListener("workspace:preview", ({target}) => {
+  if (target.id === "open-native-preview") {
+    document.getElementById("native-preview").showModal()
+  }
+}, {capture: true})
+
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))

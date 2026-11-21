@@ -5,6 +5,8 @@ defmodule LiveLift.Template.JSCommand do
 
   @target ~r/\A[#.][a-zA-Z_][a-zA-Z0-9_-]{0,63}\z/
   @class ~r/\A[a-zA-Z_][a-zA-Z0-9_-]{0,63}\z/
+  @dispatch_name ~r/\A([a-z][a-z0-9-]{0,23}):[a-z][a-z0-9_-]{0,31}\z/
+  @reserved_namespaces ~w(phx phoenix live-lift livelift)
   @opening_bracket ~r/\A(?:\[|&(?:#0*91(?![0-9])|#[xX]0*5[bB](?![0-9a-fA-F])|lbrack;|lsqb;))/
   @focus [:focus, :focus_first]
   @classes [:add_class, :remove_class, :toggle_class]
@@ -16,6 +18,10 @@ defmodule LiveLift.Template.JSCommand do
          {:ok, js} <- command(ast, 8) do
       preserves_classes? =
         Enum.any?(js.ops, fn [name, _] -> name in ~w(add_class remove_class toggle_class) end)
+
+      if preserves_classes? and Enum.any?(js.ops, &match?(["dispatch", _], &1)) do
+        unsupported!(file, line, "put class commands and JS.dispatch in separate bindings")
+      end
 
       {Phoenix.json_library().encode!(js), preserves_classes?}
     else
@@ -76,7 +82,29 @@ defmodule LiveLift.Template.JSCommand do
     end
   end
 
+  defp append(
+         {{:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :JS]}, :dispatch]}, _,
+          [event, options]},
+         js
+       )
+       when is_binary(event) and is_list(options) do
+    with [namespace] <- Regex.run(@dispatch_name, event, capture: :all_but_first),
+         false <- namespace in @reserved_namespaces,
+         true <- local_dispatch_options?(Enum.sort(options)) do
+      {:ok, JS.dispatch(js, event, options)}
+    else
+      _ -> :error
+    end
+  end
+
   defp append(_call, _js), do: :error
+
+  defp local_dispatch_options?(bubbles: false), do: true
+
+  defp local_dispatch_options?(bubbles: false, to: {:inner, selector}) when is_binary(selector),
+    do: Regex.match?(@target, selector)
+
+  defp local_dispatch_options?(_options), do: false
 
   defp apply_options(name, args, []), do: {:ok, apply(JS, name, args ++ [[]])}
 

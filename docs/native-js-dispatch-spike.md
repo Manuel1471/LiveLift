@@ -21,8 +21,9 @@ the document and an element outside the source that matches the selector.
 
 Chromium 158.0.8127.18, Firefox 159.0 and WebKit 27.2 all passed locally
 on 2026-11-21 with LiveView 1.2.13 on macOS arm64, including a rerun
-with `LIVE_LIFT_TEST_DEPLOY=1`. The target receives a `CustomEvent` with the native `dispatcher`. The
-outside target and document bubble listener stay idle. The island's
+with `LIVE_LIFT_TEST_DEPLOY=1`. The target receives a `CustomEvent` with
+the native `dispatcher`. The outside target and document bubble listener
+stay idle. The island's
 action sequence and server revision stay at their initial values.
 
 ## Limits

@@ -100,6 +100,21 @@ underscore and limited to 64 characters per name. Class persistence uses
 the default LiveView selector behavior and requires immediate click bindings.
 [E053](errors/E053.md) lists unsupported forms.
 
+A native `JS.dispatch("workspace:preview", bubbles: false)` binding lets
+the app listen for a custom DOM event. Write the full
+`Phoenix.LiveView.JS.dispatch` call with a literal `namespace:event` name
+and an explicit `bubbles: false`. The namespace starts with a lowercase
+ASCII letter, has up to 24 characters, and accepts lowercase letters,
+digits and hyphens. The event starts with a lowercase ASCII letter, has up
+to 32 characters, and also accepts underscores. The namespaces `phx`,
+`phoenix`, `live-lift` and `livelift` are reserved.
+
+The command supports the bound element or a simple literal `{:inner, ...}`
+selector. It can share a pipe with focus commands. Write class commands in
+a separate binding. App code can listen on the target or during the capture
+phase, as in the [demo's dialog listener](../examples/demo/assets/js/app.js).
+The native event includes `detail.dispatcher`.
+
 ## Action expressions
 
 ### Ecto changeset values

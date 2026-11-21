@@ -12,6 +12,13 @@ defmodule LiveLiftDemoWeb.NativeCounterServerComponent do
       <span>{@label}</span>
       <button
         type="button"
+        id="open-native-preview"
+        phx-click={Phoenix.LiveView.JS.dispatch("workspace:preview", bubbles: false)}
+      >
+        Open local preview
+      </button>
+      <button
+        type="button"
         id="class-add"
         class={["class-sample", @label]}
         phx-click={Phoenix.LiveView.JS.add_class("accent")}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Send app-owned DOM events with literal native Phoenix `JS.dispatch` bindings inside an island.
+
 - Preserve supported Phoenix class commands across LiveLift updates on the same DOM node.
 
 - Compile validity and field reads from schemaless Ecto string changesets with required, grapheme length, and bounded format validation.
