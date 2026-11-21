@@ -444,6 +444,42 @@ test("authoritative corrections replay pending actions and ignore late replies",
   assert.equal(hook.serverRevision, 3);
 });
 
+test("a gap recovers a missing request and drains queued actions in order", () => {
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const requests = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, payload, reply) => requests.push({payload, reply}),
+  };
+  hook.mounted();
+  for (let index = 0; index < 3; index += 1) hook.sendOptimistic(el.controls.advance, "advance", {});
+  const sequences = () => requests.map(({payload}) => payload._live_lift_seq);
+  const response = (ack_seq) => ({revision: ack_seq, ack_seq, state: {count: ack_seq, step: 1}});
+
+  // Pretend the first request was lost and deliver two gap replies for later actions.
+  requests[2].reply({...response(0), expected_seq: 1});
+  requests[1].reply({...response(0), expected_seq: 1});
+  assert.deepEqual(sequences(), [1, 2, 3, 1]);
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.equal(hook.state.count, 4);
+
+  requests[3].reply(response(1));
+  requests[3].reply(response(1));
+  assert.deepEqual(sequences(), [1, 2, 3, 1, 2]);
+  requests[4].reply(response(2));
+  requests[5].reply(response(3));
+  requests[6].reply(response(4));
+  assert.deepEqual(sequences(), [1, 2, 3, 1, 2, 3, 4]);
+  assert.equal(hook.pending.length, 0);
+  assert.equal(hook.recovery, null);
+  assert.equal(hook.state.count, 4);
+});
+
 test("failed server reconciliation leaves the previous prediction intact", () => {
   const el = element({count: 1, step: 1});
   el.dataset.liveLiftMode = "component";

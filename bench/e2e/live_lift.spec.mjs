@@ -345,6 +345,45 @@ test("pending native component clicks converge after server replies", async ({pa
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
 });
 
+test("native actions recover reordered requests and ignore duplicates", async ({page}) => {
+  const delivered = [];
+  let first;
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      const sequence = frame?.[4]?.value?._live_lift_seq;
+      if (sequence !== 1 && sequence !== 2) {
+        server.send(message);
+        return;
+      }
+      if (sequence === 1 && first === undefined) {
+        first = message;
+        return;
+      }
+      delivered.push(sequence);
+      server.send(message);
+      if (sequence === 2 && delivered.length === 1) {
+        delivered.push(1);
+        server.send(first);
+        server.send(first);
+      }
+    });
+  });
+
+  await page.goto("/native-counter");
+  await page.waitForFunction(() => window.liveSocket.isConnected());
+  const root = page.locator("#native-counter");
+  const add = root.getByRole("button", {name: "Add one"});
+  await add.click();
+  await add.click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(root.locator("output")).toHaveText("2");
+  expect(delivered.slice(0, 2)).toEqual([2, 1]);
+  await root.getByRole("button", {name: "Save on server"}).click();
+  await expect(root.locator("span")).toHaveText("Saved 2");
+});
+
 test("an unmarked save reads authoritative component state", async ({page}) => {
   await page.goto("/native-counter");
   const root = page.locator("#native-counter");

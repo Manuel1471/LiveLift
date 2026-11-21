@@ -467,6 +467,7 @@ export function createClientHook(views) {
         this.debouncedChanges = new Map();
         this.authoritativeState = this.state;
         this.pending = [];
+        this.recovery = null;
         this.nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
         if (!Number.isSafeInteger(this.nextSequence) || this.nextSequence < 1) {
           throw new Error("Invalid LiveLift event sequence");
@@ -479,7 +480,7 @@ export function createClientHook(views) {
           const snapshot = JSON.parse(this.el.dataset.liveLiftState);
           const revision = Number(this.el.dataset.liveLiftServerRevision || "0");
           if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("Invalid LiveLift server revision");
-          const nextSequence = Math.max(this.nextSequence, Number(this.el.dataset.liveLiftAckSeq || "0") + 1);
+          const nextSequence = Number(this.el.dataset.liveLiftAckSeq || "0") + 1;
           if (!Number.isSafeInteger(nextSequence) || nextSequence < 1) throw new Error("Invalid LiveLift event sequence");
           validateState(snapshot);
           let fresh = this.offlineQueue.filter(({createdAt}) => performance.now() - createdAt <= OFFLINE_ACTION_MAX_AGE_MS);
@@ -496,6 +497,7 @@ export function createClientHook(views) {
           }
           this.render(snapshot);
           this.pending = [];
+          this.recovery = null;
           this.authoritativeState = snapshot;
           this.serverRevision = revision;
           this.nextSequence = nextSequence;
@@ -614,17 +616,42 @@ export function createClientHook(views) {
           return;
         }
         this.nextSequence += 1;
-        this.pending.push({sequence, action: eventName, eventData});
+        const pendingAction = {sequence, action: eventName, eventData, params};
+        this.pending.push(pendingAction);
+        if (!this.recovery) this.pushOptimistic(pendingAction);
+      };
+
+      this.recoverPending = () => {
+        if (!this.recovery || this.offline) return;
+        const first = this.pending[0];
+        if (!first) {
+          this.recovery = null;
+          return;
+        }
+        if (this.recovery.sent === first.sequence) return;
+        this.recovery.sent = first.sequence;
+        this.pushOptimistic(first);
+      };
+
+      this.pushOptimistic = ({sequence, action, params}) => {
         const payload = {...params, _live_lift_seq: sequence};
         const epoch = this.connectionEpoch;
         // The prediction can remove its own control; target the stable component root.
-        this.pushEventTo(this.el, eventName, payload, (reply) => {
+        this.pushEventTo(this.el, action, payload, (reply) => {
           if (epoch !== this.connectionEpoch) return;
           if (reply.disabled) {
             window.location.reload();
             return;
           }
+          if (reply.expected_seq !== undefined &&
+              (reply.expected_seq !== reply.ack_seq + 1 || reply.expected_seq >= sequence)) {
+            throw new Error("Invalid LiveLift action gap");
+          }
           this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq);
+          if (reply.expected_seq !== undefined && this.pending.some((item) => item.sequence === sequence)) {
+            this.recovery ??= {sent: null};
+          }
+          this.recoverPending();
         });
       };
 
@@ -805,6 +832,7 @@ export function createClientHook(views) {
             JSON.parse(this.el.dataset.liveLiftState),
             Number(this.el.dataset.liveLiftAckSeq || "0"),
           );
+          this.recoverPending();
         }
         return;
       }

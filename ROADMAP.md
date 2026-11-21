@@ -9,8 +9,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 3, Sincronización optimista. Próxima entrega: orden e idempotencia
-de acciones.** Las fases S, 0, 1 y 2 están cerradas. La fase 8 es opcional y
+**Fase activa: 3, Sincronización optimista. Próxima entrega: reconexión
+y política de conflictos.** Las fases S, 0, 1 y 2 están cerradas. La fase 8 es opcional y
 posterior a 1.0. Los avances antiguos de fases 4–7 se conservan como inventario.
 
 **Estados:** `Hecho` significa funcionalidad implementada, documentada y
@@ -29,8 +29,8 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.4b | Operaciones `List` | Hecho | Edición por índice y borrado exacto con paridad |
 | 2.5 | IR y normalización del compilador | Hecho | Pipes y condicionales normalizados, tipos de prueba y paridad |
 | 2.6 | Regresión integral y puerta 2 | Hecho | Tres casos, paridad, tres navegadores, benchmarks |
-| 3.1 | Orden de acciones e idempotencia del servidor | **En curso** | Duplicados y entrega fuera de orden sin perder acciones |
-| 3.2 | Reconexión y conflictos | En espera | Reintentos y política de conflictos con límites |
+| 3.1 | Orden de acciones e idempotencia del servidor | Hecho | Duplicados y entrega fuera de orden sin perder acciones |
+| 3.2 | Reconexión y conflictos | **En curso** | Reintentos y política de conflictos con límites |
 | 3.3 | Pruebas caóticas y puerta 3 | En espera | Convergencia y acciones aplicadas exactamente una vez |
 | 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
 | 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
@@ -423,7 +423,11 @@ reintentar sin ejecutar dos veces un handler.
   `handle_event` sobre **sus propios assigns**.
 - **Previo:** Si el resultado difiere de la predicción, parche versionado con el estado
   autoritativo; el cliente reaplica las acciones pendientes.
-- **Falta:** Cola de acciones pendientes, claves de idempotencia, ordenamiento, duplicados.
+- **Hecho:** Confirmación de secuencia contigua, detección de huecos y
+  reintentos ordenados. El servidor no ejecuta duplicados y conserva la
+  confirmación al recibir eventos LiveView sin secuencia. Chromium, Firefox y
+  WebKit entregaron 2 antes de 1 por el WebSocket real, duplicaron la primera
+  acción y verificaron dos incrementos en el servidor.
 - **Previo:** Reconexión: usar el snapshot fresco de LiveView, descartar eventos en vuelo
   y drenar en orden una cola de acciones creadas sin conexión con caducidad de 30 s.
   La cola vive solo mientras la página y el hook sigan montados.

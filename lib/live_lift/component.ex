@@ -235,11 +235,20 @@ defmodule LiveLift.Component do
           sequence = LiveLift.Component.sequence!(params)
           previous = Map.get(socket.assigns, :__live_lift_ack_seq, 0)
 
-          if sequence > 0 and sequence <= previous do
-            {LiveLift.Component.acknowledge_duplicate(socket, fields, optional), :duplicate}
-          else
-            result = original.()
-            {LiveLift.Component.reply!(result, sequence, fields, optional), :ok}
+          cond do
+            sequence > 0 and sequence <= previous ->
+              {LiveLift.Component.acknowledge_duplicate(socket, fields, optional), :duplicate}
+
+            sequence > previous + 1 ->
+              {:reply, snapshot, ^socket} =
+                LiveLift.Component.acknowledge_duplicate(socket, fields, optional)
+
+              {{:reply, Map.put(snapshot, :expected_seq, previous + 1), socket}, :gap}
+
+            true ->
+              result = original.()
+              ack = if sequence == 0, do: previous, else: sequence
+              {LiveLift.Component.reply!(result, ack, fields, optional), :ok}
           end
         else
           result = original.()

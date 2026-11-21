@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Recover optimistic actions delivered out of order and suppress duplicate execution.
+
 - Normalize JavaScript negative zero for integer operations while preserving signed floats.
 
 - Normalize pipes and conditional expressions before JavaScript emission.

@@ -255,19 +255,41 @@ defmodule LiveLift.ComponentTest do
   test "reply returns the server's authoritative state" do
     socket = %Phoenix.LiveView.Socket{assigns: %{count: 1, id: "counter", __changed__: %{}}}
 
-    assert {:reply, %{revision: 1, ack_seq: 7, state: %{count: 2}}, next} =
-             Counter.handle_event("inc", %{"_live_lift_seq" => 7}, socket)
+    assert {:reply, %{revision: 1, ack_seq: 1, state: %{count: 2}}, next} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 1}, socket)
 
     assert next.assigns.count == 2
 
-    assert {:reply, %{revision: 1, ack_seq: 7, state: %{count: 2}}, duplicate} =
-             Counter.handle_event("inc", %{"_live_lift_seq" => 7}, next)
+    assert {:reply, %{revision: 1, ack_seq: 1, state: %{count: 2}}, duplicate} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 1}, next)
 
     assert duplicate.assigns.count == 2
 
     assert_raise ArgumentError, ~r/invalid LiveLift event sequence/, fn ->
       Counter.handle_event("inc", %{"_live_lift_seq" => "bad"}, next)
     end
+  end
+
+  test "reports an action gap and applies retries once in sequence order" do
+    initial = %Phoenix.LiveView.Socket{assigns: %{count: 0, id: "counter", __changed__: %{}}}
+
+    assert {:reply, %{expected_seq: 1, ack_seq: 0, revision: 0, state: %{count: 0}}, ^initial} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 2}, initial)
+
+    assert {:reply, %{ack_seq: 1, revision: 1, state: %{count: 1}}, first} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 1}, initial)
+
+    assert {:reply, %{ack_seq: 2, revision: 2, state: %{count: 2}}, second} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 2}, first)
+
+    assert {:reply, %{ack_seq: 2, revision: 2, state: %{count: 2}}, ^second} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 2}, second)
+
+    assert {:reply, %{ack_seq: 2, revision: 3, state: %{count: 3}}, unsequenced} =
+             Counter.handle_event("inc", %{}, second)
+
+    assert {:reply, %{ack_seq: 2, revision: 3, state: %{count: 3}}, ^unsequenced} =
+             Counter.handle_event("inc", %{"_live_lift_seq" => 1}, unsequenced)
   end
 
   test "emits server event latency and outcome without parameter values" do
