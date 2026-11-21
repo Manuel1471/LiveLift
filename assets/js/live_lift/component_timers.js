@@ -61,13 +61,29 @@ function createComponentTimers(specs, hook, validateState) {
     return replayActions(actions, state, pending.slice(index));
   }
 
-  function clear() {
+  function suspend() {
     for (const entry of acknowledged.values()) clearTimeout(entry.timeout);
     for (const entry of provisional.values()) clearTimeout(entry.timeout);
-    acknowledged.clear();
     provisional.clear();
   }
 
+  function clear() {
+    suspend();
+    acknowledged.clear();
+  }
+
+  function resume(keepBase, ack) {
+    if (keepBase) {
+      for (const entry of acknowledged.values()) {
+        entry.fired = 0;
+        install(entry);
+      }
+    } else {
+      clear();
+      accept(hook.el.dataset.liveLiftTimers, ack);
+    }
+  }
+
   accept(hook.el.dataset.liveLiftTimers, hook.ackSequence);
-  return {start, accept, replay, clear};
+  return {start, accept, replay, suspend, resume, clear};
 }

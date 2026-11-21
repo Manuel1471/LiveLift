@@ -12,6 +12,7 @@ defmodule LiveLiftDemoWeb.NativeTimerLive do
       <button type="button" phx-click="double">Double</button>
       <button type="button" phx-click="schedule">Schedule ten on server</button>
       <button type="button" phx-click="predict">Schedule ten locally</button>
+      <button type="button" phx-click="leave">Open component counter</button>
       <output aria-live="polite">{@count}</output>
     </main>
     """
@@ -30,6 +31,10 @@ defmodule LiveLiftDemoWeb.NativeTimerLive do
   def handle_event("schedule", _params, socket) do
     Process.send_after(self(), :add_ten, 100)
     {:noreply, socket}
+  end
+
+  def handle_event("leave", _params, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/native-counter")}
   end
 
   @client true

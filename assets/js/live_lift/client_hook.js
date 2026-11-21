@@ -667,7 +667,7 @@ export function createClientHook(views) {
           if (!Number.isSafeInteger(nextSequence)) throw new Error("LiveLift event sequence overflow");
           validateState(snapshot);
 
-          if (!keepBase) this.timers?.accept(this.el.dataset.liveLiftTimers, ack);
+          this.timers?.resume(keepBase, ack);
           let replayed;
           let replayError = null;
           try {
@@ -1017,7 +1017,7 @@ export function createClientHook(views) {
       }
       if (this.optimistic) {
         this.authoritativeBatch.clear();
-        this.timers?.clear();
+        this.timers?.suspend();
         this.connectionEpoch += 1;
         this.reconnectPending = true;
         this.offline = true;

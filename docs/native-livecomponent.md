@@ -60,7 +60,9 @@ keeps the existing prediction; the server's final snapshot settles the
 timer. Duplicate deliveries of the same sequenced action keep one server
 timer. The client cancels its timers when the hook is destroyed or
 disconnected. Reconnection uses the new server snapshot and the normal
-action replay policy.
+action replay policy. When the same instance's DOM snapshot trails a newer
+server reply, the browser resumes the acknowledged timers from that reply
+without resending their scheduling events.
 
 Use a plain params argument, a literal delay from 0 to 60,000 milliseconds,
 and a keyword list with one to eight distinct literal scalar values for

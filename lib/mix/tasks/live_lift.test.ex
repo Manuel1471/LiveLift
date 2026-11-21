@@ -201,7 +201,9 @@ defmodule Mix.Tasks.LiveLift.Test do
     source =
       LiveLift.Client.Compiler.compile_module(module) <>
         "\nconst state = actions[#{event_key}](#{state |> LiveLift.FloatWire.encode() |> Jason.encode!()}, {params: #{Jason.encode!(params)}, value: null, checked: false});\n" <>
-        "console.log(JSON.stringify({state, delayed: timers[#{event_key}]?.run?.(state) ?? null}));\n"
+        "const timer = timers[#{event_key}];\n" <>
+        "const delayed = timer ? (timer.run ? timer.run(state) : {...state, ...timer.patch}) : null;\n" <>
+        "console.log(JSON.stringify({state, delayed}));\n"
 
     output = run_javascript!(source)
 
@@ -225,18 +227,28 @@ defmodule Mix.Tasks.LiveLift.Test do
         do: module.__live_lift_component_timers__(),
         else: %{}
 
-    case Map.get(timers, event) do
-      %{message: message} ->
-        {:noreply, delivered} = module.handle_info(message, socket)
+    case deliver_timer(module, Map.get(timers, event), socket) do
+      nil ->
+        nil
 
+      delivered ->
         delivered.assigns
         |> LiveLift.Component.state!(fields, optional)
         |> LiveLift.FloatWire.encode()
-
-      _ ->
-        nil
     end
   end
+
+  defp deliver_timer(module, %{message: message}, socket) do
+    {:noreply, delivered} = module.handle_info(message, socket)
+    delivered
+  end
+
+  defp deliver_timer(module, %{patch: patch}, socket) do
+    {:ok, delivered} = module.update(patch, socket)
+    delivered
+  end
+
+  defp deliver_timer(_module, nil, _socket), do: nil
 
   defp decode_map!(json, label) do
     case Jason.decode(json) do

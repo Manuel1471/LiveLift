@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import test from "node:test";
 import {createClientHook} from "./client_hook.js";
 
@@ -776,6 +777,44 @@ test("reconnect to the same instance retries only unacknowledged actions with or
   sent[3].reply({revision: 3, ack_seq: 3, state: {count: 3, step: 1}});
   assert.equal(hook.pending.length, 0);
   assert.equal(hook.state.count, 3);
+});
+
+test("reconnect restores accepted timers when the same instance has an older DOM snapshot", async (t) => {
+  t.mock.timers.enable({apis: ["setTimeout"]});
+  const source = readFileSync(new URL("./component_timers.js", import.meta.url), "utf8");
+  const {createComponentTimers} = await import(
+    `data:text/javascript,${encodeURIComponent(source + "\nexport {createComponentTimers};")}`
+  );
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  el.dataset.liveLiftInstance = "same";
+  const replies = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => state},
+      template: "<output></output>",
+      timers: (hook, validate) => createComponentTimers({
+        advance: {delay: 40, run: (state) => ({...state, count: state.count + 10})},
+      }, hook, validate),
+    }}),
+    el,
+    pushEventTo: (_control, _event, _params, reply) => replies.push(reply),
+  };
+  hook.mounted();
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  replies[0]({
+    revision: 1, ack_seq: 1, state: {count: 0, step: 1},
+    timers: [{id: 1, event: "advance", seq: 1, remaining: 40}],
+  });
+  hook.disconnected();
+  t.mock.timers.tick(100);
+  assert.equal(hook.state.count, 0);
+
+  hook.updated();
+  t.mock.timers.tick(100);
+  assert.equal(hook.state.count, 10);
+  assert.equal(replies.length, 1);
+  hook.destroyed();
 });
 
 test("an instance change discards offline actions when configured", () => {

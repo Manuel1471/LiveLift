@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Restore acknowledged timers when reconnecting to the same instance with an older DOM snapshot.
 - Compile native LiveView mailbox timers and replay their `handle_info/2` effects in order with pending actions.
 - Reuse native optimistic event reconciliation for opted-in root LiveViews, including authoritative mailbox and URL parameter updates.
 - Predict bounded native LiveComponent timers in the browser and reconcile their one-shot updates with Phoenix's `send_update_after/3`.
