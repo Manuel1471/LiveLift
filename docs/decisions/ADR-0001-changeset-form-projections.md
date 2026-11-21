@@ -24,8 +24,10 @@ Compile native reads of the displayed value, input usage, and projected error
 tuples. Use the already supported string changeset operations to recover the
 displayed value and error order. Keep messages and the numeric count available
 to the application's callback. Unused fields use Phoenix's existing parameter
-convention. Limit this change to reading that metadata. Generation of metadata
-from DOM interactions and a complete form demo remain follow-up work in 5.2.
+convention. Generate this metadata only for forms whose marked actions read
+it. A generated serializer tracks used controls by DOM identity and sends
+the same normal event params to the prediction and to Phoenix. The event
+envelope and existing limits stay the same.
 
 ## Evidence
 

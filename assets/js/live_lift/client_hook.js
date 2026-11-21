@@ -170,29 +170,28 @@ function pathLabel(expr) {
   return (expr.root === "state" ? expr.fields : [expr.root, ...expr.fields]).join(".");
 }
 
-function formParams(form) {
+function serializeForm(form, _target, entries = new FormData(form)) {
   const params = Object.create(null);
-  for (const [name, value] of new FormData(form)) {
-    if (typeof value !== "string") throw new Error(`Unsupported LiveLift form value: ${name}`);
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*(\[[a-zA-Z_][a-zA-Z0-9_]*\]){0,3}$/.test(name)) {
-      throw new Error(`Unsupported LiveLift form name: ${name}`);
+  for (const [name, value] of entries) {
+    if (typeof value !== "string") throw new Error(`Unsupported form value: ${name}`);
+    if (!/^[a-zA-Z_]\w*(\[[a-zA-Z_]\w*\]){0,3}$/.test(name)) {
+      throw new Error(`Unsupported form name: ${name}`);
     }
-    const path = name.match(/[a-zA-Z_][a-zA-Z0-9_]*/g);
+    const path = name.match(/[a-zA-Z_]\w*/g);
     let current = params;
     path.forEach((key, index) => {
       if (RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
-        throw new Error(`Unsafe LiveLift form name: ${name}`);
+        throw new Error(`Unsafe form name: ${name}`);
       }
       const leaf = index === path.length - 1;
       if (leaf) {
-        if (Object.hasOwn(current, key)) throw new Error(`Duplicate LiveLift form parameter: ${name}`);
+        if (Object.hasOwn(current, key)) throw new Error(`Duplicate form parameter: ${name}`);
         current[key] = value;
       } else {
-        if (!Object.hasOwn(current, key)) current[key] = Object.create(null);
-        if (!current[key] || typeof current[key] !== "object" || Array.isArray(current[key])) {
-          throw new Error(`Conflicting LiveLift form parameter: ${name}`);
+        current = current[key] ??= Object.create(null);
+        if (typeof current !== "object") {
+          throw new Error(`Conflicting form parameter: ${name}`);
         }
-        current = current[key];
       }
     });
   }
@@ -603,6 +602,7 @@ export function createClientHook(views) {
     },
 
     mountView(view, views, refresh = false) {
+      const formParams = view.form?.(this.el, serializeForm) ?? serializeForm;
       this.view = view;
       this.viewRegistry = views;
       this.state = JSON.parse(this.el.dataset.liveLiftState);
@@ -896,7 +896,7 @@ export function createClientHook(views) {
           const send = () => {
             if (!this.el.contains(target)) return;
             const params = control.tagName === "FORM"
-              ? formParams(control)
+              ? formParams(control, target)
               : {value: control.value, ...(control.name ? {[control.name]: control.value} : {})};
             this.sendOptimistic(control, eventName, params);
           };

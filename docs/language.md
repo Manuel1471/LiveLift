@@ -128,9 +128,11 @@ This preserves Phoenix's error order and suppresses form errors for a
 `nil` or `:ignore` action. See the [compiled parity fixture](../bench/changeset_parity.exs)
 and [E052](errors/E052.md) for the rejection boundary.
 
-LiveLift's optimistic form events still need to generate Phoenix's
-unused-field metadata. Until that integration is verified, leave the
-form event on the server if visibility depends on `used_input?/1`.
+For forms with a marked handler that reads `used_input?/1`, LiveLift adds
+Phoenix's ordinary `_unused_<field>` parameters during form changes. They
+count toward the existing event parameter limits. Submitting the form marks
+its controls used, and resetting the form clears usage. Hidden fields and
+the native `phx-no-unused-field` attribute follow Phoenix's convention.
 
 ### Timers
 

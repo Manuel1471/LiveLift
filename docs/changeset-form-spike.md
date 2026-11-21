@@ -27,10 +27,10 @@ the browser a bounded projection and leaves the original changeset on the
 server. For the first format cases, verify a literal regex subset against
 both runtimes before accepting it in the compiler.
 
-Phoenix represents unused fields with `_unused_<field>` metadata. The current
-LiveLift form serializer reads entries from `FormData`, which has no such
-metadata. A client changeset needs used-field tracking and must send the same
-metadata with the event so the authoritative form agrees.
+Phoenix represents unused fields with `_unused_<field>` metadata. A plain
+`FormData` read lacks this metadata. The generated serializer now decorates
+the ordinary parameters of forms that use `used_input?/1` and shares the same
+payload with the prediction and the server event.
 
 [Ecto changeset API](https://ecto.hexdocs.pm/3.14.2/Ecto.Changeset.html)
 and [Phoenix form API](https://phoenix-live-view.hexdocs.pm/Phoenix.Component.html#to_form/2).

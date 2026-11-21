@@ -121,6 +121,7 @@
 
 ### Added
 
+- Preserve Phoenix's used-field markers for optimistic changeset forms.
 - Read displayed values, field usage, and error messages from native changeset forms in marked handlers.
 
 ## 0.1.0-rc.1 (prepared, not published)
