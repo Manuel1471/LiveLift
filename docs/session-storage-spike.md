@@ -27,7 +27,8 @@ WebKit.
 ## Result
 
 All six cases passed on 2026-11-21 against LiveView 1.2.13 in Chromium
-158.0.8127.18, Firefox 159.0 and WebKit 27.2 on macOS arm64. The stored
+158.0.8127.18, Firefox 159.0 and WebKit 27.2 on macOS arm64. The same six
+cases also passed with `LIVE_LIFT_TEST_DEPLOY=1`. The stored
 value survives a hard reload, but Phoenix mounts a new island with its
 own state and acknowledgment sequence. An unsent increment in the old
 island vanishes with the old DOM.
@@ -48,3 +49,6 @@ explicitly opted-in form without executing an action. Replaying an
 operation that changes server state across a reload would require an
 identity and deduplication contract that survives both mount changes and
 tab copies.
+
+[ADR-0005](decisions/ADR-0005-session-storage-scope.md) records the
+restoration scopes and their acceptance checks.
