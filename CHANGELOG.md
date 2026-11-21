@@ -119,6 +119,10 @@
 - Add real Chromium integration tests for client/server synchronization, editing and WCAG A/AA checks.
 - Validate action rendering before committing the next client state.
 
+### Added
+
+- Read displayed values, field usage, and error messages from native changeset forms in marked handlers.
+
 ## 0.1.0-rc.1 (prepared, not published)
 
 - Initial experimental client templates, actions, keyed lists and app-defined components.

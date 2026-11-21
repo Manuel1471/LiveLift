@@ -13,6 +13,32 @@ defmodule LiveLift.Client.Changeset do
       "#{Jason.encode!(rules)}, #{Jason.encode!(projection)})"
   end
 
+  def form!(
+        {{:., _, [{:__aliases__, _, [:Phoenix, :Component]}, :to_form]}, _, [source | args]},
+        projection
+      ) do
+    options =
+      case args do
+        [] -> []
+        [options] when is_list(options) -> options
+        _ -> unsupported_form!("to_form/2 requires literal options")
+      end
+
+    unless Keyword.keyword?(options) and Enum.all?(options, &form_option?/1) and
+             length(options) == map_size(Map.new(options)) do
+      unsupported_form!("to_form/2 supports literal :action, :as and :id options")
+    end
+
+    {source, projection ++ [Keyword.get(options, :action) not in [nil, :ignore]]}
+  end
+
+  def form!(_, _), do: unsupported_form!("use Phoenix.Component.to_form/2 on a client changeset")
+
+  defp form_option?({:action, action}), do: is_atom(action)
+  defp form_option?({:as, as}), do: is_atom(as) or is_binary(as)
+  defp form_option?({:id, id}), do: is_binary(id)
+  defp form_option?(_), do: false
+
   defp parse!(
          {{:., _, [{:__aliases__, _, [:Ecto, :Changeset]}, :cast]}, _,
           [{data, {:%{}, _, types}}, params, fields]},
@@ -130,5 +156,16 @@ defmodule LiveLift.Client.Changeset do
     unless field in fields, do: unsupported!("get_field/2 must refer to a cast field")
   end
 
+  defp validate_projection!([kind, field, _show_errors], fields)
+       when kind in [:input, :used, :errors] do
+    unless field in fields, do: unsupported_form!("form field must be selected by cast/3")
+  end
+
   defp unsupported!(reason), do: raise(ArgumentError, "unsupported client changeset: #{reason}")
+
+  defp unsupported_form!(reason),
+    do:
+      raise(ArgumentError,
+        message: "unsupported client changeset form (E052): #{reason}. See docs/errors/E052.md"
+      )
 end

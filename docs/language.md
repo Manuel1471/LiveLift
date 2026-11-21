@@ -115,9 +115,22 @@ be up to 128 bytes. An Ecto `$` permits one trailing line feed, which the
 generated pattern also permits. Keep other regex forms and changeset options
 on the server.
 
-This projection covers validity and effective field values. Form display
-values, field usage, and error metadata are tracked in the next step of
-[the changeset form spike](changeset-form-spike.md).
+For a Phoenix form backed by the same pipeline, use
+`Phoenix.HTML.Form.input_value(form, :field)` or `form[:field].value` for the
+displayed value. Use `Phoenix.Component.used_input?(form[:field])` to read
+Phoenix's existing usage metadata. A local helper can build the form using
+fully qualified `Phoenix.Component.to_form/2`, with literal `:action`,
+`:as`, and `:id` options.
+
+`Enum.map(form[:field].errors, fn {message, opts} -> ... end)` can return
+safe values computed from the message and `Keyword.get(opts, :count)`.
+This preserves Phoenix's error order and suppresses form errors for a
+`nil` or `:ignore` action. See the [compiled parity fixture](../bench/changeset_parity.exs)
+and [E052](errors/E052.md) for the rejection boundary.
+
+LiveLift's optimistic form events still need to generate Phoenix's
+unused-field metadata. Until that integration is verified, leave the
+form event on the server if visibility depends on `used_input?/1`.
 
 ### Timers
 

@@ -277,6 +277,7 @@ defmodule LiveLift.ComponentTest do
     assert javascript =~ ~s("LiveLift.ComponentTest.Counter")
     assert javascript =~ "inc: (state)"
     assert javascript =~ ~s("data-live-lift-action")
+    refute javascript =~ "function __liveLiftChangeset("
   end
 
   test "an instance identifier is stable on the component socket and unique per mount" do
@@ -673,6 +674,34 @@ defmodule LiveLift.ComponentTest do
       assert_raise ArgumentError,
                    ~r/changeset.ex:6: unsupported @client handler: unsupported client changeset:.*#{Regex.escape(error)}.*move it to a server handler/,
                    fn -> Code.compile_string(source, "changeset.ex") end
+    end
+  end
+
+  test "changeset form projections reject dynamic options and uncast fields with E052" do
+    for {opts, field, reason} <- [
+          {"[action: params[\"action\"]]", "title", "literal :action"},
+          {"[action: :validate]", "other", "selected by cast"}
+        ] do
+      source = """
+      defmodule LiveLift.ComponentTest.UnsupportedChangesetForm do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@value}</output>"
+        @client true
+        def handle_event("validate", params, socket) do
+          {:noreply, assign(socket, :value, Phoenix.HTML.Form.input_value(
+            Phoenix.Component.to_form(
+              Ecto.Changeset.cast({%{title: nil}, %{title: :string}}, params["post"], [:title]),
+              #{opts}
+            ), :#{field}
+          ))}
+        end
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/form.ex:6:.*\(E052\):.*#{reason}.*docs\/errors\/E052.md.*move it to a server handler/,
+                   fn -> Code.compile_string(source, "form.ex") end
     end
   end
 
