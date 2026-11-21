@@ -10,3 +10,5 @@ erl_crash.dump
 /bench/node_modules/
 /bench/test-results/
 /bench/playwright-report/
+/assets/dist/
+/assets/*.tgz

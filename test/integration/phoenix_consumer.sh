@@ -10,24 +10,33 @@ mix phx.new "$consumer_dir/consumer_lift" --module ConsumerLift \
 
 live_lift_dep="$repo_dir"
 igniter_mode="${LIVE_LIFT_INTEGRATION_IGNITER:-0}"
-if [ "$igniter_mode" = "1" ]; then
+registry_version="${LIVE_LIFT_REGISTRY_VERSION:-}"
+if [ -n "$registry_version" ]; then
+  igniter_mode=0
+elif [ "$igniter_mode" = "1" ]; then
   live_lift_dep="$consumer_dir/live_lift_package"
   (cd "$repo_dir" && mix hex.build --unpack --output "$live_lift_dep" >/dev/null)
 fi
 
-python3 - "$consumer_dir/consumer_lift" "$live_lift_dep" "$igniter_mode" <<'PY'
+python3 - "$consumer_dir/consumer_lift" "$live_lift_dep" "$igniter_mode" "$registry_version" <<'PY'
 from pathlib import Path
+import json
 import re
 import sys
 
 app = Path(sys.argv[1])
 dependency_path = sys.argv[2]
 igniter = sys.argv[3] == "1"
+version = sys.argv[4]
 mix = app / "mix.exs"
 source = mix.read_text()
 assert "      {:phoenix," in source
 options = ", override: true" if igniter else ""
-dependency = f'      {{:live_lift, path: "{dependency_path}"{options}}},\n'
+if version:
+    assert re.fullmatch(r"[0-9A-Za-z.+-]+", version)
+    dependency = f'      {{:live_lift, {json.dumps("== " + version)}}},\n'
+else:
+    dependency = f'      {{:live_lift, path: {json.dumps(dependency_path)}{options}}},\n'
 if igniter:
     dependency += '      {:igniter, "== 0.8.5", only: :dev, runtime: false},\n'
     source, changed = re.subn(
@@ -319,4 +328,7 @@ PYTHON
   printf '%s\n' 'Verified the same actionable diagnostic in audit and compilation.'
   mix assets.build
   mix assets.deploy
+  if [ "$igniter_mode" = "1" ] || [ -n "$registry_version" ]; then
+    sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets" "$registry_version"
+  fi
 )

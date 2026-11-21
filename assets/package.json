@@ -1,7 +1,28 @@
 {
   "name": "live-lift-assets",
-  "private": true,
+  "version": "0.1.0-rc.1",
+  "description": "Browser runtime for the LiveLift Phoenix LiveView integration",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Manuel1471/LiveLift.git",
+    "directory": "assets"
+  },
   "type": "module",
-  "exports": {"./client_hook": "./js/live_lift/client_hook.js"},
-  "scripts": {"test": "node --test js/live_lift/*.test.js"}
+  "files": ["dist/runtime.js", "dist/LICENSE", "js/live_lift/client_hook.js", "js/live_lift/client_hook.d.ts"],
+  "types": "./js/live_lift/client_hook.d.ts",
+  "exports": {
+    ".": {
+      "types": "./js/live_lift/client_hook.d.ts",
+      "import": "./dist/runtime.js"
+    },
+    "./client_hook": {
+      "types": "./js/live_lift/client_hook.d.ts",
+      "import": "./dist/runtime.js"
+    }
+  },
+  "scripts": {
+    "prepack": "node scripts/prepare-runtime.mjs",
+    "test": "node --test js/live_lift/*.test.js"
+  }
 }

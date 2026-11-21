@@ -24,7 +24,8 @@ compare every marked handler in Elixir and Node; see the
 Use the [event telemetry guide](docs/telemetry.md) to measure frequency and
 server time before opting in and compare browser latency after migration.
 Use the [development inspector](docs/state-inspector.md) to compare optimistic
-state and authoritative corrections in the browser.
+state and authoritative corrections in the browser. The [versioned asset guide](docs/versioned-assets.md)
+covers TypeScript and the optional npm runtime.
 
 ## Use it in a Phoenix app
 

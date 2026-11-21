@@ -43,6 +43,8 @@ defmodule LiveLift.Install.Assets do
       [
         "/assets/js/generated_views.js",
         "/assets/js/generated_views.js.map",
+        "/assets/js/generated_views.d.ts",
+        "/assets/js/live_lift_runtime.d.ts",
         "/assets/js/live_lift_runtime.js"
       ],
       source,

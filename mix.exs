@@ -13,6 +13,7 @@ defmodule LiveLift.MixProject do
         files: [
           "lib",
           "assets/js/live_lift/client_hook.js",
+          "assets/js/live_lift/client_hook.d.ts",
           "assets/js/live_lift/class_commands.js",
           "assets/js/live_lift/form_drafts.js",
           "assets/js/live_lift/devtools.js",

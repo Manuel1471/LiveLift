@@ -38,3 +38,5 @@ npm-debug.log
 /assets/js/generated_views.js.map
 /assets/js/live_lift_runtime.js
 /assets/js/generated_views_views/
+/assets/js/generated_views.d.ts
+/assets/js/live_lift_runtime.d.ts
