@@ -99,6 +99,7 @@ defmodule LiveLift.PropertyParityTest do
           String.replace(state.label, state.replace_pattern, fn match -> "[" <> match <> "]" end),
         replaced_iodata:
           String.replace(state.label, state.replace_pattern, fn match -> ["<", match, [33]] end),
+        replaced_bom: String.replace("x", "x", fn _match -> [239, 187, 191] end),
         replaced_utf8_bytes: String.replace("x", "x", fn _match -> [195, 169] end),
         replaced_overlap: String.replace("ab", ["a", "ab"], "X"),
         graphemes: String.length(state.label),

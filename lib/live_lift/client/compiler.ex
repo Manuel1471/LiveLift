@@ -295,7 +295,7 @@ defmodule LiveLift.Client.Compiler do
       if (bytes.length > 1048576) throw new Error("LiveLift state size limit exceeded");
     };
     append(value);
-    try { return new TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array(bytes)); }
+    try { return new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(new Uint8Array(bytes)); }
     catch { throw new Error("LiveLift String.replace callback returned invalid UTF-8"); }
   }
   let __liveLiftGraphemes;
