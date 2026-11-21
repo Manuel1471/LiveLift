@@ -9,9 +9,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 4, Rendimiento. Próxima entrega: carga diferida por isla
-y verificación del presupuesto.** Las fases S, 0, 1, 2 y 3 están
-cerradas. La fase 8 es opcional y posterior a 1.0.
+**Fase activa: 5, Funciones con la sintaxis de siempre. Próxima entrega:
+temporizadores.** Las fases S, 0, 1, 2, 3 y 4 están cerradas. La fase 8 es
+opcional y posterior a 1.0.
 
 **Estados:** `Hecho` significa funcionalidad implementada, documentada y
 probada en su alcance; `En curso` es la única entrega activa; `En espera`
@@ -34,8 +34,11 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 3.3 | Pruebas caóticas y puerta 3 | Hecho | Convergencia y acciones aplicadas exactamente una vez |
 | 4.1 | Medición nativa y render por dependencias | Hecho | Línea base de Chromium y trabajo de DOM medido |
 | 4.2 | Diff con clave y agrupación de renders | Hecho | Foco, identidad y presupuesto de un frame |
-| 4.3 | Carga por isla y puerta 4 | **En curso** | Assets y presupuesto total verificados |
-| 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
+| 4.3 | Carga por isla y puerta 4 | Hecho | Assets y presupuesto total verificados |
+| 5.1 | Temporizadores | **En curso** | API nativa, ciclo de vida y paridad |
+| 5.2 | Validación con Ecto.Changeset | En espera | Formularios y errores equivalentes |
+| 5.3 | Comandos JS locales y lista permitida | En espera | Comandos compatibles y límites verificados |
+| 5.4 | Persistencia local y puerta 5 | En espera | Restauración, límites y regresión integral |
 | 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
 | 7 y 1.0 | Seguridad y operación | Bloqueada por 6 | Compatibilidad, revisión y apps reales |
 
@@ -59,8 +62,8 @@ posteriores queda registrado abajo y no cambia este orden.
 | 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Cerrada | Ninguno |
 | 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Cerrada | Ninguno |
 | 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | Cerrada | Ninguno |
-| 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | Abierta | Render por dependencias, agrupación y carga diferida |
-| 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
+| 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | Cerrada | Ninguno |
+| 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | Abierta | Temporizadores y paridad de efectos |
 | 6. Experiencia | Auditoría, test, telemetría, documentación de migración e instalador verificados en otra app | En espera de 5 | Medición antes de optar, inspector e instalación completa |
 | 7 y 1.0 | Seguridad y compatibilidad verificadas; dos apps reales; revisión cruzada; API estable | En espera de 6 | Revisión externa, apps piloto y política de versiones |
 
@@ -467,25 +470,22 @@ midió 54,545 bytes gzip con LiveLift y 47,351 bytes sin LiveLift.
   preserva identidad y foco. Las respuestas autoritativas se agrupan con
   `requestAnimationFrame`, con temporizador de respaldo. La predicción y
   recuperación de huecos siguen siendo inmediatas.
-- **En curso:** Carga diferida de vistas por isla. El [spike de assets](docs/island-loading-spike.md)
-  verificó que esbuild separa el módulo y que Phoenix conserva el archivo
-  referenciado después de digerir la entrada. Falta implementar el manifiesto,
-  el ciclo de vida del hook y la prueba de descarga por ruta.
+- **Hecho:** Carga diferida mediante `mix live_lift.compile --split`. El
+  [spike de assets](docs/island-loading-spike.md) verificó los chunks
+  digeridos. Los tres navegadores confirmaron la descarga por ruta, la
+  interacción durante una espera y el error de descarga.
 - **Previo:** Benchmarks en navegador real, no solo en linkedom (contador nativo en
   Chromium, con latencia simulada y comandos reproducibles).
 
 La omisión de renders sin cambios ya funciona para acciones y respuestas
 autoritativas. Las filas con clave que dependen solo del elemento conservan su
-DOM al cambiar de orden; el benchmark del demo con 1,000 filas midió 3.3 ms de
-mediana y 7.5 ms p95 en Chromium. Quedan pendientes el diff de filas que
-cambian de contenido, la segmentación general por dependencias y la agrupación
-por `requestAnimationFrame`.
+DOM al cambiar de orden; un benchmark anterior del demo con 1,000 filas
+midió 3.3 ms de mediana y 7.5 ms p95 en Chromium.
 La lista nativa con formularios por fila midió 10.5 ms de mediana y 15.8 ms p95
 en 25 inversiones locales de 1,000 filas en Chromium. Está cerca del presupuesto
 de un frame; el benchmark reproduce el caso con `/native-list?rows=1000`.
 El ordenamiento nativo de esas filas midió 10.9 ms de mediana y 18.3 ms p95
-en 25 ciclos; el p95 ya excede un frame de 16.7 ms. La puerta de rendimiento
-sigue abierta.
+en 25 ciclos antes de las optimizaciones de esta fase.
 
 El [spike de asignaciones del DOM](docs/keyed-row-render-spike.md) observó
 1,020 elementos creados al invertir 1,000 filas. Las referencias a las filas
@@ -504,11 +504,20 @@ cursor entre hermanos. En la corrida de 25 muestras, el p95 fue 13.1 ms al
 invertir, 16.2 ms al ordenar y 7.3 ms al editar. Con la agrupación por frame,
 la corrida nativa dio p95 de 12.9, 15.8 y 7.7 ms respectivamente. Pasaron
 24 pruebas dirigidas a sincronización y correcciones en los tres navegadores.
-El núcleo minificado pesó 7,721 bytes gzip. Queda la carga diferida y su
-verificación de assets.
+El núcleo minificado antes de la carga diferida pesó 7,721 bytes gzip.
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.
+
+**Evidencia de cierre (código hasta `086c74b`).** Pasaron 122 pruebas
+Elixir, 33 de Node, 7 del demo, 39 casos de paridad y 141 pruebas en
+Chromium, Firefox y WebKit. La prueba de carga pasó también sus nueve
+casos contra la entrada digerida. La medición de 25 muestras en Chromium
+con 1,000 filas dio 12.1 ms p95 al invertir, 14.9 ms al ordenar y 8.0 ms al
+editar, con conservación del foco y de los inputs en el caso de edición.
+El runtime minificado midió 8,119 bytes gzip, por debajo de 8 KiB. En el
+demo, el paquete inicial bajó de 61,600 a 55,162 bytes gzip con la carga
+por isla. El comando reproducible es `python3 bench/island_bundle.py`.
 
 ## Fase 5: Funciones con la sintaxis de siempre (3 a 4 semanas, v0.7)
 
