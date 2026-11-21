@@ -2,6 +2,7 @@ defmodule LiveLift.Component do
   @moduledoc false
 
   alias LiveLift.FloatWire
+  alias LiveLift.Component.Timer
 
   def on_definition(env, :def, :render, [_assigns], _guards, body) do
     if Module.get_attribute(env.module, :client) == true do
@@ -19,20 +20,26 @@ defmodule LiveLift.Component do
               "#{env.file}:#{env.line}: @client requires a literal event name and no guard; move this handler to the server"
       end
 
+      timer = Timer.extract(body, params, socket, env)
+
       action =
-        LiveLift.Component.Compiler.action_unchecked!(
-          event,
-          params,
-          socket,
-          body,
-          env.file,
-          env.line
-        )
+        if timer do
+          {String.to_atom(event), :state, {:state, [], nil}}
+        else
+          LiveLift.Component.Compiler.action_unchecked!(
+            event,
+            params,
+            socket,
+            body,
+            env.file,
+            env.line
+          )
+        end
 
       Module.put_attribute(
         env.module,
         :live_lift_marked_actions,
-        {event, action, env.file, env.line}
+        {event, action, timer, env.file, env.line}
       )
     end
 
@@ -122,7 +129,7 @@ defmodule LiveLift.Component do
     helpers = env.module |> Module.get_attribute(:live_lift_local_helpers) |> Enum.reverse()
 
     action_tuples =
-      Enum.map(actions, fn {_event, {name, args, body}, file, line} ->
+      Enum.map(actions, fn {_event, {name, args, body}, _timer, file, line} ->
         expanded = LiveLift.Component.Helpers.expand!(body, helpers, file, line)
         action = {name, args, expanded}
         LiveLift.Component.Compiler.validate_action!(action, file, line)
@@ -131,6 +138,14 @@ defmodule LiveLift.Component do
 
     fields = state_fields(template, action_tuples)
     optional_fields = optional_state_fields(action_tuples)
+
+    timers =
+      Map.new(
+        for {event, _action, {timer, line}, _file, _} <- actions do
+          Timer.validate!(timer, fields, env, line)
+          {event, timer}
+        end
+      )
 
     mount =
       if Module.defines?(env.module, {:mount, 1}, :def) do
@@ -147,7 +162,12 @@ defmodule LiveLift.Component do
         end
       end
 
-    update = update_wrapper(env.module)
+    update = update_wrapper(env.module, map_size(timers) > 0)
+
+    event_timer =
+      if map_size(timers) > 0,
+        do: quote(do: Map.get(__live_lift_component_timers__(), event)),
+        else: nil
 
     quote do
       unquote(mount)
@@ -155,6 +175,9 @@ defmodule LiveLift.Component do
 
       @doc false
       def __live_lift_client_actions__, do: unquote(Macro.escape(action_tuples))
+
+      @doc false
+      def __live_lift_component_timers__, do: unquote(Macro.escape(timers))
 
       @doc false
       def __live_lift_client_template__, do: unquote(Macro.escape(template))
@@ -210,6 +233,7 @@ defmodule LiveLift.Component do
             data-live-lift-ack-seq={@live_lift_ack_seq}
             data-live-lift-instance={Map.get(assigns, :__live_lift_instance)}
             data-live-lift-reconnect-conflict={LiveLift.Component.reconnect_conflict()}
+            data-live-lift-timers={LiveLift.Component.timer_snapshot(var!(assigns))}
           >{@live_lift_inner}</div>
           """
         else
@@ -232,6 +256,7 @@ defmodule LiveLift.Component do
             unquote(events),
             __live_lift_component_fields__(),
             __live_lift_component_optional_fields__(),
+            unquote(event_timer),
             fn -> super(event, params, socket) end
           )
         end
@@ -239,7 +264,7 @@ defmodule LiveLift.Component do
     end
   end
 
-  defp update_wrapper(module) do
+  defp update_wrapper(module, timed?) do
     cond do
       Module.defines?(module, {:update_many, 1}, :def) ->
         quote do
@@ -260,9 +285,14 @@ defmodule LiveLift.Component do
         end
 
       true ->
+        assign =
+          if timed?,
+            do: quote(do: LiveLift.Component.Timer.update(assigns, socket)),
+            else: quote(do: Phoenix.Component.assign(socket, assigns))
+
         quote do
           def update(assigns, socket) do
-            result = {:ok, Phoenix.Component.assign(socket, assigns)}
+            result = {:ok, unquote(assign)}
             LiveLift.Component.sync_update(result, socket, __MODULE__)
           end
         end
@@ -300,14 +330,20 @@ defmodule LiveLift.Component do
       true ->
         fields = module.__live_lift_component_fields__()
 
-        if FloatWire.encode(Map.take(next.assigns, fields)) ===
-             FloatWire.encode(Map.take(previous.assigns, fields)) do
+        if Timer.timers(next.assigns) == Timer.timers(previous.assigns) and
+             FloatWire.encode(Map.take(next.assigns, fields)) ===
+               FloatWire.encode(Map.take(previous.assigns, fields)) do
           next
         else
           revision = Map.get(previous.assigns, :__live_lift_revision, 0) + 1
           Phoenix.Component.assign(next, :__live_lift_revision, revision)
         end
     end
+  end
+
+  @doc false
+  def timer_snapshot(assigns) do
+    if Map.has_key?(assigns, :__live_lift_timers), do: Jason.encode!(Timer.snapshot(assigns))
   end
 
   @doc false
@@ -338,6 +374,7 @@ defmodule LiveLift.Component do
         events,
         fields,
         optional,
+        timer,
         original
       ) do
     marked? = event in events
@@ -360,7 +397,9 @@ defmodule LiveLift.Component do
               {{:reply, Map.put(snapshot, :expected_seq, previous + 1), socket}, :gap}
 
             true ->
-              result = original.()
+              result =
+                if timer, do: Timer.schedule(socket, event, sequence, timer), else: original.()
+
               ack = if sequence == 0, do: previous, else: sequence
               {LiveLift.Component.reply!(result, ack, fields, optional), :ok}
           end
@@ -544,7 +583,8 @@ defmodule LiveLift.Component do
       |> Phoenix.Component.assign(:__live_lift_ack_seq, seq)
 
     state = state!(socket.assigns, fields, optional)
-    {:reply, %{revision: revision, ack_seq: seq, state: LiveLift.FloatWire.encode(state)}, socket}
+    reply = %{revision: revision, ack_seq: seq, state: LiveLift.FloatWire.encode(state)}
+    {:reply, with_timers(reply, socket), socket}
   end
 
   def reply!(_result, _seq, _fields, _optional) do
@@ -555,12 +595,19 @@ defmodule LiveLift.Component do
   def acknowledge_duplicate(socket, fields, optional \\ []) do
     state = state!(socket.assigns, fields, optional)
 
-    {:reply,
-     %{
-       revision: Map.get(socket.assigns, :__live_lift_revision, 0),
-       ack_seq: Map.get(socket.assigns, :__live_lift_ack_seq, 0),
-       state: LiveLift.FloatWire.encode(state)
-     }, socket}
+    reply = %{
+      revision: Map.get(socket.assigns, :__live_lift_revision, 0),
+      ack_seq: Map.get(socket.assigns, :__live_lift_ack_seq, 0),
+      state: LiveLift.FloatWire.encode(state)
+    }
+
+    {:reply, with_timers(reply, socket), socket}
+  end
+
+  defp with_timers(reply, socket) do
+    if Map.has_key?(socket.assigns, :__live_lift_timers),
+      do: Map.put(reply, :timers, Timer.snapshot(socket.assigns)),
+      else: reply
   end
 
   @doc false

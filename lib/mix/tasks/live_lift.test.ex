@@ -177,12 +177,21 @@ defmodule Mix.Tasks.LiveLift.Test do
       end)
 
     LiveLift.State.validate!(client_state)
-    assigns = Map.merge(client_state, %{id: "live-lift-parity", __changed__: %{}})
+
+    assigns =
+      Map.merge(client_state, %{
+        id: "live-lift-parity",
+        __changed__: %{},
+        myself: %Phoenix.LiveComponent.CID{cid: 1}
+      })
 
     socket = %Phoenix.LiveView.Socket{assigns: assigns}
 
     {:reply, %{state: elixir_state}, _socket} =
-      module.handle_event(event, Map.put(params, "_live_lift_seq", 1), socket)
+      Task.async(fn ->
+        module.handle_event(event, Map.put(params, "_live_lift_seq", 1), socket)
+      end)
+      |> Task.await()
 
     source =
       LiveLift.Client.Compiler.compile_module(module) <>

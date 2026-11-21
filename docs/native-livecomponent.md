@@ -42,7 +42,32 @@ After mount, changes to client-rendered fields from `update/2` or
 an unmarked handler can call
 `Phoenix.LiveView.send_update_after(socket.assigns.myself, [label: "Ready"], 50)`.
 This uses Phoenix's server timer and leaves the browser's action sequence intact.
-Keep the scheduling call in an unmarked handler.
+
+For a browser prediction, mark a handler that schedules a literal assign
+patch on its own component:
+
+```elixir
+@client true
+def handle_event("show_hint", _params, socket) do
+  Phoenix.LiveView.send_update_after(socket.assigns.myself, [hint: "Saved"], 100)
+  {:noreply, socket}
+end
+```
+
+The browser starts the delay when it handles the click. Phoenix schedules the
+authoritative update when it receives the action. Acknowledging the action
+keeps the existing prediction; the server's final snapshot settles the
+timer. Duplicate deliveries of the same sequenced action keep one server
+timer. The client cancels its timers when the hook is destroyed or
+disconnected. Reconnection uses the new server snapshot and the normal
+action replay policy.
+
+Use a plain params argument, a literal delay from 0 to 60,000 milliseconds,
+and a keyword list with one to eight distinct literal scalar values for
+client fields. The component uses Phoenix's default update callback. LiveLift
+admits up to 32 pending timers per instance; further schedules are acknowledged
+without adding a timer until a slot frees up. Keep computed patches, other
+targets, or custom updates in unmarked server handlers.
 
 Check a marked handler against the generated JavaScript from your Phoenix app:
 
@@ -69,7 +94,7 @@ It also fails if the app contains an opted-in component omitted from the file.
 Run it in CI with representative and boundary cases. A finite corpus cannot
 prove parity for every input or replace browser tests.
 
-This path currently accepts a literal `~H` render and a marked
+This path accepts a literal `~H` render. For synchronous updates, write a marked
 `handle_event/3` whose body returns `{:noreply, socket}` after one or more
 `assign/3` or `update/3` operations. The expression must fit the
 [client language subset](language.md). Marked handlers can read string

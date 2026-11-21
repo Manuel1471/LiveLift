@@ -458,6 +458,49 @@ test("a server timer updates the island and keeps its action sequence", async ({
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "2");
 });
 
+test("a marked timer predicts before delivery and commits once when duplicated", async ({page}) => {
+  let deliver;
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      if (frame?.[4]?.event === "preview_timer") {
+        deliver = () => {
+          server.send(message);
+          server.send(message);
+        };
+      } else {
+        server.send(message);
+      }
+    });
+  });
+  await gotoLiveLift(page, "/native-counter");
+  const root = page.locator("#native-counter");
+  const label = root.locator("span");
+  await label.evaluate((element) => {
+    window.timerLabels = [];
+    new MutationObserver(() => {
+      const text = element.textContent;
+      if (text !== window.timerLabels.at(-1)) window.timerLabels.push(text);
+    }).observe(element, {childList: true, characterData: true, subtree: true});
+  });
+  await root.getByRole("button", {name: "Schedule label locally"}).click();
+  await expect(label).toHaveText("Local timer fired");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "0");
+  deliver();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await expect(root).toHaveAttribute("data-live-lift-timers", "[]");
+  await expect(label).toHaveText("Local timer fired");
+  const snapshot = JSON.parse(await root.getAttribute("data-live-lift-state"));
+  expect(snapshot.label).toBe("Local timer fired");
+  await root.getByRole("button", {name: "Add one"}).click();
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "2");
+  expect(await page.evaluate(() => window.timerLabels)).toEqual(["Local timer fired"]);
+});
+
 test("server-only component saves the same authoritative count", async ({page}) => {
   await gotoLiveLift(page, "/native-counter-server");
   const serverRoot = page.locator('section[aria-label="Native LiveComponent counter"]');

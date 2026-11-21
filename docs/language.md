@@ -85,6 +85,14 @@ owns the actions and state. Components have no slots or independent state yet.
 
 ## Action expressions
 
+Marked native LiveComponent handlers support a single
+`Phoenix.LiveView.send_update_after(socket.assigns.myself, [field: literal], delay)`
+followed by `{:noreply, socket}`. This schedules a one-shot assignment; the
+synchronous handler state is unchanged. See the
+[timer example and limits](native-livecomponent.md) for reconciliation and
+the supported patch shape. Process mailbox callbacks are outside this
+LiveComponent form.
+
 `defclient` supports safe integer, finite binary64 float, string, boolean, and `nil` literals;
 atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);
 numeric `+`, `-`, `*`, integer-only `rem/2`, and numeric comparisons; `==`, `!=`;

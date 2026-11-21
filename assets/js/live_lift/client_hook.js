@@ -546,6 +546,15 @@ function frameBatch(apply) {
   return {enqueue, flush, clear};
 }
 
+function replay(actions, state, pending, timers) {
+  if (timers) state = timers.project(state);
+  for (const {action, eventData} of pending) {
+    state = actions[action](state, eventData);
+    validateState(state);
+  }
+  return state;
+}
+
 /**
  * Runs user-defined client actions in a LiveView-owned page.
  * The app supplies its own HEEx and marks only the locally owned DOM subtree.
@@ -626,8 +635,9 @@ export function createClientHook(views) {
         this.reconnectPending = false;
         this.offline = false;
         this.offlineQueue = [];
-        this.authoritativeBatch = frameBatch(({revision, state, ack_seq}) => {
-          this.applyAuthoritative(revision, state, ack_seq);
+        this.timers = view.timers?.(this, validateState);
+        this.authoritativeBatch = frameBatch(({revision, state, ack_seq, timers}) => {
+          this.applyAuthoritative(revision, state, ack_seq, timers);
           this.recoverPending();
         });
         this.resetOptimisticSnapshot = () => {
@@ -657,13 +667,11 @@ export function createClientHook(views) {
           if (!Number.isSafeInteger(nextSequence)) throw new Error("LiveLift event sequence overflow");
           validateState(snapshot);
 
-          let replayed = snapshot;
+          if (!keepBase) this.timers?.accept(this.el.dataset.liveLiftTimers, ack);
+          let replayed;
           let replayError = null;
           try {
-            for (const {action, eventData} of retry) {
-              replayed = this.view.actions[action](replayed, eventData);
-              validateState(replayed);
-            }
+            replayed = replay(view.actions, snapshot, retry, this.timers);
           } catch (error) {
             replayError = error;
             retry.length = 0;
@@ -688,7 +696,7 @@ export function createClientHook(views) {
           }
           this.recoverPending();
         };
-        this.applyAuthoritative = (revision, state, ackSequence = 0) => {
+        this.applyAuthoritative = (revision, state, ackSequence, timers) => {
           if (!Number.isSafeInteger(revision) || revision < 0) {
             throw new Error("Invalid LiveLift server revision");
           }
@@ -701,17 +709,14 @@ export function createClientHook(views) {
           validateState(state);
 
           const reset = this.reconnectPending;
-          const nextRevision = reset || revision > this.serverRevision ? revision : this.serverRevision;
-          const nextBase = reset || revision > this.serverRevision ? state : this.authoritativeState;
+          const fresh = reset || revision > this.serverRevision;
+          const nextBase = fresh ? state : this.authoritativeState;
           const nextPending = (reset ? [] : this.pending).filter(({sequence}) => sequence > ackSequence);
-          let nextState = nextBase;
-          for (const {action, eventData} of nextPending) {
-            nextState = this.view.actions[action](nextState, eventData);
-            validateState(nextState);
-          }
+          if (revision >= this.serverRevision) this.timers?.accept(timers, ackSequence);
+          const nextState = replay(view.actions, nextBase, nextPending, this.timers);
           if (!sameValue(nextState, this.state)) this.render(nextState);
           this.authoritativeState = nextBase;
-          this.serverRevision = nextRevision;
+          if (fresh) this.serverRevision = revision;
           this.ackSequence = Math.max(this.ackSequence, ackSequence);
           this.pending = nextPending;
           this.state = nextState;
@@ -799,7 +804,8 @@ export function createClientHook(views) {
         this.nextSequence += 1;
         const pendingAction = {sequence, action: eventName, eventData, params};
         this.pending.push(pendingAction);
-        if (!this.recovery) this.pushOptimistic(pendingAction);
+        if (this.recovery) this.timers?.start(eventName, sequence);
+        else this.pushOptimistic(pendingAction);
       };
 
       this.recoverPending = () => {
@@ -815,6 +821,7 @@ export function createClientHook(views) {
       };
 
       this.pushOptimistic = ({sequence, action, params}) => {
+        this.timers?.start(action, sequence);
         const payload = {...params, _live_lift_seq: sequence};
         const epoch = this.connectionEpoch;
         // The prediction can remove its own control; target the stable component root.
@@ -833,7 +840,7 @@ export function createClientHook(views) {
             return;
           }
           this.authoritativeBatch.flush();
-          this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq);
+          this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq, reply.timers);
           if (reply.expected_seq !== undefined && this.pending.some((item) => item.sequence === sequence)) {
             this.recovery ??= {sent: null};
           }
@@ -988,6 +995,7 @@ export function createClientHook(views) {
       if (this.syncRef && typeof this.removeHandleEvent === "function") this.removeHandleEvent(this.syncRef);
       if (this.optimistic) {
         this.authoritativeBatch.clear();
+        this.timers?.clear();
         for (const entry of this.debouncedChanges.values()) clearTimeout(entry.timer);
         this.debouncedChanges.clear();
         this.el.removeEventListener("click", this.onOptimisticClick, true);
@@ -1009,6 +1017,7 @@ export function createClientHook(views) {
       }
       if (this.optimistic) {
         this.authoritativeBatch.clear();
+        this.timers?.clear();
         this.connectionEpoch += 1;
         this.reconnectPending = true;
         this.offline = true;
@@ -1030,12 +1039,13 @@ export function createClientHook(views) {
         if (Number.isSafeInteger(revision) && revision >= this.serverRevision) {
           const state = JSON.parse(this.el.dataset.liveLiftState);
           const ack = Number(this.el.dataset.liveLiftAckSeq || "0");
+          const timers = this.el.dataset.liveLiftTimers;
           if (this.recovery) {
             this.authoritativeBatch.flush();
-            this.applyAuthoritative(revision, state, ack);
+            this.applyAuthoritative(revision, state, ack, timers);
             this.recoverPending();
           } else if (revision > this.serverRevision || ack !== this.ackSequence) {
-            this.authoritativeBatch.enqueue({revision, state, ack_seq: ack});
+            this.authoritativeBatch.enqueue({revision, state, ack_seq: ack, timers});
           }
         }
         return;

@@ -579,6 +579,36 @@ defmodule LiveLift.ComponentTest do
                  end
   end
 
+  test "unsupported marked timers report their source and suggest server execution" do
+    for {args, params, callback, reason} <- [
+          {"socket.assigns.myself, [value: 0], 60001", "_params", "", "literal delay"},
+          {"socket.assigns.myself, [value: params[\"value\"]], 10", "params", "",
+           "literal scalar"},
+          {"socket.assigns.myself, [value: 0], 10", "%{}", "", "plain params argument"},
+          {"socket.assigns.myself, [other: 0], 10", "_params", "", "used in the client"},
+          {"socket.assigns.myself, [value: 0], 10", "_params",
+           "def update(assigns, socket), do: {:ok, assign(socket, assigns)}", "default update"}
+        ] do
+      source = """
+      defmodule LiveLift.ComponentTest.UnsupportedTimer do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@value}</output>"
+        @client true
+        def handle_event("run", #{params}, socket) do
+          Phoenix.LiveView.send_update_after(#{args})
+          {:noreply, socket}
+        end
+        #{callback}
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/timer.ex:7: unsupported @client send_update_after\/3:.*#{reason}.*move it to a server handler/,
+                   fn -> Code.compile_string(source, "timer.ex") end
+    end
+  end
+
   test "unpublished handler forms fail at their source before generating JavaScript" do
     expressions = [
       "Float.round(1.5, 1)",
