@@ -16,7 +16,10 @@ LiveView path. This preserves typed input across a reload. It also means
 that restored text has the same authority as input typed in the browser.
 The [form restore follow-up](../session-storage-spike.md#form-restore-follow-up)
 verified the normal submit path with an existing nested input in three
-browsers.
+browsers. The [server-bound input probe](../session-storage-spike.md#server-bound-input-follow-up)
+found that a row can reuse the same input node while its next render
+replaces a restored draft. The draft contract needs to account for
+reconciliation and scope by record identity.
 
 Acceptance requires preserving an eligible draft across reload, keeping
 Phoenix state and action sequences untouched before user interaction, and

@@ -88,5 +88,25 @@ with `LIVE_LIFT_TEST_DEPLOY=1` on the same three-browser matrix. This
 tests the browser storage primitive. Recovery from these failures in
 the persistence feature remains to be verified.
 
+## Server-bound input follow-up
+
+The native list starts with a row whose label comes from Phoenix.
+After a reload, the probe restores the label as an input property
+without dispatching an event. Reversing the list preserves the draft.
+Finding a new row then changes the existing row's title from `None`
+to `New`, while the state and node identity of that row's label stay
+the same. This render restores the input's canonical value and erases
+the displayed draft. Replacing that row with a different key shows
+the replacement's own label.
+
+This case distinguishes moving a reused element from patching an
+element with stable identity. Directly assigning the input property
+is insufficient for a draft on a server-bound control. A persistence
+implementation needs a policy for the displayed draft, the authoritative
+value and the identity of the record through updates.
+
+All 18 cases passed in development and all 18 again with digested
+assets in Chromium, Firefox and WebKit.
+
 [ADR-0005](decisions/ADR-0005-session-storage-scope.md) records the
 restoration scopes and their acceptance checks.

@@ -134,3 +134,47 @@ test("a rejected session storage write preserves the preceding draft", async ({p
 
   expect(result).toEqual({error: "QuotaExceededError", retained: sample});
 });
+
+test("a bound row input distinguishes node reuse from a changed row render", async ({page}) => {
+  await gotoLiveLift(page, "/native-list?rows=3");
+  const island = page.locator("#native-list");
+  const row = island.locator("#row-1");
+  const label = row.getByRole("textbox", {name: "Label"});
+  const source = await label.getAttribute("value");
+  const draft = "Restored local row label";
+  const ack = "data-live-lift-ack-seq";
+  expect(source).toBeTruthy();
+  await page.evaluate(({key, draft}) => sessionStorage.setItem(key, draft), {key, draft});
+  await page.reload();
+  await expect(island).toHaveAttribute("data-live-lift-load", "ready");
+  await island.getByRole("button", {name: "Add row"}).click();
+  await expect(island).toHaveAttribute(ack, "1");
+  await expect(row).toHaveAttribute("title", "None");
+  const input = await label.elementHandle();
+  const originalItem = await island.evaluate((element) =>
+    JSON.parse(element.dataset.liveLiftState).items.find((item) => item.id === "row-1"));
+
+  await label.evaluate((element, key) => { element.value = sessionStorage.getItem(key); }, key);
+  await expect(label).toHaveValue(draft);
+  await expect(island).toHaveAttribute(ack, "1");
+
+  await island.getByRole("button", {name: "Reverse rows"}).click();
+  await expect(island).toHaveAttribute(ack, "2");
+  await expect(island.locator("li").last()).toHaveAttribute("id", "row-1");
+  await expect(label).toHaveValue(draft);
+
+  // first_match changes the row's title, while its canonical label stays the same.
+  await island.getByRole("button", {name: "Find new row"}).click();
+  await expect(island).toHaveAttribute(ack, "3");
+  await expect(row).toHaveAttribute("title", "New");
+  await expect(label).toHaveValue(source);
+  expect(await label.evaluate((element, previous) => element === previous, input)).toBe(true);
+  await expect(label).toHaveAttribute("value", source);
+  expect(await island.evaluate((element) =>
+    JSON.parse(element.dataset.liveLiftState).items.find((item) => item.id === "row-1"))).toEqual(originalItem);
+
+  await island.getByRole("button", {name: "Reset last row"}).click();
+  await expect(island).toHaveAttribute(ack, "4");
+  await expect(row).toHaveCount(0);
+  await expect(island.locator("#row-5").getByRole("textbox", {name: "Label"})).toHaveValue("Reset");
+});
