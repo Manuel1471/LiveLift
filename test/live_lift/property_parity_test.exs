@@ -400,6 +400,16 @@ defmodule LiveLift.PropertyParityTest do
     cases = [Map.replace!(hd(cases), :optional, large_map) | cases]
     Enum.each(cases, &LiveLift.State.validate!/1)
     expected = Enum.map(cases, &Actions.check/1) |> Jason.encode!() |> Jason.decode!()
+    generated = LiveLift.Client.Compiler.compile_module(Actions)
+
+    if browser_corpus = System.get_env("LIVE_LIFT_BROWSER_CORPUS_DIR") do
+      File.write!(Path.join(browser_corpus, "actions.mjs"), generated)
+
+      File.write!(
+        Path.join(browser_corpus, "cases.json"),
+        Jason.encode!(%{input: cases, expected: expected})
+      )
+    end
 
     directory =
       Path.join(System.tmp_dir!(), "live_lift_parity_#{System.unique_integer([:positive])}")
@@ -413,7 +423,7 @@ defmodule LiveLift.PropertyParityTest do
 
       File.write!(
         script,
-        LiveLift.Client.Compiler.compile_module(Actions) <>
+        generated <>
           """
           import {readFileSync} from "node:fs";
           const cases = JSON.parse(readFileSync(process.argv[2], "utf8"));

@@ -14,7 +14,7 @@ defmodule LiveLift.Client.Compiler do
   @helpers ~S"""
   function __liveLiftInt(value) {
     if (!Number.isSafeInteger(value)) throw new Error("LiveLift expected a safe integer");
-    return value;
+    return value === 0 ? 0 : value;
   }
   function __liveLiftFloatText(value) {
     if (!Number.isFinite(value)) throw new Error("LiveLift expected a finite float");
