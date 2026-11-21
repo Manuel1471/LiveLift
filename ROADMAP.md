@@ -9,9 +9,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 2, Compilador v2. Próxima entrega: regresión integral de la fase 2.** Las fases
-S, 0 y 1 están cerradas. La fase 8 es opcional y posterior a 1.0. Los avances
-antiguos de fases 3–7 se conservan como inventario, pero no abren esas fases.
+**Fase activa: 3, Sincronización optimista. Próxima entrega: orden e idempotencia
+de acciones.** Las fases S, 0, 1 y 2 están cerradas. La fase 8 es opcional y
+posterior a 1.0. Los avances antiguos de fases 4–7 se conservan como inventario.
 
 **Estados:** `Hecho` significa funcionalidad implementada, documentada y
 probada en su alcance; `En curso` es la única entrega activa; `En espera`
@@ -28,8 +28,10 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.4a | Proyecciones `Map.keys` y `Map.values` | Hecho | Conteo y nombres ordenados con paridad; rechazos con ubicación |
 | 2.4b | Operaciones `List` | Hecho | Edición por índice y borrado exacto con paridad |
 | 2.5 | IR y normalización del compilador | Hecho | Pipes y condicionales normalizados, tipos de prueba y paridad |
-| 2.6 | Regresión integral y puerta 2 | **En curso** | Tres casos, paridad, tres navegadores, benchmarks |
-| 3 | Sincronización | Bloqueada por 2 | Convergencia ante entrega caótica |
+| 2.6 | Regresión integral y puerta 2 | Hecho | Tres casos, paridad, tres navegadores, benchmarks |
+| 3.1 | Orden de acciones e idempotencia del servidor | **En curso** | Duplicados y entrega fuera de orden sin perder acciones |
+| 3.2 | Reconexión y conflictos | En espera | Reintentos y política de conflictos con límites |
+| 3.3 | Pruebas caóticas y puerta 3 | En espera | Convergencia y acciones aplicadas exactamente una vez |
 | 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
 | 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
 | 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
@@ -53,8 +55,8 @@ posteriores queda registrado abajo y no cambia este orden.
 |---|---|---|---|
 | S y 0 | Spikes documentados; semántica, render y arnés de paridad base verificados | Cerrada | Ninguno |
 | 1. Superficie LiveView | Instalación y migración reproducibles; componente servidor/cliente con diff de dos líneas; fallos de compilación accionables; S5 en navegador | Cerrada | Ninguno |
-| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Abierta | Funciones enumeradas del compilador y regresión final |
-| 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | En espera de 2 | Pruebas caóticas de entrega y política de conflictos |
+| 2. Subconjunto publicado | Tres casos de aceptación sin escapes; paridad Elixir/JS y navegador para cada forma admitida; rechazos precisos para el resto | Cerrada | Ninguno |
+| 3. Sincronización | Convergencia con entrega fuera de orden, duplicados y reconexión; política de conflictos documentada | Abierta | Orden e idempotencia de acciones, reconexión y política de conflictos |
 | 4. Rendimiento | Presupuestos de runtime y 1,000 filas medidos en la ruta nativa; diff por dependencias y carga diferida | En espera de 3 | Difusión por dependencias, agrupación y carga diferida |
 | 5. Funciones | Temporizadores, validación, comandos y persistencia con paridad y límites | En espera de 4 | Todas las funciones de esta fase |
 | 6. Experiencia | Auditoría, test, telemetría, documentación de migración e instalador verificados en otra app | En espera de 5 | Medición antes de optar, inspector e instalación completa |
@@ -216,8 +218,7 @@ documenta qué patrones de handlers y callbacks de `assign_new` quedan en el
 servidor. El módulo `LiveLift.Client.IR` baja pipes a llamadas y representa
 cada `if` con sus dos ramas antes de emitir JavaScript. Distingue condiciones
 booleanas de valores que requieren las reglas de verdad de Elixir. El
-compilador mantiene el diagnóstico del handler con archivo y línea. La
-puerta sigue abierta durante la regresión integral.
+compilador mantiene el diagnóstico del handler con archivo y línea.
 El modelo para literales decimales está documentado en
 `docs/decimal-model-spike.md`: floats binarios finitos con un escalar etiquetado
 en el protocolo de estado. La sintaxis decimal ya compila; 5,000 patrones de
@@ -381,7 +382,7 @@ validación de formulario en vivo, lista ordenable.
 | Alcance de handlers | Verificado | Operaciones publicadas y formas rechazadas en la matriz de handlers |
 | IR y normalización | Verificado | Corpus de paridad incluye pipes hacia `if` y ramas que no se deben evaluar. Los rechazos conservan archivo y línea |
 | Tres casos completos | Verificado | Contador, formulario anidado y lista ordenable; detalles abajo |
-| Regresión final de fase | En curso | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
+| Regresión final de fase | Verificado | 120 tests de librería, 27 del runtime, 7 del demo, paridad y 126 pruebas en tres navegadores |
 
 "Pendiente" no implica que toda forma vaya a implementarse. Un rechazo preciso
 es una decisión de alcance válida para esta versión; la documentación debe
@@ -397,6 +398,22 @@ publicada y prueba Elixir/JavaScript antes de cambiar su estado a "Verificado".
 El gate también requiere cerrar o rechazar explícitamente con ubicación de
 origen los componentes de función, slots y las formas del compilador indicadas
 arriba. Los checks de fases posteriores no cuentan para este cierre.
+
+**Evidencia de cierre (commit de código `2d0a086`).** La suite de Playwright
+ejecutó los tres casos de aceptación en Chromium, Firefox y WebKit. El arnés
+compara el mismo corpus de 1,006 estados en Elixir, Node y los tres navegadores,
+incluidos grafemas, mapas y listas, control de flujo y aritmética. La
+comparación en memoria detectó un `-0` entero oculto por JSON y verificó su
+corrección. El demo pasó `mix live_lift.test`, `mix assets.build` y
+`mix assets.deploy`. La app Phoenix generada por
+`sh test/integration/phoenix_consumer.sh` pasó su integración desde checkout
+local al verificar la normalización del compilador.
+
+`mix run bench/benchmark.exs`, `bench/phoenix_bundle.sh`,
+`bench/phoenix_event.sh` y `cd bench && npm run dom` se ejecutaron de nuevo. El
+paquete de referencia midió 47,351 bytes gzip con Phoenix y 54,179 con LiveLift.
+La inversión de 1,000 filas en linkedom midió 57.8 ms de mediana y 68.1 ms p95.
+El presupuesto de un frame se verifica en navegador real en la fase 4.
 
 ## Fase 3: Sincronización optimista (4 a 6 semanas, v0.5)
 
