@@ -10,9 +10,9 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 ## Estado de ejecución
 
 **La fase 5 está cerrada y la fase 6 está activa.** La persistencia
-restaura borradores de campos elegidos por la app. La fase 6 comienza
-por verificar la auditoría de handlers, incluidos los temporizadores
-publicados durante la fase 5.
+restaura borradores de campos elegidos por la app. La auditoría de
+handlers y temporizadores ya está verificada. La siguiente entrega
+de la fase 6 es la telemetría de frecuencia y latencia.
 
 ### Orden de cierre
 
@@ -582,12 +582,12 @@ compartido quedó en 8,179 bytes gzip.
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
-Inventario de trabajo previo para verificar cuando se active la fase.
-
-- **Previo:** `mix live_lift.audit`: qué handlers ya son compatibles con el cliente y por qué
-  (auditoría de fuente para `use Phoenix.LiveComponent` y `use AppWeb, :live_component`).
-  Queda incorporar la forma de temporizador publicada en 5.1.
-- **Falta:** Telemetría de latencia y frecuencia por evento, para decidir qué migrar con datos.
+- **Verificado:** `mix live_lift.audit` informa qué handlers son candidatos
+  al subconjunto cliente y explica los rechazos. `a4291f9` incorpora los
+  temporizadores de LiveComponent y LiveView de 5.1. La app Phoenix de
+  integración verificó el diagnóstico con un temporizador real de
+  componente. [Evidencia de auditoría](docs/progress/6-audit-timers.md).
+- **En curso:** Telemetría de latencia y frecuencia por evento, para decidir qué migrar con datos.
   Los componentes con `use LiveLift` ya emiten duración y resultado por evento
   marcado o no marcado. Falta medir componentes antes de optar y el tramo del
   navegador para comparar latencia completa.
