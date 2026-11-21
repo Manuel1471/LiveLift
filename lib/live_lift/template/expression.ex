@@ -1,13 +1,15 @@
 defmodule LiveLift.Template.Expression do
   @moduledoc false
 
+  alias LiveLift.Diagnostic
+
   def parse(source, file, line) when is_binary(source) do
     case Code.string_to_quoted(source, file: file, line: line) do
       {:ok, quoted} ->
         convert(quoted, file, line)
 
       {:error, {_location, message, token}} ->
-        raise ArgumentError, "#{file}:#{line}: invalid client expression: #{message} #{token}"
+        Diagnostic.error!("E061", file, line, "invalid client expression: #{message} #{token}")
     end
   end
 
@@ -100,7 +102,11 @@ defmodule LiveLift.Template.Expression do
   defp convert(other, file, line), do: unsupported!(file, line, other)
 
   defp unsupported!(file, line, other) do
-    raise ArgumentError,
-          "#{file}:#{line}: unsupported client expression: #{Macro.to_string(other)}"
+    Diagnostic.error!(
+      "E061",
+      file,
+      line,
+      "unsupported client expression: #{Macro.to_string(other)}"
+    )
   end
 end

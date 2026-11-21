@@ -883,6 +883,10 @@ defmodule LiveLift.Client.Compiler do
           "unsupported client changeset error metadata (E052): use Keyword.get(opts, :count). See docs/errors/E052.md"
   end
 
+  defp compile_expr({{:., _, [{:__aliases__, _, _}, _]}, _, []} = call, _arg) do
+    raise ArgumentError, "unsupported client expression: #{Macro.to_string(call)}"
+  end
+
   defp compile_expr({{:., _, [source, key]}, _, []}, arg) when is_atom(key) do
     "__liveLiftGet(#{compile_expr(source, arg)}, #{Jason.encode!(identifier!(key))})"
   end

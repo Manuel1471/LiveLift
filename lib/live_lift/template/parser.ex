@@ -4,6 +4,7 @@ defmodule LiveLift.Template.Parser do
   # LiveView 1.2 exposes no public HEEx parser. Keep its internal API here and
   # use the bounded LiveLift parser if that API disappears or changes shape.
   alias Phoenix.LiveView.TagEngine.Parser, as: LiveViewParser
+  alias LiveLift.Diagnostic
   alias LiveLift.Template.FallbackParser
 
   @spec parse!(String.t(), String.t(), pos_integer()) :: list()
@@ -30,7 +31,12 @@ defmodule LiveLift.Template.Parser do
     end
   rescue
     error in Phoenix.LiveView.TagEngine.Tokenizer.ParseError ->
-      raise ArgumentError, Exception.message(error)
+      Diagnostic.error!(
+        "E065",
+        file,
+        "#{error.line || line}:#{error.column || 1}",
+        error.description
+      )
   end
 
   defp compatible_nodes?(nodes), do: Enum.all?(nodes, &compatible_node?/1)

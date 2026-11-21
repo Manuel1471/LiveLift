@@ -605,7 +605,7 @@ defmodule LiveLift.ComponentTest do
       """
 
       assert_raise ArgumentError,
-                   ~r/timer.ex:7: unsupported @client send_update_after\/3:.*#{reason}.*move it to a server handler/,
+                   ~r/timer.ex:7: unsupported @client send_update_after\/3:.*#{reason}.*move it to a server handler.*\(E059\).*docs\/errors\/E059.md/s,
                    fn -> Code.compile_string(source, "timer.ex") end
     end
   end
@@ -672,7 +672,7 @@ defmodule LiveLift.ComponentTest do
       """
 
       assert_raise ArgumentError,
-                   ~r/changeset.ex:6: unsupported @client handler: unsupported client changeset:.*#{Regex.escape(error)}.*move it to a server handler/,
+                   ~r/changeset.ex:6: unsupported @client handler: unsupported client changeset:.*#{Regex.escape(error)}.*\(E052\).*remove @client true.*server.*docs\/errors\/E052.md/is,
                    fn -> Code.compile_string(source, "changeset.ex") end
     end
   end
@@ -739,7 +739,7 @@ defmodule LiveLift.ComponentTest do
       """
 
       assert_raise ArgumentError,
-                   ~r/matrix.ex:6: unsupported @client handler: unsupported client expression:.*move it to a server handler/s,
+                   ~r/matrix.ex:6: unsupported @client handler: unsupported client expression:.*\(E056\).*remove @client true to move it to a server handler.*docs\/errors\/E056.md/s,
                    fn -> Code.compile_string(source, "matrix.ex") end
     end
 
@@ -831,7 +831,7 @@ defmodule LiveLift.ComponentTest do
     """
 
     assert_raise ArgumentError,
-                 ~r/matrix.ex:6: @client assign_new\/3 requires an atom key and a zero-argument function/,
+                 ~r/matrix.ex:7: @client assign_new\/3 requires an atom key and a zero-argument function.*\(E055\).*docs\/errors\/E055.md/s,
                  fn -> Code.compile_string(assign_new_source, "matrix.ex") end
   end
 

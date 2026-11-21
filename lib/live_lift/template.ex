@@ -1,6 +1,7 @@
 defmodule LiveLift.Template do
   @moduledoc "Parses client templates into a validated tree shared by both runtimes."
 
+  alias LiveLift.Diagnostic
   alias LiveLift.Template.Expression
   alias LiveLift.Template.JSCommand
   alias LiveLift.Template.Parser
@@ -52,9 +53,13 @@ defmodule LiveLift.Template do
       |> Enum.map(&convert_node(&1, file))
       |> expand_local_components(local_components, file, events, [])
 
-    if Enum.any?(tree, &default_slot_node?/1) do
-      raise ArgumentError,
-            "#{file}: render_slot(@inner_block) requires a local function component call; move this expression to the server"
+    if line = default_slot_line(tree) do
+      Diagnostic.error!(
+        "E062",
+        file,
+        line,
+        "render_slot(@inner_block) requires a local function component call"
+      )
     end
 
     validate_draft_forms!(tree, file, false)
@@ -75,17 +80,33 @@ defmodule LiveLift.Template do
 
   defp default_slot_node?(_), do: false
 
+  defp default_slot_line(nodes) do
+    Enum.find_value(nodes, fn
+      %{type: "default_slot", line: line} -> line
+      %{type: "element", children: children} -> default_slot_line(children)
+      _ -> nil
+    end)
+  end
+
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
     validate_native_debounce!(tag, attrs, file, meta.line)
 
     if type == :remote_component do
-      raise ArgumentError,
-            "#{file}:#{meta.line}: remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
+      Diagnostic.error!(
+        "E062",
+        file,
+        meta.line,
+        "remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
+      )
     end
 
     if tag == "form" and marked_change_descendant?(children, events) do
-      raise ArgumentError,
-            "#{file}:#{meta.line}: @client input phx-change inside a form is not supported yet; put phx-change on the form or keep this event on the server"
+      Diagnostic.error!(
+        "E063",
+        file,
+        meta.line,
+        "@client input phx-change inside a form is not supported yet; put phx-change on the form or keep this event on the server"
+      )
     end
 
     if tag == "form" and marked_event?(attrs, events) do
@@ -104,8 +125,12 @@ defmodule LiveLift.Template do
     validate_native_debounce!(tag, attrs, file, meta.line)
 
     if type == :remote_component do
-      raise ArgumentError,
-            "#{file}:#{meta.line}: remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
+      Diagnostic.error!(
+        "E062",
+        file,
+        meta.line,
+        "remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
+      )
     end
 
     validate_change_control!(tag, attrs, file, meta.line, events)
@@ -181,13 +206,21 @@ defmodule LiveLift.Template do
                  (value in ["", "blur"] or
                     (byte_size(value) <= 10 and Regex.match?(~r/^(0|[1-9][0-9]*)$/, value) and
                        String.to_integer(value) <= 2_147_483_647)) do
-          raise ArgumentError,
-                "#{file}:#{line}: @client phx-debounce supports an input or textarea with a nonnegative millisecond value or blur; keep this event on the server"
+          Diagnostic.error!(
+            "E063",
+            file,
+            line,
+            "@client phx-debounce supports an input or textarea with a nonnegative millisecond value or blur; keep this event on the server"
+          )
         end
 
       {"phx-debounce", _, _} ->
-        raise ArgumentError,
-              "#{file}:#{line}: @client phx-debounce requires a static millisecond value or blur; keep this event on the server"
+        Diagnostic.error!(
+          "E063",
+          file,
+          line,
+          "@client phx-debounce requires a static millisecond value or blur; keep this event on the server"
+        )
 
       _ ->
         :ok
@@ -229,15 +262,23 @@ defmodule LiveLift.Template do
               attrs ++ [{":key", value, attr_meta}]
 
             _ ->
-              raise ArgumentError,
-                    "#{file}:#{meta.line}: @client :for requires id={#{var}.id} from the repeated item; use a stable item id or keep this list on the server"
+              Diagnostic.error!(
+                "E060",
+                file,
+                meta.line,
+                "@client :for requires id={#{var}.id} from the repeated item; use a stable item id or keep this list on the server"
+              )
           end
 
         _ ->
           {_, _, meta} = loop
 
-          raise ArgumentError,
-                "#{file}:#{meta.line}: @client :for requires id={#{var}.id} on the repeated element; use a stable item id or keep this list on the server"
+          Diagnostic.error!(
+            "E060",
+            file,
+            meta.line,
+            "@client :for requires id={#{var}.id} on the repeated element; use a stable item id or keep this list on the server"
+          )
       end
     else
       attrs
@@ -267,21 +308,33 @@ defmodule LiveLift.Template do
         end)
 
       if type in ~w(checkbox radio file) do
-        raise ArgumentError,
-              "#{file}:#{line}: @client phx-change does not support #{type} inputs yet; keep this event on the server"
+        Diagnostic.error!(
+          "E063",
+          file,
+          line,
+          "@client phx-change does not support #{type} inputs yet; keep this event on the server"
+        )
       end
 
       Enum.each(attrs, fn
         {"name", {:string, name, _}, _} ->
           unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) and
                    name not in ~w(__proto__ constructor prototype _live_lift_seq) do
-            raise ArgumentError,
-                  "#{file}:#{line}: @client direct phx-change requires a flat safe input name; put phx-change on the form for nested map names"
+            Diagnostic.error!(
+              "E063",
+              file,
+              line,
+              "@client direct phx-change requires a flat safe input name; put phx-change on the form for nested map names"
+            )
           end
 
         {"name", _, _} ->
-          raise ArgumentError,
-                "#{file}:#{line}: @client direct phx-change requires a static input name; move this event to the server"
+          Diagnostic.error!(
+            "E063",
+            file,
+            line,
+            "@client direct phx-change requires a static input name; move this event to the server"
+          )
 
         _ ->
           :ok
@@ -295,30 +348,46 @@ defmodule LiveLift.Template do
     names = form_names(children, file)
 
     if unsupported_form_control?(children) do
-      raise ArgumentError,
-            "#{file}:#{line}: @client form has a checkbox, radio, file or multiple-select control; keep this event on the server"
+      Diagnostic.error!(
+        "E063",
+        file,
+        line,
+        "@client form has a checkbox, radio, file or multiple-select control; keep this event on the server"
+      )
     end
 
     paths =
       for name <- names do
         unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*(\[[a-zA-Z_][a-zA-Z0-9_]*\]){0,3}$/, name) do
-          raise ArgumentError,
-                "#{file}:#{line}: @client form requires safe map input names with at most four segments; keep arrays or deeper forms on the server"
+          Diagnostic.error!(
+            "E063",
+            file,
+            line,
+            "@client form requires safe map input names with at most four segments; keep arrays or deeper forms on the server"
+          )
         end
 
         path = Regex.scan(~r/[a-zA-Z_][a-zA-Z0-9_]*/, name) |> List.flatten()
 
         if Enum.any?(path, &(&1 in ~w(__proto__ constructor prototype _live_lift_seq))) do
-          raise ArgumentError,
-                "#{file}:#{line}: @client form has an unsafe input name; use safe map keys"
+          Diagnostic.error!(
+            "E064",
+            file,
+            line,
+            "@client form has an unsafe input name; use safe map keys"
+          )
         end
 
         path
       end
 
     if length(paths) != length(Enum.uniq(paths)) do
-      raise ArgumentError,
-            "#{file}:#{line}: @client form has duplicate input names; move this event to a server handler"
+      Diagnostic.error!(
+        "E063",
+        file,
+        line,
+        "@client form has duplicate input names; move this event to a server handler"
+      )
     end
 
     if Enum.any?(paths, fn path ->
@@ -326,8 +395,12 @@ defmodule LiveLift.Template do
            path != other and Enum.take(other, length(path)) == path
          end)
        end) do
-      raise ArgumentError,
-            "#{file}:#{line}: @client form has conflicting map input names; keep this event on the server"
+      Diagnostic.error!(
+        "E063",
+        file,
+        line,
+        "@client form has conflicting map input names; keep this event on the server"
+      )
     end
   end
 
@@ -375,8 +448,12 @@ defmodule LiveLift.Template do
         [value]
 
       {"name", _, _} ->
-        raise ArgumentError,
-              "#{file}:#{line}: @client form requires static input names; move this event to the server"
+        Diagnostic.error!(
+          "E063",
+          file,
+          line,
+          "@client form requires static input names; move this event to the server"
+        )
 
       _ ->
         []
@@ -389,8 +466,12 @@ defmodule LiveLift.Template do
         []
 
       {"phx-target", _, meta} ->
-        raise ArgumentError,
-              "#{file}:#{meta.line}: @client supports phx-target={@myself}; move other targets to a server handler"
+        Diagnostic.error!(
+          "E063",
+          file,
+          meta.line,
+          "@client supports phx-target={@myself}; move other targets to a server handler"
+        )
 
       {"phx-click", {:expr, source, value_meta}, meta} ->
         line = Map.get(value_meta, :line, meta.line)
@@ -453,7 +534,7 @@ defmodule LiveLift.Template do
 
   defp convert_element(:remote_component, tag, attrs, children, meta, file) do
     unless children == [] do
-      raise ArgumentError, "#{file}:#{meta.line}: client components do not accept children"
+      Diagnostic.error!("E062", file, meta.line, "client components do not accept children")
     end
 
     props =
@@ -462,8 +543,12 @@ defmodule LiveLift.Template do
           %{name: name, expr: Expression.parse(source, file, expression_meta.line)}
 
         {name, _, _} ->
-          raise ArgumentError,
-                "#{file}:#{meta.line}: client component prop #{name} requires an Elixir expression"
+          Diagnostic.error!(
+            "E062",
+            file,
+            meta.line,
+            "client component prop #{name} requires an Elixir expression"
+          )
       end)
 
     %{type: "component", module: tag, props: props, line: meta.line}
@@ -480,19 +565,27 @@ defmodule LiveLift.Template do
           validate_local_prop_name!(name, file, meta.line)
 
           if Regex.match?(~r/&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]+);/, value) do
-            raise ArgumentError,
-                  "#{file}:#{meta.line}: encoded function component prop #{name} is not supported; pass an Elixir string expression instead"
+            Diagnostic.error!(
+              "E062",
+              file,
+              meta.line,
+              "encoded function component prop #{name} is not supported; pass an Elixir string expression instead"
+            )
           end
 
           %{name: name, expr: %{type: "literal", value: value}}
 
         {name, _, _} ->
-          raise ArgumentError,
-                "#{file}:#{meta.line}: client function component prop #{name} requires a value"
+          Diagnostic.error!(
+            "E062",
+            file,
+            meta.line,
+            "client function component prop #{name} requires a value"
+          )
       end)
 
     if length(props) != length(Enum.uniq_by(props, & &1.name)) do
-      raise ArgumentError, "#{file}:#{meta.line}: duplicate client function component prop"
+      Diagnostic.error!("E062", file, meta.line, "duplicate client function component prop")
     end
 
     %{
@@ -508,17 +601,26 @@ defmodule LiveLift.Template do
   defp convert_element(:slot, tag, _attrs, _children, meta, file) do
     name = String.trim_leading(tag, ":")
 
-    raise ArgumentError,
-          "#{file}:#{meta.line}: slot #{name} is not supported in client function components yet; move this component to the server"
+    Diagnostic.error!(
+      "E062",
+      file,
+      meta.line,
+      "slot #{name} is not supported in client function components yet; move this component to the server"
+    )
   end
 
   defp convert_element(type, tag, attrs, children, meta, file) do
     unless type == :tag do
-      raise ArgumentError, "#{file}:#{meta.line}: client components are not supported yet: #{tag}"
+      Diagnostic.error!(
+        "E062",
+        file,
+        meta.line,
+        "client components are not supported yet: #{tag}"
+      )
     end
 
     if String.downcase(tag) in @forbidden_tags do
-      raise ArgumentError, "#{file}:#{meta.line}: unsafe client template tag: #{tag}"
+      Diagnostic.error!("E064", file, meta.line, "unsafe client template tag: #{tag}")
     end
 
     directive = fn name -> Enum.find(attrs, fn {attr_name, _, _} -> attr_name == name end) end
@@ -527,20 +629,20 @@ defmodule LiveLift.Template do
     condition = parse_directive(directive.(":if"), file)
 
     if loop == nil != (key == nil) do
-      raise ArgumentError, "#{file}:#{meta.line}: :for requires :key and :key requires :for"
+      Diagnostic.error!("E060", file, meta.line, ":for requires :key and :key requires :for")
     end
 
     if (directive.("$click") || directive.("$server")) && tag != "button" do
-      raise ArgumentError, "#{file}:#{meta.line}: click events require a native button"
+      Diagnostic.error!("E063", file, meta.line, "click events require a native button")
     end
 
     if (directive.("$input") || directive.("$change")) &&
          tag not in ~w(input select textarea form) do
-      raise ArgumentError, "#{file}:#{meta.line}: input events require a native form control"
+      Diagnostic.error!("E063", file, meta.line, "input events require a native form control")
     end
 
     if directive.("$submit") && tag != "form" do
-      raise ArgumentError, "#{file}:#{meta.line}: submit events require a form"
+      Diagnostic.error!("E063", file, meta.line, "submit events require a form")
     end
 
     parsed_attrs =
@@ -551,22 +653,22 @@ defmodule LiveLift.Template do
     names = Enum.map(parsed_attrs, & &1.name)
 
     if "checked" in names and tag != "input" do
-      raise ArgumentError, "#{file}:#{meta.line}: checked is only supported on input"
+      Diagnostic.error!("E061", file, meta.line, "checked is only supported on input")
     end
 
     if "selected" in names and tag != "option" do
-      raise ArgumentError, "#{file}:#{meta.line}: selected is only supported on option"
+      Diagnostic.error!("E061", file, meta.line, "selected is only supported on option")
     end
 
     if tag == "textarea" and
          Enum.any?(children, fn child ->
            not match?({:text, _, _}, child) and not match?({:body_expr, _, _}, child)
          end) do
-      raise ArgumentError, "#{file}:#{meta.line}: textarea supports only text and bindings"
+      Diagnostic.error!("E061", file, meta.line, "textarea supports only text and bindings")
     end
 
     if length(names) != length(Enum.uniq(names)) do
-      raise ArgumentError, "#{file}:#{meta.line}: duplicate client attribute on <#{tag}>"
+      Diagnostic.error!("E061", file, meta.line, "duplicate client attribute on <#{tag}>")
     end
 
     %{
@@ -586,8 +688,12 @@ defmodule LiveLift.Template do
   defp validate_local_prop_name!(name, file, line) do
     unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) and
              name not in ~w(__proto__ constructor prototype) do
-      raise ArgumentError,
-            "#{file}:#{line}: client function component supports named props only; move directives or slots to the server"
+      Diagnostic.error!(
+        "E062",
+        file,
+        line,
+        "client function component supports named props only; move directives or slots to the server"
+      )
     end
   end
 
@@ -602,15 +708,12 @@ defmodule LiveLift.Template do
         column: column
       } ->
         if name in stack do
-          raise ArgumentError, "#{file}:#{line}: recursive client function component .#{name}"
+          Diagnostic.error!("E062", file, line, "recursive client function component .#{name}")
         end
 
         component =
           Map.get(components, name) ||
-            raise(
-              ArgumentError,
-              "#{file}:#{line}: unknown client function component .#{name}; define a local function returning literal ~H or move it to the server"
-            )
+            Diagnostic.error!("E062", file, line, "unknown client function component .#{name}")
 
         props = Map.new(props, fn %{name: key, expr: expr} -> {key, expr} end)
         children = expand_local_components(children, components, file, events, stack)
@@ -625,13 +728,21 @@ defmodule LiveLift.Template do
         slot_count = Enum.sum(Enum.map(body, &count_default_slots/1))
 
         if slot_count > 1 do
-          raise ArgumentError,
-                "#{component.file}:#{component.line}: client function component .#{name} may render its default slot once; move repeated slots to the server"
+          Diagnostic.error!(
+            "E062",
+            component.file,
+            component.line,
+            "client function component .#{name} may render its default slot once; move repeated slots to the server"
+          )
         end
 
         if children != [] and slot_count == 0 do
-          raise ArgumentError,
-                "#{file}:#{line}: client function component .#{name} does not render its default slot; remove children or add render_slot(@inner_block)"
+          Diagnostic.error!(
+            "E062",
+            file,
+            line,
+            "client function component .#{name} does not render its default slot; remove children or add render_slot(@inner_block)"
+          )
         end
 
         body
@@ -737,11 +848,15 @@ defmodule LiveLift.Template do
         source
 
       {:ok, _source} ->
-        raise ArgumentError,
-              "#{file}:#{line}: function component prop #{name} cannot be read as a map"
+        Diagnostic.error!(
+          "E062",
+          file,
+          line,
+          "function component prop #{name} cannot be read as a map"
+        )
 
       :error ->
-        raise ArgumentError, "#{file}:#{line}: missing function component prop #{name}"
+        Diagnostic.error!("E062", file, line, "missing function component prop #{name}")
     end
   end
 
@@ -772,7 +887,7 @@ defmodule LiveLift.Template do
     do: Expression.parse(source, file, meta.line)
 
   defp parse_directive({name, _, meta}, file),
-    do: raise(ArgumentError, "#{file}:#{meta.line}: #{name} requires an Elixir expression")
+    do: Diagnostic.error!("E061", file, meta.line, "#{name} requires an Elixir expression")
 
   defp parse_loop(nil, _file), do: nil
 
@@ -786,12 +901,12 @@ defmodule LiveLift.Template do
         }
 
       _ ->
-        raise ArgumentError, "#{file}:#{meta.line}: :for must be a single variable <- collection"
+        Diagnostic.error!("E060", file, meta.line, ":for must be a single variable <- collection")
     end
   end
 
   defp parse_loop({_, _, meta}, file),
-    do: raise(ArgumentError, "#{file}:#{meta.line}: :for requires an Elixir expression")
+    do: Diagnostic.error!("E060", file, meta.line, ":for requires an Elixir expression")
 
   defp convert_attr({"data-live-lift-draft", value, %{draft_field: true} = meta}, file) do
     {"data-live-lift-draft", value, Map.delete(meta, :draft_field)}
@@ -806,7 +921,7 @@ defmodule LiveLift.Template do
     validate_phx_value_name!(name, file, meta.line)
 
     if Regex.match?(~r/^on[a-z]/i, name) do
-      raise ArgumentError, "#{file}:#{meta.line}: unsafe client attribute: #{name}"
+      Diagnostic.error!("E064", file, meta.line, "unsafe client attribute: #{name}")
     end
 
     url_name = String.downcase(name)
@@ -815,7 +930,7 @@ defmodule LiveLift.Template do
       do: validate_static_url!(url_name, value, file, meta.line)
 
     if url_name == "xml:base",
-      do: raise(ArgumentError, "#{file}:#{meta.line}: unsafe client attribute: xml:base")
+      do: Diagnostic.error!("E064", file, meta.line, "unsafe client attribute: xml:base")
 
     cond do
       name in @events and Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, value) ->
@@ -830,7 +945,7 @@ defmodule LiveLift.Template do
         %{name: "data-live-lift-show", value: value, type: "static"}
 
       String.starts_with?(name, ["$", ":"]) ->
-        raise ArgumentError, "#{file}:#{meta.line}: unsupported client directive: #{name}"
+        Diagnostic.error!("E061", file, meta.line, "unsupported client directive: #{name}")
 
       String.contains?(value, "{@") ->
         if name in @dynamic_attributes and Regex.match?(~r/^\{@[^}]+\}$/, value) do
@@ -839,8 +954,12 @@ defmodule LiveLift.Template do
 
           %{name: name, value: expression, type: "dynamic"}
         else
-          raise ArgumentError,
-                "#{file}:#{meta.line}: unsupported client template attribute interpolation: #{name}"
+          Diagnostic.error!(
+            "E061",
+            file,
+            meta.line,
+            "unsupported client template attribute interpolation: #{name}"
+          )
         end
 
       true ->
@@ -866,8 +985,12 @@ defmodule LiveLift.Template do
         %{name: name, value: Expression.parse(source, file, meta.line), type: "native_dynamic"}
 
       true ->
-        raise ArgumentError,
-              "#{file}:#{meta.line}: unsupported client expression attribute: #{name}={#{source}}"
+        Diagnostic.error!(
+          "E061",
+          file,
+          meta.line,
+          "unsupported client expression attribute: #{name}={#{source}}"
+        )
     end
   end
 
@@ -877,8 +1000,12 @@ defmodule LiveLift.Template do
 
       unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
                key not in ~w(__proto__ constructor prototype _live_lift_seq) do
-        raise ArgumentError,
-              "#{file}:#{line}: unsafe phx-value parameter #{key}; use a safe field name"
+        Diagnostic.error!(
+          "E064",
+          file,
+          line,
+          "unsafe phx-value parameter #{key}; use a safe field name"
+        )
       end
     end
   end
@@ -896,8 +1023,12 @@ defmodule LiveLift.Template do
     if String.contains?(leading, "&") or
          Regex.match?(~r/[\x00-\x1F\x7F]/, leading) or
          (scheme && scheme not in allowed) do
-      raise ArgumentError,
-            "#{file}:#{line}: unsafe client attribute: #{name}; use a relative or allowed URL scheme without HTML entities in its prefix"
+      Diagnostic.error!(
+        "E064",
+        file,
+        line,
+        "unsafe client attribute: #{name}; use a relative or allowed URL scheme without HTML entities in its prefix"
+      )
     end
   end
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report source locations, diagnostic codes, and corrections for rejected native handlers and HEEx.
+
 - Walk through a native LiveView migration with a diff verified in a fresh Phoenix app.
 
 - Check exact JSON types and authoritative queued timer delivery in handler parity cases.

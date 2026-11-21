@@ -184,6 +184,36 @@ PYTHON
   rg -q 'without parity cases: ConsumerLiftWeb.MailboxLive' missing-module.log
   cat parity.log
   printf '%s\n' 'Verified missing event and missing module failures.'
+  cat > unsupported_clock.ex <<'EOF'
+defmodule ConsumerLiftWeb.UnsupportedClock do
+  use Phoenix.LiveComponent
+
+  def render(assigns), do: ~H"<output>{@count}</output>"
+
+  def handle_event("load", _params, socket) do
+    {:noreply, assign(socket, :count, System.monotonic_time())}
+  end
+end
+EOF
+  mix live_lift.audit --path unsupported_clock.ex >unsupported-audit.log
+  rg -q 'unsupported_clock.ex:6: unsupported @client handler: unsupported client expression: System.monotonic_time\(\) \(E056\)' unsupported-audit.log
+  rg -q 'remove @client true.*docs/errors/E056.md' unsupported-audit.log
+  python3 - <<'PYTHON'
+from pathlib import Path
+
+source = Path("unsupported_clock.ex").read_text()
+source = source.replace("  use Phoenix.LiveComponent", "  use Phoenix.LiveComponent\n  use LiveLift")
+source = source.replace('  def handle_event("load"', '  @client true\n  def handle_event("load"')
+Path("lib/consumer_lift_web/live/unsupported_clock.ex").write_text(source)
+PYTHON
+  if mix compile >unsupported-compile.log 2>&1; then
+    echo 'Expected an unsupported marked event to fail compilation' >&2
+    exit 1
+  fi
+  rg -q 'unsupported_clock.ex:8: unsupported @client handler: unsupported client expression: System.monotonic_time\(\) \(E056\)' unsupported-compile.log
+  rg -q 'remove @client true.*docs/errors/E056.md' unsupported-compile.log
+  rm lib/consumer_lift_web/live/unsupported_clock.ex
+  printf '%s\n' 'Verified the same actionable diagnostic in audit and compilation.'
   mix assets.build
   mix assets.deploy
 )

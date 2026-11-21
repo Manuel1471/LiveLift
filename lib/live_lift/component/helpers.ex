@@ -1,6 +1,8 @@
 defmodule LiveLift.Component.Helpers do
   @moduledoc false
 
+  alias LiveLift.Diagnostic
+
   @max_expanded_nodes 50_000
   @max_helper_calls 1_000
 
@@ -46,21 +48,33 @@ defmodule LiveLift.Component.Helpers do
          {nodes, calls}
        ) do
     if key in stack do
-      raise ArgumentError,
-            "#{file}:#{line}: recursive client helper #{name}/#{arity} is not supported; move this handler to the server"
+      Diagnostic.error!(
+        "E058",
+        file,
+        line,
+        "recursive client helper #{name}/#{arity} is not supported; move this handler to the server"
+      )
     end
 
     if calls >= @max_helper_calls do
-      raise ArgumentError,
-            "#{file}:#{line}: client helper expansion limit exceeded; split the handler or keep it on the server"
+      Diagnostic.error!(
+        "E058",
+        file,
+        line,
+        "client helper expansion limit exceeded; split the handler or keep it on the server"
+      )
     end
 
     {branches, budget} =
       Enum.map_reduce(clauses, {nodes, calls + 1}, fn
         {_name, patterns, guards, body, helper_file, helper_line}, budget ->
           if guards != [] do
-            raise ArgumentError,
-                  "#{helper_file}:#{helper_line}: client helper #{name}/#{arity} has a guard; use an unguarded clause or move this handler to the server"
+            Diagnostic.error!(
+              "E058",
+              helper_file,
+              helper_line,
+              "client helper #{name}/#{arity} has a guard; use an unguarded clause or move this handler to the server"
+            )
           end
 
           expression =
@@ -69,8 +83,12 @@ defmodule LiveLift.Component.Helpers do
                 expression
 
               _ ->
-                raise ArgumentError,
-                      "#{helper_file}:#{helper_line}: client helper #{name}/#{arity} needs one expression body; move this handler to the server"
+                Diagnostic.error!(
+                  "E058",
+                  helper_file,
+                  helper_line,
+                  "client helper #{name}/#{arity} needs one expression body; move this handler to the server"
+                )
             end
 
           {expression, budget} = expand(expression, registry, [key | stack], file, line, budget)
@@ -90,8 +108,12 @@ defmodule LiveLift.Component.Helpers do
 
   defp charge_node!({nodes, calls}, file, line) do
     if nodes >= @max_expanded_nodes do
-      raise ArgumentError,
-            "#{file}:#{line}: client helper expansion limit exceeded; split the handler or keep it on the server"
+      Diagnostic.error!(
+        "E058",
+        file,
+        line,
+        "client helper expansion limit exceeded; split the handler or keep it on the server"
+      )
     end
 
     {nodes + 1, calls}

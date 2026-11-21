@@ -1,23 +1,33 @@
 defmodule LiveLift.Component do
   @moduledoc false
 
+  alias LiveLift.Diagnostic
+
   alias LiveLift.FloatWire
   alias LiveLift.Component.{ProcessTimer, Timer}
 
   def on_definition(env, :def, :render, [_assigns], _guards, body) do
     if Module.get_attribute(env.module, :client) == true do
-      raise ArgumentError,
-            "#{env.file}:#{env.line}: @client must precede handle_event/3, not render/1"
+      Diagnostic.error!(
+        "E055",
+        env.file,
+        env.line,
+        "@client must precede handle_event/3, not render/1"
+      )
     end
 
-    Module.put_attribute(env.module, :live_lift_render, body)
+    Module.put_attribute(env.module, :live_lift_render, {body, env.line})
   end
 
   def on_definition(env, :def, :handle_event, [event, params, socket], guards, body) do
     if Module.get_attribute(env.module, :client) == true do
       unless is_binary(event) and guards == [] do
-        raise ArgumentError,
-              "#{env.file}:#{env.line}: @client requires a literal event name and no guard; move this handler to the server"
+        Diagnostic.error!(
+          "E055",
+          env.file,
+          env.line,
+          "@client requires a literal event name and no guard; move this handler to the server"
+        )
       end
 
       timer =
@@ -50,8 +60,12 @@ defmodule LiveLift.Component do
 
   def on_definition(env, :def, :handle_info, [message, socket], guards, body) do
     if Module.get_attribute(env.module, :client) == true do
-      raise ArgumentError,
-            "#{env.file}:#{env.line}: mark the scheduling handle_event/3; LiveLift derives the referenced handle_info/2"
+      Diagnostic.error!(
+        "E059",
+        env.file,
+        env.line,
+        "mark the scheduling handle_event/3; LiveLift derives the referenced handle_info/2"
+      )
     end
 
     Module.put_attribute(
@@ -64,8 +78,12 @@ defmodule LiveLift.Component do
   def on_definition(env, kind, name, [assigns_arg], guards, body)
       when kind in [:def, :defp] and is_atom(name) do
     if Module.get_attribute(env.module, :client) == true do
-      raise ArgumentError,
-            "#{env.file}:#{env.line}: @client must precede handle_event/3, not #{name}; move this handler to the server"
+      Diagnostic.error!(
+        "E055",
+        env.file,
+        env.line,
+        "@client must precede handle_event/3, not #{name}; move this handler to the server"
+      )
     end
 
     if guards == [] and match?([do: {:sigil_H, _, _}], body) do
@@ -87,8 +105,12 @@ defmodule LiveLift.Component do
 
   def on_definition(env, :defp, name, args, guards, body) when is_atom(name) and is_list(args) do
     if Module.get_attribute(env.module, :client) == true do
-      raise ArgumentError,
-            "#{env.file}:#{env.line}: @client must precede handle_event/3, not #{name}; move this handler to the server"
+      Diagnostic.error!(
+        "E055",
+        env.file,
+        env.line,
+        "@client must precede handle_event/3, not #{name}; move this handler to the server"
+      )
     end
 
     Module.put_attribute(
@@ -100,15 +122,19 @@ defmodule LiveLift.Component do
 
   def on_definition(env, _kind, name, _args, _guards, _body) do
     if Module.get_attribute(env.module, :client) == true do
-      raise ArgumentError,
-            "#{env.file}:#{env.line}: @client must precede handle_event/3, not #{name}; move this handler to the server"
+      Diagnostic.error!(
+        "E055",
+        env.file,
+        env.line,
+        "@client must precede handle_event/3, not #{name}; move this handler to the server"
+      )
     end
   end
 
   defmacro __before_compile__(env) do
     actions = env.module |> Module.get_attribute(:live_lift_marked_actions) |> Enum.reverse()
     events = Enum.map(actions, &elem(&1, 0))
-    render = Module.get_attribute(env.module, :live_lift_render)
+    {render, render_line} = Module.get_attribute(env.module, :live_lift_render) || {nil, env.line}
 
     local_components =
       env.module
@@ -116,31 +142,50 @@ defmodule LiveLift.Component do
       |> Enum.reverse()
       |> Enum.reduce(%{}, fn {name, body, file, line}, acc ->
         if Map.has_key?(acc, name) do
-          raise ArgumentError,
-                "#{file}:#{line}: client function component .#{name} has multiple clauses; move it to the server"
+          Diagnostic.error!(
+            "E062",
+            file,
+            line,
+            "client function component .#{name} has multiple clauses; move it to the server"
+          )
         end
 
-        {source, _line, template_line} = render_source!(body, file)
+        {source, _line, template_line} = render_source!(body, file, line)
 
         Map.put(acc, name, %{source: source, file: file, line: line, template_line: template_line})
       end)
 
     if Module.get_attribute(env.module, :client) == true do
-      raise ArgumentError,
-            "#{env.file}: @client must precede handle_event/3; no handler followed the marker"
+      Diagnostic.error!(
+        "E055",
+        env.file,
+        env.line,
+        "@client must precede handle_event/3; no handler followed the marker"
+      )
     end
 
     if actions == [] do
-      raise ArgumentError,
-            "#{env.file}: use LiveLift requires at least one @client handle_event/3"
+      Diagnostic.error!(
+        "E055",
+        env.file,
+        env.line,
+        "use LiveLift requires at least one @client handle_event/3"
+      )
     end
 
-    if length(events) != length(Enum.uniq(events)) do
-      raise ArgumentError,
-            "#{env.file}: @client requires one handler clause per event; move extra clauses to the server"
+    if event = List.first(events -- Enum.uniq(events)) do
+      [_, duplicate | _] = Enum.filter(actions, &(elem(&1, 0) == event))
+      {event, _, _, file, line} = duplicate
+
+      Diagnostic.error!(
+        "E055",
+        file,
+        line,
+        "multiple marked handler clauses for #{inspect(event)}"
+      )
     end
 
-    {source, line, template_line} = render_source!(render, env.file)
+    {source, line, template_line} = render_source!(render, env.file, render_line)
 
     template =
       LiveLift.Template.compile_liveview(
@@ -588,21 +633,29 @@ defmodule LiveLift.Component do
 
   def disabled_reply(result, _event, _params, _events), do: result
 
-  defp render_source!([do: {:sigil_H, meta, [{:<<>>, _, parts}, []]}], file)
+  defp render_source!([do: {:sigil_H, meta, [{:<<>>, _, parts}, []]}], file, definition_line)
        when is_list(parts) do
     if Enum.all?(parts, &is_binary/1) do
-      line = meta[:line] || 1
+      line = meta[:line] || definition_line
       template_line = if meta[:delimiter] == "\"\"\"", do: line + 1, else: line
       {Enum.join(parts), line, template_line}
     else
-      raise ArgumentError,
-            "#{file}:#{meta[:line]}: @client requires a literal ~H render; move dynamic template construction to the server"
+      Diagnostic.error!(
+        "E060",
+        file,
+        meta[:line] || definition_line,
+        "@client requires a literal ~H render; move dynamic template construction to the server"
+      )
     end
   end
 
-  defp render_source!(_body, file) do
-    raise ArgumentError,
-          "#{file}: @client requires render/1 to return a literal ~H template; move delegated rendering to the server"
+  defp render_source!(_body, file, line) do
+    Diagnostic.error!(
+      "E060",
+      file,
+      line,
+      "@client requires render/1 to return a literal ~H template"
+    )
   end
 
   @doc false

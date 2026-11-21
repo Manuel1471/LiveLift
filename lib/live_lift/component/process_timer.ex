@@ -1,6 +1,8 @@
 defmodule LiveLift.Component.ProcessTimer do
   @moduledoc false
 
+  alias LiveLift.Diagnostic
+
   alias LiveLift.Component.{Compiler, Helpers}
 
   def extract(body, params, socket, env) do
@@ -86,7 +88,11 @@ defmodule LiveLift.Component.ProcessTimer do
   defp matches_atom?(_pattern, _message), do: true
 
   defp error!(file, line, reason) do
-    raise ArgumentError,
-          "#{file}:#{line}: unsupported @client Process.send_after/3: #{reason}; keep scheduling on the server"
+    Diagnostic.error!(
+      "E059",
+      file,
+      line,
+      "unsupported @client Process.send_after/3: #{reason}; keep scheduling on the server"
+    )
   end
 end

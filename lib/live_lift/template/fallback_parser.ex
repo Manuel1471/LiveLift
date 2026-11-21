@@ -1,6 +1,8 @@
 defmodule LiveLift.Template.FallbackParser do
   @moduledoc false
 
+  alias LiveLift.Diagnostic
+
   # Parses only the HEEx-shaped nodes consumed by LiveLift.Template. Every
   # unsupported form raises, so an upstream parser change cannot silently
   # alter browser output.
@@ -237,5 +239,5 @@ defmodule LiveLift.Template.FallbackParser do
   defp attr_char?(char), do: char not in [" ", "\t", "\r", "\n", "/", ">", "="]
 
   defp error!(state, message),
-    do: raise(ArgumentError, "#{state.file}:#{state.line}:#{state.column}: #{message}")
+    do: Diagnostic.error!("E065", state.file, "#{state.line}:#{state.column}", message)
 end

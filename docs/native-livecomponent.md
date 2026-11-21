@@ -237,3 +237,10 @@ arbitrary LiveComponents compile to JavaScript.
 
 
 Apps that use esbuild can [load each island on demand](island-loading-spike.md).
+
+## Compiler diagnostics
+
+If an opt-in fails, open the file and line reported by the compiler. The
+message identifies the rejected form and gives a correction or a route back
+to ordinary LiveView. Use `mix live_lift.audit --path lib/my_app_web` for an
+initial check and open the [error catalog](errors/README.md) for examples.

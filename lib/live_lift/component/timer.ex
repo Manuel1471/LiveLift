@@ -1,6 +1,8 @@
 defmodule LiveLift.Component.Timer do
   @moduledoc false
 
+  alias LiveLift.Diagnostic
+
   @queue :__live_lift_timers
   @delivery :__live_lift_timer
   @max_delay 60_000
@@ -164,7 +166,11 @@ defmodule LiveLift.Component.Timer do
   defp scalar(_value), do: :unsupported
 
   defp error!(file, line, reason) do
-    raise ArgumentError,
-          "#{file}:#{line}: unsupported @client send_update_after/3: #{reason}; move it to a server handler"
+    Diagnostic.error!(
+      "E059",
+      file,
+      line,
+      "unsupported @client send_update_after/3: #{reason}; move it to a server handler"
+    )
   end
 end

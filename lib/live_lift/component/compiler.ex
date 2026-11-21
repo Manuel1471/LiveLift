@@ -1,6 +1,8 @@
 defmodule LiveLift.Component.Compiler do
   @moduledoc false
 
+  alias LiveLift.Diagnostic
+
   def action!(event, params, socket, [do: result], file, line)
       when is_binary(event) do
     action = action_unchecked!(event, params, socket, [do: result], file, line)
@@ -26,15 +28,19 @@ defmodule LiveLift.Component.Compiler do
         rewrite_params(body, params)
       rescue
         error in ArgumentError ->
-          raise ArgumentError, "#{file}:#{line}: #{Exception.message(error)}"
+          Diagnostic.error!("E057", file, source_line(params, line), Exception.message(error))
       end
 
     name = String.to_atom(event)
     args = if uses_params, do: [:state, :event], else: :state
 
     if used_variable?(params, body) do
-      raise ArgumentError,
-            "#{file}:#{line}: @client supports params[\"name\"] and Map.get(params, \"name\"); move other parameter handling to the server"
+      Diagnostic.error!(
+        "E057",
+        file,
+        line,
+        "@client supports params[\"name\"] and Map.get(params, \"name\"); move other parameter handling to the server"
+      )
     end
 
     {name, args, body}
@@ -48,14 +54,32 @@ defmodule LiveLift.Component.Compiler do
       LiveLift.Client.Compiler.compile_action(name, args, body)
     rescue
       error in ArgumentError ->
-        raise ArgumentError,
-              "#{file}:#{line}: unsupported @client handler: #{Exception.message(error)}; move it to a server handler"
+        reason = Exception.message(error)
+
+        expression_error!(file, line, reason)
     end
   end
 
+  defp expression_error!(file, line, "unsupported client changeset" <> _ = reason) do
+    if String.contains?(reason, " (E052):") do
+      raise ArgumentError,
+            "#{file}:#{line}: unsupported @client handler: #{reason} " <>
+              "Remove @client true to move it to a server handler."
+    end
+
+    Diagnostic.error!("E052", file, line, "unsupported @client handler: #{reason}")
+  end
+
+  defp expression_error!(file, line, reason),
+    do: Diagnostic.error!("E056", file, line, "unsupported @client handler: #{reason}")
+
   defp invalid_handler!(file, line) do
-    raise ArgumentError,
-          "#{file}:#{line}: @client handler must return {:noreply, assign/update(socket, ...)}; move other handlers to the server"
+    Diagnostic.error!(
+      "E055",
+      file,
+      line,
+      "@client handler must return {:noreply, assign/update(socket, ...)}; move other handlers to the server"
+    )
   end
 
   defp update_to_state!(
@@ -80,9 +104,13 @@ defmodule LiveLift.Component.Compiler do
     {:__live_lift_assign_new__, meta, [state, field, fallback]}
   end
 
-  defp update_to_state!({:assign_new, _, _}, _socket_arg, file, line) do
-    raise ArgumentError,
-          "#{file}:#{line}: @client assign_new/3 requires an atom key and a zero-argument function; keep other callbacks on the server"
+  defp update_to_state!({:assign_new, _, _} = update, _socket_arg, file, line) do
+    Diagnostic.error!(
+      "E055",
+      file,
+      source_line(update, line),
+      "@client assign_new/3 requires an atom key and a zero-argument function; keep other callbacks on the server"
+    )
   end
 
   defp update_to_state!(
@@ -118,9 +146,13 @@ defmodule LiveLift.Component.Compiler do
     map_update(state, field, expression, meta)
   end
 
-  defp update_to_state!(_update, _socket, file, line) do
-    raise ArgumentError,
-          "#{file}:#{line}: @client currently supports assign/3 and update/3; move other handlers to the server"
+  defp update_to_state!(update, _socket, file, line) do
+    Diagnostic.error!(
+      "E055",
+      file,
+      source_line(update, line),
+      "@client currently supports assign/3 and update/3; move other handlers to the server"
+    )
   end
 
   defp state_source!({name, _, context}, {name, _, _}, _file, _line)
@@ -231,6 +263,11 @@ defmodule LiveLift.Component.Compiler do
       {{:., [], [source, String.to_atom(key)]}, [], []}
     end)
   end
+
+  defp source_line({_, meta, _}, fallback) when is_list(meta),
+    do: Keyword.get(meta, :line, fallback)
+
+  defp source_line(_, fallback), do: fallback
 
   defp used_variable?({name, _, context}, ast)
        when is_atom(name) and (is_atom(context) or is_nil(context)) do

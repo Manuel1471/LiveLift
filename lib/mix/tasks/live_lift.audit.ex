@@ -12,6 +12,7 @@ defmodule Mix.Tasks.LiveLift.Audit do
   use Mix.Task
 
   alias LiveLift.Component.{Compiler, Helpers, ProcessTimer, Timer}
+  alias LiveLift.Diagnostic
 
   @shortdoc "Reports client-compatible LiveView and LiveComponent handlers"
 
@@ -72,8 +73,13 @@ defmodule Mix.Tasks.LiveLift.Audit do
         []
 
       kind ->
-        template = Enum.find_value(expressions, &render_source/1)
         definitions = source_definitions(expressions, file)
+
+        {template, render_line} =
+          Enum.find_value(definitions, {nil, 1}, fn
+            {:render, [_assigns], [], body, env} -> {render_source(body), env.line}
+            _ -> nil
+          end)
 
         handlers =
           for {:handle_event, [event, params, socket], guards, body, env} <- definitions,
@@ -97,13 +103,18 @@ defmodule Mix.Tasks.LiveLift.Audit do
           status =
             cond do
               not is_binary(event) or guards != [] ->
-                "blocked: use a literal event name without a guard or keep this handler on the server"
+                blocked(
+                  "E055",
+                  file,
+                  env.line,
+                  "@client requires a literal event name and no guard"
+                )
 
               Map.get(duplicates, event) > 1 ->
-                "blocked: multiple clauses for this event; keep it on the server"
+                blocked("E055", file, env.line, "multiple clauses for this event")
 
               template == nil ->
-                "blocked: render/1 must return a literal ~H template"
+                blocked("E060", file, render_line, "render/1 must return a literal ~H template")
 
               true ->
                 check_handler(env, event, params, socket, body, template, context)
@@ -113,6 +124,9 @@ defmodule Mix.Tasks.LiveLift.Audit do
         end
     end
   end
+
+  defp blocked(code, file, line, reason),
+    do: "blocked: " <> Diagnostic.message(code, file, line, reason)
 
   defp view_kind({:use, _, [{:__aliases__, _, [:Phoenix, :LiveComponent]} | _]}), do: :component
   defp view_kind({:use, _, [{:__aliases__, _, [:Phoenix, :LiveView]} | _]}), do: :view
@@ -190,7 +204,7 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
   defp preserves_kernel_self?(_), do: true
 
-  defp render_source({:def, _, [{:render, _, [_assigns]}, [do: body]]}) do
+  defp render_source(do: body) do
     case body do
       {:sigil_H, meta, [{:<<>>, _, parts}, []]} when is_list(parts) ->
         if Enum.all?(parts, &is_binary/1) do
