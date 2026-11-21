@@ -9,7 +9,7 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 2, Compilador v2. Próxima entrega: normalización del compilador y cierre de la fase 2.** Las fases
+**Fase activa: 2, Compilador v2. Próxima entrega: regresión integral de la fase 2.** Las fases
 S, 0 y 1 están cerradas. La fase 8 es opcional y posterior a 1.0. Los avances
 antiguos de fases 3–7 se conservan como inventario, pero no abren esas fases.
 
@@ -27,8 +27,8 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.3b | `String.replace` | Hecho | Semántica, paridad, rechazos, demo y benchmarks |
 | 2.4a | Proyecciones `Map.keys` y `Map.values` | Hecho | Conteo y nombres ordenados con paridad; rechazos con ubicación |
 | 2.4b | Operaciones `List` | Hecho | Edición por índice y borrado exacto con paridad |
-| 2.5 | IR y normalización del compilador | **En curso** | Separar normalización y emisión, conservar origen y paridad |
-| 2.6 | Regresión integral y puerta 2 | En espera | Tres casos, paridad, tres navegadores, benchmarks |
+| 2.5 | IR y normalización del compilador | Hecho | Pipes y condicionales normalizados, tipos de prueba y paridad |
+| 2.6 | Regresión integral y puerta 2 | **En curso** | Tres casos, paridad, tres navegadores, benchmarks |
 | 3 | Sincronización | Bloqueada por 2 | Convergencia ante entrega caótica |
 | 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
 | 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
@@ -213,8 +213,11 @@ El subconjunto inicial ya acepta patrones anidados como
 `%{"profile" => %{"note" => note}}` y cadenas
 de `assign/update`, tanto por pipe como por llamadas anidadas. La matriz
 documenta qué patrones de handlers y callbacks de `assign_new` quedan en el
-servidor. La puerta sigue abierta por la normalización del compilador y la
-regresión integral.
+servidor. El módulo `LiveLift.Client.IR` baja pipes a llamadas y representa
+cada `if` con sus dos ramas antes de emitir JavaScript. Distingue condiciones
+booleanas de valores que requieren las reglas de verdad de Elixir. El
+compilador mantiene el diagnóstico del handler con archivo y línea. La
+puerta sigue abierta durante la regresión integral.
 El modelo para literales decimales está documentado en
 `docs/decimal-model-spike.md`: floats binarios finitos con un escalar etiquetado
 en el protocolo de estado. La sintaxis decimal ya compila; 5,000 patrones de
@@ -376,9 +379,9 @@ validación de formulario en vivo, lista ordenable.
 | `class={[...]}` | Verificado | Comparación de render inicial y actualización para listas condicionales |
 | `phx-debounce` | Verificado para input/textarea | HTML inicial, temporizador y `blur` en tres navegadores; otras formas se rechazan |
 | Alcance de handlers | Verificado | Operaciones publicadas y formas rechazadas en la matriz de handlers |
-| IR y normalización | En curso | Normalización previa a la emisión y pruebas de ubicación y paridad |
+| IR y normalización | Verificado | Corpus de paridad incluye pipes hacia `if` y ramas que no se deben evaluar. Los rechazos conservan archivo y línea |
 | Tres casos completos | Verificado | Contador, formulario anidado y lista ordenable; detalles abajo |
-| Regresión final de fase | Pendiente | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
+| Regresión final de fase | En curso | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
 
 "Pendiente" no implica que toda forma vaya a implementarse. Un rechazo preciso
 es una decisión de alcance válida para esta versión; la documentación debe

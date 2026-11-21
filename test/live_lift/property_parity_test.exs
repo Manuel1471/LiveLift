@@ -111,6 +111,8 @@ defmodule LiveLift.PropertyParityTest do
         replaced_overlap: String.replace("ab", ["a", "ab"], "X"),
         graphemes: String.length(state.label),
         choice: if(state.flag, do: "yes", else: "no"),
+        piped_choice: state.flag |> if(do: "yes", else: "no") |> String.downcase(),
+        unselected_missing: if(state.count == state.count, do: "selected", else: state.missing),
         cond_choice:
           cond do
             state.flag == false -> "false"

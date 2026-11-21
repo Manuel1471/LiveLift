@@ -5,6 +5,8 @@ defmodule LiveLift.Client.Compiler do
   Unsupported Elixir syntax raises instead of silently changing semantics.
   """
 
+  alias LiveLift.Client.IR
+
   @max_safe_integer 9_007_199_254_740_991
   @identifier ~r/^[a-zA-Z_$][a-zA-Z0-9_$]*$/
   @reserved ~w(__proto__ prototype constructor)
@@ -570,7 +572,7 @@ defmodule LiveLift.Client.Compiler do
   def compile_action(name, arg, body) when is_atom(name) and is_atom(arg) do
     name_string = identifier!(name)
     arg_string = identifier!(arg)
-    expression = compile_expr(body, arg)
+    expression = compile_expr(IR.normalize(body), arg)
 
     "#{name_string}: (#{arg_string}) => #{expression}"
   end
@@ -580,7 +582,7 @@ defmodule LiveLift.Client.Compiler do
     name_string = identifier!(name)
     state_string = identifier!(state)
     event_string = identifier!(event)
-    expression = compile_expr(body, [state, event])
+    expression = compile_expr(IR.normalize(body), [state, event])
     "#{name_string}: (#{state_string}, #{event_string}) => #{expression}"
   end
 
@@ -699,19 +701,13 @@ defmodule LiveLift.Client.Compiler do
   end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :sort]}, _, [list]}, args) do
-    case without_pipes(list) do
+    case list do
       {{:., _, [{:__aliases__, _, [:Enum]}, :map]}, _,
        [
-         key_call,
+         {{:., _, [{:__aliases__, _, [:Map]}, :keys]}, _, [map]},
          {:&, _, [{:/, _, [{{:., _, [{:__aliases__, _, [:Atom]}, :to_string]}, _, []}, 1]}]}
        ]} ->
-        case without_pipes(key_call) do
-          {{:., _, [{:__aliases__, _, [:Map]}, :keys]}, _, [map]} ->
-            "Object.keys(__liveLiftMap(#{compile_expr(map, args)})).sort()"
-
-          _ ->
-            raise ArgumentError, "unsupported client expression: #{Macro.to_string(list)}"
-        end
+        "Object.keys(__liveLiftMap(#{compile_expr(map, args)})).sort()"
 
       _ ->
         raise ArgumentError,
@@ -988,23 +984,14 @@ defmodule LiveLift.Client.Compiler do
     "String(__liveLiftInt(#{compile_expr(value, arg)}))"
   end
 
-  defp compile_expr({:if, _, [condition, branches]}, arg) when is_list(branches) do
-    then_expr =
-      case Keyword.fetch(branches, :do) do
-        {:ok, expression} -> expression
-        :error -> raise ArgumentError, "unsupported client if: missing do branch"
-      end
-
-    else_expr = Keyword.get(branches, :else)
-    test = compile_expr(condition, arg)
-
-    "(__liveLiftTruthy(#{test}) ? #{compile_expr(then_expr, arg)} : #{compile_expr(else_expr, arg)})"
+  defp compile_expr({:__live_lift_if__, _, [condition, yes, no]}, args) do
+    "(#{compile_test(condition, args)} ? #{compile_expr(yes, args)} : #{compile_expr(no, args)})"
   end
 
   defp compile_expr({:cond, _, [[do: clauses]]}, arg) when is_list(clauses) and clauses != [] do
     Enum.reduce(Enum.reverse(clauses), "__liveLiftCondFailure()", fn
       {:->, _, [[condition], result]}, fallback ->
-        "(__liveLiftTruthy(#{compile_expr(condition, arg)}) ? #{compile_expr(result, arg)} : #{fallback})"
+        "(#{compile_test(condition, arg)} ? #{compile_expr(result, arg)} : #{fallback})"
 
       other, _fallback ->
         raise ArgumentError,
@@ -1015,16 +1002,6 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr({:cond, _, _}, _arg) do
     raise ArgumentError,
           "unsupported client cond: use a nonempty do block with one condition per clause"
-  end
-
-  defp compile_expr({:|>, _, [source, {callee, metadata, arguments}]}, args)
-       when is_list(arguments) do
-    compile_expr({callee, metadata, [source | arguments]}, args)
-  end
-
-  defp compile_expr({:|>, _, _}, _args) do
-    raise ArgumentError,
-          "unsupported client pipe target: use a supported function call or move this handler to the server"
   end
 
   defp compile_expr({:case, _, [value, [do: clauses]]}, args)
@@ -1075,7 +1052,7 @@ defmodule LiveLift.Client.Compiler do
   end
 
   defp compile_list_count(list, args) do
-    case without_pipes(list) do
+    case list do
       {{:., _, [{:__aliases__, _, [:Map]}, operation]}, _, [map]}
       when operation in [:keys, :values] ->
         "Object.keys(__liveLiftMap(#{compile_expr(map, args)})).length"
@@ -1085,11 +1062,14 @@ defmodule LiveLift.Client.Compiler do
     end
   end
 
-  defp without_pipes({:|>, _, [source, {callee, metadata, arguments}]})
-       when is_list(arguments),
-       do: {callee, metadata, [without_pipes(source) | arguments]}
+  defp compile_test(condition, args) do
+    expression = compile_expr(condition, args)
 
-  defp without_pipes(expression), do: expression
+    case IR.test_type(condition) do
+      :boolean -> expression
+      :value -> "__liveLiftTruthy(#{expression})"
+    end
+  end
 
   defp split_options!(options) do
     unless Keyword.keyword?(options) do

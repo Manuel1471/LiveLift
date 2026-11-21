@@ -130,7 +130,8 @@ Also supported are `Integer.to_string/1` for safe integers;
 `String.replace/3,4`; and
 `String.contains?/2` with a string or list
 of strings as the pattern. `cond` uses one condition per clause and raises
-when no condition is true. `case` accepts unguarded literal, list (including
+when no condition is true. Pipes are normalized before code generation,
+and `if` and `cond` evaluate only the selected branch. `case` accepts unguarded literal, list (including
 `[head | tail]`), partial map with safe atom keys, variable, and `_` patterns.
 It tries clauses in order and raises when none matches. Pattern matching is
 type strict: `1` does not match `1.0`, and `-0.0` does not match `0.0`.

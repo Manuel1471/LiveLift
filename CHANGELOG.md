@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Normalize pipes and conditional expressions before JavaScript emission.
+
 - Compile exact deletion and positional insertion, replacement, and deletion for lists.
 
 - Compile map projection counts and explicitly sorted atom key names with Elixir parity.
