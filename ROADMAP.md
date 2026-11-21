@@ -9,8 +9,8 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 4, Rendimiento. Próxima entrega: ajustar el diff con clave
-y agrupar renders.** Las fases S, 0, 1, 2 y 3 están
+**Fase activa: 4, Rendimiento. Próxima entrega: carga diferida por isla
+y verificación del presupuesto.** Las fases S, 0, 1, 2 y 3 están
 cerradas. La fase 8 es opcional y posterior a 1.0.
 
 **Estados:** `Hecho` significa funcionalidad implementada, documentada y
@@ -33,8 +33,8 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 3.2 | Reconexión y conflictos | Hecho | Reintentos y política de conflictos con límites |
 | 3.3 | Pruebas caóticas y puerta 3 | Hecho | Convergencia y acciones aplicadas exactamente una vez |
 | 4.1 | Medición nativa y render por dependencias | Hecho | Línea base de Chromium y trabajo de DOM medido |
-| 4.2 | Diff con clave y agrupación de renders | **En curso** | Foco, identidad y presupuesto de un frame |
-| 4.3 | Carga por isla y puerta 4 | En espera | Assets y presupuesto total verificados |
+| 4.2 | Diff con clave y agrupación de renders | Hecho | Foco, identidad y presupuesto de un frame |
+| 4.3 | Carga por isla y puerta 4 | **En curso** | Assets y presupuesto total verificados |
 | 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
 | 6 | Migración y experiencia | Bloqueada por 5 | Instalación y medición en otra app |
 | 7 y 1.0 | Seguridad y operación | Bloqueada por 6 | Compatibilidad, revisión y apps reales |
@@ -463,8 +463,10 @@ midió 54,545 bytes gzip con LiveLift y 47,351 bytes sin LiveLift.
 - **Hecho:** Los planes de dependencias conservan filas y subárboles cuando las
   rutas que leen se mantienen iguales. Los controles de formulario sin clave
   siguen pasando por su reconciliación de valor y selección.
-- **Falta:** Diff de listas con clave, omitir renders si el estado no cambió, agrupar con
-  `requestAnimationFrame`.
+- **Hecho:** El diff mueve filas con clave con un cursor entre hermanos y
+  preserva identidad y foco. Las respuestas autoritativas se agrupan con
+  `requestAnimationFrame`, con temporizador de respaldo. La predicción y
+  recuperación de huecos siguen siendo inmediatas.
 - **Falta:** Carga diferida de vistas por isla.
 - **Previo:** Benchmarks en navegador real, no solo en linkedom (contador nativo en
   Chromium, con latencia simulada y comandos reproducibles).
@@ -496,8 +498,11 @@ dio p95 de 13.5 ms para invertir, 17.7 ms para ordenar y 8.3 ms para editar.
 La regresión completa pasó 132 pruebas en los tres navegadores.
 El siguiente cambio sustituyó el acceso a la lista viva de hijos por un
 cursor entre hermanos. En la corrida de 25 muestras, el p95 fue 13.1 ms al
-invertir, 16.2 ms al ordenar y 7.3 ms al editar. Sigue la agrupación de
-respuestas autoritativas por frame.
+invertir, 16.2 ms al ordenar y 7.3 ms al editar. Con la agrupación por frame,
+la corrida nativa dio p95 de 12.9, 15.8 y 7.7 ms respectivamente. Pasaron
+24 pruebas dirigidas a sincronización y correcciones en los tres navegadores.
+El núcleo minificado pesó 7,721 bytes gzip. Queda la carga diferida y su
+verificación de assets.
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.

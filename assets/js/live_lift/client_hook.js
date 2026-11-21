@@ -512,6 +512,40 @@ function patchNode(current, next) {
   }
 }
 
+function frameBatch(apply) {
+  let pending = null;
+  let frame = null;
+  let timer = null;
+
+  function clear() {
+    if (frame !== null) cancelAnimationFrame(frame);
+    if (timer !== null) clearTimeout(timer);
+    pending = frame = timer = null;
+  }
+
+  function flush() {
+    const snapshot = pending;
+    clear();
+    if (snapshot) apply(snapshot);
+  }
+
+  function enqueue(snapshot) {
+    if (typeof requestAnimationFrame !== "function") {
+      apply(snapshot);
+      return;
+    }
+    if (pending && (pending.revision > snapshot.revision ||
+        (pending.revision === snapshot.revision && pending.ack_seq > snapshot.ack_seq))) return;
+    pending = snapshot;
+    if (frame !== null) return;
+    frame = requestAnimationFrame(flush);
+    // Hidden documents can stop producing animation frames.
+    timer = setTimeout(flush, 48);
+  }
+
+  return {enqueue, flush, clear};
+}
+
 /**
  * Runs user-defined client actions in a LiveView-owned page.
  * The app supplies its own HEEx and marks only the locally owned DOM subtree.
@@ -554,6 +588,10 @@ export function createClientHook(views) {
         this.reconnectPending = false;
         this.offline = false;
         this.offlineQueue = [];
+        this.authoritativeBatch = frameBatch(({revision, state, ack_seq}) => {
+          this.applyAuthoritative(revision, state, ack_seq);
+          this.recoverPending();
+        });
         this.resetOptimisticSnapshot = () => {
           const instance = this.el.dataset.liveLiftInstance;
           const sameInstance = Boolean(instance) && instance === this.instance;
@@ -707,6 +745,7 @@ export function createClientHook(views) {
       };
 
       this.sendOptimistic = (control, eventName, params) => {
+        this.authoritativeBatch.flush();
         if (this.recoveryBlocked) throw new Error("LiveLift cannot resume this action sequence; reload the page");
         if (this.offlineQueue.length + this.pending.length >= 100) {
           throw new Error("LiveLift pending action limit reached");
@@ -751,6 +790,11 @@ export function createClientHook(views) {
               (reply.expected_seq !== reply.ack_seq + 1 || reply.expected_seq >= sequence)) {
             throw new Error("Invalid LiveLift action gap");
           }
+          if (reply.expected_seq === undefined && !this.recovery) {
+            this.authoritativeBatch.enqueue(reply);
+            return;
+          }
+          this.authoritativeBatch.flush();
           this.applyAuthoritative(reply.revision, reply.state, reply.ack_seq);
           if (reply.expected_seq !== undefined && this.pending.some((item) => item.sequence === sequence)) {
             this.recovery ??= {sent: null};
@@ -901,6 +945,7 @@ export function createClientHook(views) {
     destroyed() {
       if (this.syncRef && typeof this.removeHandleEvent === "function") this.removeHandleEvent(this.syncRef);
       if (this.optimistic) {
+        this.authoritativeBatch.clear();
         for (const entry of this.debouncedChanges.values()) clearTimeout(entry.timer);
         this.debouncedChanges.clear();
         this.el.removeEventListener("click", this.onOptimisticClick, true);
@@ -917,6 +962,7 @@ export function createClientHook(views) {
 
     disconnected() {
       if (this.optimistic) {
+        this.authoritativeBatch.clear();
         this.connectionEpoch += 1;
         this.reconnectPending = true;
         this.offline = true;
@@ -931,12 +977,15 @@ export function createClientHook(views) {
         }
         const revision = Number(this.el.dataset.liveLiftServerRevision);
         if (Number.isSafeInteger(revision) && revision >= this.serverRevision) {
-          this.applyAuthoritative(
-            revision,
-            JSON.parse(this.el.dataset.liveLiftState),
-            Number(this.el.dataset.liveLiftAckSeq || "0"),
-          );
-          this.recoverPending();
+          const state = JSON.parse(this.el.dataset.liveLiftState);
+          const ack = Number(this.el.dataset.liveLiftAckSeq || "0");
+          if (this.recovery) {
+            this.authoritativeBatch.flush();
+            this.applyAuthoritative(revision, state, ack);
+            this.recoverPending();
+          } else if (revision > this.serverRevision || ack !== this.ackSequence) {
+            this.authoritativeBatch.enqueue({revision, state, ack_seq: ack});
+          }
         }
         return;
       }

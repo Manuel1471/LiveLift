@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Batch authoritative renders by animation frame while keeping local predictions immediate.
+
 - Preserve static and unchanged template subtrees during state changes.
 
 - Track keyed row dependencies across authoritative snapshots and reuse rows whose rendered values are unchanged.

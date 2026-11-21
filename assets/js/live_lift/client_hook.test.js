@@ -444,6 +444,58 @@ test("authoritative corrections replay pending actions and ignore late replies",
   assert.equal(hook.serverRevision, 3);
 });
 
+test("authoritative replies in one frame render only the newest snapshot", (t) => {
+  const frames = new Map();
+  let nextFrame = 0;
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => {
+    frames.set(++nextFrame, callback);
+    return nextFrame;
+  };
+  globalThis.cancelAnimationFrame = (id) => frames.delete(id);
+  t.after(() => {
+    if (oldRaf) globalThis.requestAnimationFrame = oldRaf;
+    else delete globalThis.requestAnimationFrame;
+    if (oldCancel) globalThis.cancelAnimationFrame = oldCancel;
+    else delete globalThis.cancelAnimationFrame;
+  });
+  const el = element({count: 0, step: 1});
+  el.dataset.liveLiftMode = "component";
+  const replies = [];
+  const hook = {
+    ...createClientHook({"App.Score": {
+      actions: {advance: (state) => ({...state, count: state.count + 1})},
+      template: "<output></output>",
+    }}),
+    el,
+    pushEventTo: (_control, _event, _payload, reply) => replies.push(reply),
+  };
+  hook.mounted();
+  const rendered = [];
+  hook.render = (state) => rendered.push(state.count);
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  assert.deepEqual(rendered, [1, 2]);
+
+  replies[1]({revision: 2, ack_seq: 2, state: {count: 20, step: 1}});
+  replies[0]({revision: 1, ack_seq: 1, state: {count: 10, step: 1}});
+  assert.equal(frames.size, 1);
+  assert.deepEqual(rendered, [1, 2]);
+  frames.values().next().value();
+  assert.deepEqual(rendered, [1, 2, 20]);
+  assert.equal(hook.pending.length, 0);
+  assert.equal(hook.serverRevision, 2);
+
+  hook.sendOptimistic(el.controls.advance, "advance", {});
+  replies[2]({revision: 3, ack_seq: 3, state: {count: 30, step: 1}});
+  assert.equal(frames.size, 1);
+  hook.disconnected();
+  assert.equal(frames.size, 0);
+  assert.deepEqual(rendered, [1, 2, 20, 21]);
+  hook.destroyed();
+});
+
 test("a gap recovers a missing request and drains queued actions in order", () => {
   const el = element({count: 0, step: 1});
   el.dataset.liveLiftMode = "component";

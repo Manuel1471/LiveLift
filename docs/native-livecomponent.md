@@ -151,6 +151,10 @@ segments, and 64 KiB of
 combined UTF-8 key/value content. The browser checks before predicting; the
 server checks before invoking the marked handler. State limits are documented
 in [the language contract](language.md).
+The client combines authoritative snapshots that arrive within one animation
+frame and renders the newest one. Local predictions remain immediate.
+Sequence recovery does not wait for the next frame.
+
 The client applies a newer snapshot, replays unacknowledged actions and commits
 the result only after rendering succeeds. Stale replies can acknowledge
 pending actions without rolling back a newer server revision. The convergence
