@@ -521,7 +521,11 @@ por isla. El comando reproducible es `python3 bench/island_bundle.py`.
 
 ## Fase 5: Funciones con la sintaxis de siempre (3 a 4 semanas, v0.7)
 
-- **Falta:** `Process.send_after(self(), ...)` y `handle_info` en el cliente (temporizadores).
+- **En curso:** Temporizadores. El [spike de enrutamiento](docs/timer-routing-spike.md)
+  confirmó que `Process.send_after(self(), ...)` llega a `handle_info/2` del
+  LiveView padre. Para apuntar directamente a un LiveComponent, Phoenix
+  ofrece `send_update_after/3`. Falta la ejecución en cliente y la paridad
+  del ciclo de vida para ambas rutas.
 - **Falta:** Validación de formularios con la forma de `Ecto.Changeset`
   (`validate_required`, `validate_length`, `validate_format`), compartida entre cliente
   y servidor.
