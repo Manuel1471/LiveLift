@@ -8,25 +8,47 @@ function stats(values) {
   return {median_ms: values[Math.floor(values.length / 2)], p95_ms: values[Math.floor(values.length * 0.95)]};
 }
 
-// A row that also reads parent state must not be reused solely because its item is unchanged.
+// Reuse depends on what a row reads, even after its state was decoded into new objects.
 {
   const {document} = parseHTML("<html><body><div id='probe'></div></body></html>");
   globalThis.document = document;
   const el = document.getElementById("probe");
   el.dataset.liveLiftModule = "Probe";
-  el.dataset.liveLiftState = JSON.stringify({items: [{id: 1}], label: "old"});
+  el.dataset.liveLiftState = JSON.stringify({items: [{id: 1, name: "Row", note: ""}], label: "old", revision: 0});
   const path = (root, fields) => ({type: "path", root, fields});
   const row = {type: "element", tag: "li", attrs: [], children: [
     {type: "binding", expr: path("state", ["label"])},
+    {type: "binding", expr: path("item", ["name"])},
   ], for: {var: "item", source: path("state", ["items"])},
   key: path("item", ["id"]), if: null, node_id: "probe:1"};
   const template = [{type: "element", tag: "ul", attrs: [], children: [row],
-    for: null, key: null, if: null, node_id: null}];
+    for: null, key: null, if: null, node_id: null},
+    {type: "binding", expr: path("state", ["revision"])}];
   const hook = {...createClientHook({Probe: {template,
-    actions: {change: (state) => ({...state, label: "new"})}}}), el};
+    actions: {
+      change: (state) => ({...state, label: "new"}),
+      copy: (state) => ({
+        ...state, revision: 1, items: [{...state.items[0], note: "not rendered"}],
+      }),
+      edit: (state) => ({...state, items: [{...state.items[0], name: "Edited"}]}),
+    }}}), el};
   hook.mounted();
+  const element = el.querySelector("li");
+  const createElement = document.createElement.bind(document);
+  let rowAllocations = 0;
+  document.createElement = (tag, ...args) => {
+    if (tag === "li") rowAllocations += 1;
+    return createElement(tag, ...args);
+  };
+
+  hook.runAction("copy", el);
+  assert.equal(rowAllocations, 0);
+  assert.equal(el.querySelector("li"), element);
   hook.runAction("change", el);
-  assert.equal(el.querySelector("li").textContent, "new");
+  assert.equal(el.querySelector("li").textContent, "newRow");
+  hook.runAction("edit", el);
+  assert.equal(el.querySelector("li").textContent, "newEdited");
+  assert.equal(el.querySelector("li"), element);
   hook.destroyed();
 }
 

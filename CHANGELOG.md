@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Track keyed row dependencies across authoritative snapshots and reuse rows whose rendered values are unchanged.
+
 - Move unchanged keyed rows directly during reconciliation without allocating temporary elements.
 
 - Resume unacknowledged actions on the same component instance and configure how offline actions resolve across remounts.

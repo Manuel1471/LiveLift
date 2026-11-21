@@ -72,6 +72,51 @@ test("native list validates live form changes and saves the edited row", async (
   expect(errors).toEqual([]);
 });
 
+test("a server-corrected row reuses its unaffected neighbors", async ({page}) => {
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      const event = frame?.[4];
+      if (event?.event === "edit" && event.value?._live_lift_seq === 1) {
+        event.value.label = "Server correction";
+        server.send(JSON.stringify(frame));
+      } else {
+        server.send(message);
+      }
+    });
+  });
+  await page.goto("/native-list?rows=1000");
+  await page.waitForFunction(() => window.liveSocket.isConnected());
+  const root = page.locator("#native-list");
+  await expect(root.locator("li")).toHaveCount(1000);
+  await root.evaluate((component) => {
+    window.__rowProbe = {
+      edited: component.querySelector('#row-500 input[name="label"]'),
+      neighbor: component.querySelector('#row-501 input[name="label"]'),
+      allocated: 0,
+    };
+    const create = document.createElement;
+    document.createElement = function (tag, ...args) {
+      if (tag === "li") window.__rowProbe.allocated += 1;
+      return create.call(this, tag, ...args);
+    };
+  });
+  const input = root.locator('#row-500 input[name="label"]');
+  await input.fill("Client prediction");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(input).toHaveValue("Server correction");
+  await expect(input).toBeFocused();
+  const probe = await root.evaluate((component) => ({
+    sameEdited: component.querySelector('#row-500 input[name="label"]') === window.__rowProbe.edited,
+    sameNeighbor: component.querySelector('#row-501 input[name="label"]') === window.__rowProbe.neighbor,
+    allocated: window.__rowProbe.allocated,
+  }));
+  expect(probe.sameEdited).toBe(true);
+  expect(probe.sameNeighbor).toBe(true);
+  expect(probe.allocated).toBeLessThanOrEqual(2);
+});
+
 test("app-owned list reorder keeps the focused keyed input", async ({page}) => {
   await page.goto("/native-list?rows=3");
   const root = page.locator("#native-list");
@@ -136,6 +181,7 @@ test("native Enum.find predicts the first matching row and converges", async ({p
   const root = page.locator("#native-list");
   const match = root.getByRole("status", {name: "First new row"});
   await expect(match).toHaveText("None");
+  await expect(root.locator("#row-1")).toHaveAttribute("title", "None");
   await root.getByRole("button", {name: "Find new row"}).click();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await expect(match).toHaveText("None");
@@ -143,6 +189,7 @@ test("native Enum.find predicts the first matching row and converges", async ({p
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
   await root.getByRole("button", {name: "Find new row"}).click();
   await expect(match).toHaveText("New");
+  await expect(root.locator("#row-1")).toHaveAttribute("title", "New");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
 });
 

@@ -105,25 +105,34 @@ function evaluate(expr, scope) {
     const left = evaluate(expr.left, scope);
     return left === false || left === null ? left : evaluate(expr.right, scope);
   }
-  if (expr.type === "path") {
-    let value;
-    let fields = expr.fields;
-    if (expr.root === "state" && fields.length && Object.hasOwn(scope, fields[0])) {
-      value = scope[fields[0]];
-      fields = fields.slice(1);
-    } else {
-      if (!Object.hasOwn(scope, expr.root)) throw new Error(`Missing client scope: ${expr.root}`);
-      value = scope[expr.root];
-    }
-    for (const field of fields) {
-      if (!value || typeof value !== "object" || !Object.hasOwn(value, field)) {
-        throw new Error(`Missing client field: ${field}`);
-      }
-      value = value[field];
-    }
-    return value;
-  }
+  if (expr.type === "path") return readPath(expr, scope);
   throw new Error(`Unsupported client expression: ${expr.type}`);
+}
+
+const MISSING_PATH = Symbol();
+
+function readPath(expr, scope, allowMissing = false) {
+  let value;
+  let offset = 0;
+  const {root, fields} = expr;
+  if (root === "state" && fields.length && Object.hasOwn(scope, fields[0])) {
+    value = scope[fields[offset++]];
+  } else {
+    if (!Object.hasOwn(scope, root)) {
+      if (allowMissing) return MISSING_PATH;
+      throw new Error(`Missing client scope: ${root}`);
+    }
+    value = scope[root];
+  }
+  for (; offset < fields.length; offset += 1) {
+    const field = fields[offset];
+    if (!value || typeof value !== "object" || !Object.hasOwn(value, field)) {
+      if (allowMissing) return MISSING_PATH;
+      throw new Error(`Missing client field: ${field}`);
+    }
+    value = value[field];
+  }
+  return value;
 }
 
 function display(value) {
@@ -215,25 +224,50 @@ function validateEventParams(params, depth = 0, budget = {fields: 0, bytes: 0}) 
   }
 }
 
-function itemExpression(expr, variable) {
-  if (!expr) return true;
-  if (expr.type === "literal") return true;
-  if (expr.type === "path") return expr.root === variable;
-  if (expr.type === "map") return expr.entries.every(({expr: value}) => itemExpression(value, variable));
-  return false;
+const rowPlans = new WeakMap();
+const IN_ROW = Symbol();
+
+function rowPlan(row) {
+  if (rowPlans.has(row)) return rowPlans.get(row);
+  const variable = row.for.var;
+  const state = new Map();
+  const item = new Map();
+
+  function expression(expr) {
+    if (!expr || expr.type === "literal" || expr.type === "float") return true;
+    if (expr.type === "path") {
+      const local = expr.root === variable || (expr.root === "state" && expr.fields[0] === variable);
+      if (!local && expr.root !== "state") return false;
+      (local ? item : state).set(JSON.stringify([expr.root, expr.fields]), expr);
+      return true;
+    }
+    if (expr.type === "map") return expr.entries.every((entry) => expression(entry.expr));
+    if (expr.type === "list") return expr.items.every(expression);
+    if (expr.type === "and") return expression(expr.left) && expression(expr.right);
+    return false;
+  }
+
+  function subtree(node) {
+    if (node.type === "text") return true;
+    if (node.type === "binding") return expression(node.expr);
+    if (node.type === "component") return node.props.every((prop) => expression(prop.expr));
+    if (node.type !== "element" || (node !== row && node.for)) return false;
+    return expression(node.if) && expression(node.key) && node.attrs.every((attr) => {
+      if (attr.name === "data-live-lift-show") {
+        return expression({type: "path", root: "state", fields: [attr.value]});
+      }
+      return !["dynamic", "native_dynamic", "params", "boolean"].includes(attr.type) ||
+        expression(attr.value);
+    }) && node.children.every(subtree);
+  }
+
+  const plan = subtree(row) ? {state: [...state.values()], item: [...item.values()]} : null;
+  rowPlans.set(row, plan);
+  return plan;
 }
 
-function itemOnly(node, variable, nested = false) {
-  if (node.type === "text") return true;
-  if (node.type === "binding") return itemExpression(node.expr, variable);
-  if (node.type === "component") {
-    return node.props.every((prop) => itemExpression(prop.expr, variable));
-  }
-  if (node.type !== "element" || (nested && node.for)) return false;
-  if (!itemExpression(node.if, variable) || !itemExpression(node.key, variable)) return false;
-  if (node.attrs.some((attr) => attr.name === "data-live-lift-show" ||
-      (["dynamic", "native_dynamic", "params", "boolean"].includes(attr.type) && !itemExpression(attr.value, variable)))) return false;
-  return node.children.every((child) => itemOnly(child, variable, true));
+function samePaths(paths, previous, current) {
+  return paths.every((path) => sameValue(readPath(path, previous, true), readPath(path, current, true)));
 }
 
 function hydrateKeyedRows(nodes, scope, root) {
@@ -297,15 +331,17 @@ function renderNode(node, scope, views, stack, textOnly) {
     const items = evaluate(node.for.source, scope);
     if (!Array.isArray(items)) throw new Error(":for expects a list");
     const keys = new Set();
-    const stable = itemOnly(node, node.for.var);
+    const plan = scope[IN_ROW] ? null : rowPlan(node);
+    const previousScope = {state: scope.__previousState};
     const previous = new Map();
     const existing = new Map();
-    if (stable && scope.__previousState && scope.__root &&
-        node.for.source.type === "path" && node.for.source.root === "state") {
-      const oldItems = evaluate(node.for.source, {state: scope.__previousState});
+    if (plan && scope.__previousState && scope.__root &&
+        node.for.source.type === "path" && node.for.source.root === "state" &&
+        samePaths(plan.state, previousScope, scope)) {
+      const oldItems = readPath(node.for.source, previousScope, true);
       if (Array.isArray(oldItems)) {
         for (const oldItem of oldItems) {
-          const oldKey = evaluate(node.key, {state: scope.__previousState, [node.for.var]: oldItem});
+          const oldKey = evaluate(node.key, {...previousScope, [node.for.var]: oldItem});
           previous.set(String(oldKey), oldItem);
         }
       }
@@ -317,13 +353,15 @@ function renderNode(node, scope, views, stack, textOnly) {
       }
     }
     return items.flatMap((item) => {
-      const itemScope = {...scope, [node.for.var]: item};
+      const itemScope = {...scope, [node.for.var]: item, [IN_ROW]: true};
       const key = evaluate(node.key, itemScope);
       if (typeof key !== "string" && !Number.isSafeInteger(key)) throw new Error(":key must be a string or safe integer");
       const keyString = String(key);
       if (keys.has(keyString)) throw new Error(`Duplicate client list key: ${key}`);
       keys.add(keyString);
-      if (existing.has(keyString) && previous.has(keyString) && previous.get(keyString) === item) {
+      const priorItem = previous.get(keyString);
+      if (existing.has(keyString) && previous.has(keyString) &&
+          (Object.is(priorItem, item) || samePaths(plan.item, {...previousScope, [node.for.var]: priorItem}, itemScope))) {
         // Keep the row attached until reconciliation can move it within its live parent.
         const marker = document.createComment("");
         marker.__liveLiftReuse = existing.get(keyString);

@@ -24,7 +24,7 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
       <button type="button" phx-click="count_new" phx-target={@myself}>Count new rows</button>
       <output aria-label="New row count">{@new_count}</output>
       <ul>
-        <li :for={item <- @items} id={item.id}>
+        <li :for={item <- @items} id={item.id} title={@first_match}>
           <form phx-change="edit" phx-submit="edit" phx-target={@myself}>
             <input type="hidden" name="row_id" value={item.id} />
             <label>Label <input name="label" value={item.label} /></label>

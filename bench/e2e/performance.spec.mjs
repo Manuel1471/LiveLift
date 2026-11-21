@@ -214,3 +214,38 @@ test("benchmark navigation and mount with 100 islands", async ({page, browserNam
   console.log(JSON.stringify({browser: "Chromium", islands: 100, samples: 7,
     navigationAndMount: {server, client}}, null, 2));
 });
+
+test("benchmark editing a row in a 1,000-row native LiveComponent list", async ({page, browserName}) => {
+  test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
+  await page.goto("/native-list?rows=1000");
+  await page.waitForFunction(() => window.liveSocket?.isConnected());
+  const root = page.locator("#native-list");
+  await expect(root.locator("li")).toHaveCount(1_000);
+  await page.evaluate(() => window.liveSocket.disconnect());
+
+  const result = await root.evaluate((component) => {
+    const input = component.querySelector('#row-500 input[name="label"]');
+    const neighbor = component.querySelector('#row-501 input[name="label"]');
+    input.focus();
+    const values = [];
+    for (let index = 0; index < 25; index += 1) {
+      input.value = `Edited ${index}`;
+      const start = performance.now();
+      input.dispatchEvent(new Event("input", {bubbles: true}));
+      values.push(performance.now() - start);
+    }
+    values.sort((a, b) => a - b);
+    return {
+      medianMs: values[12], p95Ms: values[23],
+      rows: component.querySelectorAll("li").length,
+      editedValue: input.getAttribute("value"),
+      preservedFocus: document.activeElement === input,
+      preservedNeighbor: component.querySelector('#row-501 input[name="label"]') === neighbor,
+    };
+  });
+  expect(result.rows).toBe(1_000);
+  expect(result.editedValue).toBe("Edited 24");
+  expect(result.preservedFocus).toBe(true);
+  expect(result.preservedNeighbor).toBe(true);
+  console.log(JSON.stringify({browser: "Chromium", samples: 25, nativeRowEdit: result}, null, 2));
+});

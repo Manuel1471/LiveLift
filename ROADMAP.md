@@ -485,8 +485,11 @@ El [spike de asignaciones del DOM](docs/keyed-row-render-spike.md) observó
 1,020 elementos creados al invertir 1,000 filas. Las referencias a las filas
 existentes redujeron ese total a 20 y mantuvieron la identidad del input.
 En la misma máquina, el p95 de inversión bajó de 17.4 a 13.3 ms y el de
-ordenamiento de 19.5 a 15.1 ms. Sigue pendiente saltar subárboles por
-dependencias y medir las actualizaciones que sí cambian filas.
+ordenamiento de 19.5 a 15.1 ms. La edición de una fila midió 2.5 ms de
+mediana y 8.3 ms p95. Las filas ahora comparan las rutas de estado que leen.
+Una corrección autoritativa con 1,000 filas conservó los inputs y creó
+como máximo dos elementos de fila entre predicción y corrección en los
+tres navegadores. Sigue pendiente reutilizar subárboles fuera de listas.
 
 Presupuestos de partida (a afinar con mediciones): runtime núcleo por debajo de unos
 8 KB gzip; actualizar 1,000 filas en menos de un frame.

@@ -25,5 +25,19 @@ LIVE_LIFT_BENCH=1 npx playwright test e2e/performance.spec.mjs --project=chromiu
 ```
 
 The measurements cover these two unchanged-row operations on this machine.
-They do not establish the budget for row content edits, large mounts, or
-arbitrary templates.
+They do not establish the budget for large mounts or arbitrary templates.
+
+## Row edits and authoritative snapshots
+
+The runtime caches the state and item paths read by each keyed row template.
+It reuses a row when the referenced values are equal, even if the server
+decoded every item into a new object. A parent field change invalidates
+rows that read that field. Nested loops use normal reconciliation.
+
+In Chromium, 25 edits to a single input in a 1,000-row list measured
+2.5 ms median and 8.3 ms p95. The test checked the final value, focus and
+neighboring input identity. A separate browser test rewrites the edit
+parameter at the local test server boundary to force an authoritative
+correction. Across Chromium, Firefox and WebKit, it preserved the edited
+and neighboring inputs and allocated at most two row elements for the
+prediction and correction together.
