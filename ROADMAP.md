@@ -9,10 +9,10 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**La fase 5 está activa y su entrega 5.3 aborda los comandos `JS` locales.**
-Los comandos de foco están verificados. Sigue comprobar cómo conservar
-las mutaciones locales al reconciliar la isla y completar la puerta
-controlada hacia JavaScript.
+**La fase 5 está activa y su entrega 5.4 aborda la persistencia opcional con
+`sessionStorage`.** La entrega 5.3 cerró con foco, clases y eventos nativos
+para el JavaScript de la app. 5.4 empieza por verificar qué ocurre al
+recargar y abrir otra pestaña antes de decidir qué datos restaurar.
 
 ### Orden de cierre
 
@@ -33,8 +33,8 @@ controlada hacia JavaScript.
 |---|---|---|---|
 | 5.1 | Temporizadores | Cerrada | Ruta de LiveComponent y ruta de LiveView probadas en cliente y servidor, con reconciliación, cancelación al desmontar y política de reconexión |
 | 5.2 | Validación con `Ecto.Changeset` | Cerrada | Paridad de valores y errores en formularios válidos e inválidos |
-| 5.3 | Comandos `JS` locales y lista permitida | **En curso** | Comportamiento de los comandos admitidos y rechazo explícito del resto |
-| 5.4 | Persistencia opcional con `sessionStorage` | En espera de 5.3 | Restauración, caducidad, límites y regresión integral de la fase |
+| 5.3 | Comandos `JS` locales y lista permitida | Cerrada | Comportamiento de los comandos admitidos y rechazo explícito del resto |
+| 5.4 | Persistencia opcional con `sessionStorage` | **En curso** | Restauración, caducidad, límites y regresión integral de la fase |
 
 Se trabaja en una sola entrega a la vez. Cada entrega se documenta, se
 verifica contra su criterio y se registra en su propio commit antes de activar
@@ -554,8 +554,20 @@ de Phoenix y rechaza opciones calculadas, selectores globales y comandos
 fuera de la lista inicial con E053.
 [Evidencia del incremento](docs/progress/5.3-native-focus.md).
 
-La entrega permanece abierta para las mutaciones locales y la puerta
-controlada hacia JavaScript.
+`d1ea0ae` verificó que las clases aplicadas por `add_class`, `remove_class`
+y `toggle_class` sobreviven a parches sobre el mismo nodo. El [spike de
+dispatch](docs/native-js-dispatch-spike.md) en `b21bcf9` verificó la
+entrega de un evento local al JavaScript de la app. `4aadc46`
+compila la forma admitida de `JS.dispatch`, con nombre literal de la app
+y `bubbles: false`. El cierre pasó 195 pruebas de navegador, 15 con assets
+digeridos, y el runtime compartido quedó en 8,179 bytes gzip.
+[Evidencia de clases](docs/progress/5.3-native-classes.md) y
+[evidencia de cierre](docs/progress/5.3-native-dispatch.md).
+
+### 5.4 Persistencia local opcional
+
+Cierra con restauración probada, caducidad, límites y la regresión integral
+de la fase 5.
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 
