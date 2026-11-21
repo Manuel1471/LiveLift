@@ -25,7 +25,7 @@ for unsupported forms are tested in `test/live_lift/component_test.exs`.
 | `String.replace/3,4` | Supported subset | String or string-list patterns; literal string or one-argument callback replacement; literal `global` option. Empty string uses grapheme boundaries. Regex, dynamic options, and `insert_replaced` remain server only. |
 | Other `String` operations | Supported subset | `trim/1`, `length/1`, `contains?/2`; see Unicode limits in [language semantics](language.md). |
 | `Map.keys/1`, `Map.values/1` | Supported subset | Count either projection with `length/1` or `Enum.count/1`. Sort key names after `Enum.map(&Atom.to_string/1)`. Bare projections are rejected with a source location. |
-| `List` module operations | Server only | These operations are rejected. |
+| `List.delete/2`, `List.insert_at/3`, `List.replace_at/3`, `List.delete_at/2` | Supported subset | Exact deletion and positional edits on safe lists, including negative indexes. Tuple-based operations stay on the server. |
 | Other `Map` operations | Supported subset | Atom-keyed `put/get/delete`, shallow `merge`, and `take` with a literal atom-key list. |
 
 The server remains the right place for unsupported forms today. Remove `@client true`

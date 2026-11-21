@@ -67,8 +67,10 @@ defmodule LiveLift.Client.Compiler do
     }
     return value[key];
   }
-  function __liveLiftEqual(left, right) {
+  function __liveLiftEqual(left, right, exact = false) {
     if (__liveLiftIsFloat(left) || __liveLiftIsFloat(right)) {
+      if (exact) return __liveLiftIsFloat(left) && __liveLiftIsFloat(right) &&
+        left.$live_lift_float === right.$live_lift_float;
       if (!(typeof left === "number" || __liveLiftIsFloat(left)) ||
           !(typeof right === "number" || __liveLiftIsFloat(right))) return false;
       return __liveLiftNumber(left) === __liveLiftNumber(right);
@@ -77,11 +79,11 @@ defmodule LiveLift.Client.Compiler do
     if (left === null || right === null || typeof left !== typeof right) return false;
     if (typeof left !== "object" || Array.isArray(left) !== Array.isArray(right)) return false;
     if (Array.isArray(left)) {
-      return left.length === right.length && left.every((item, index) => __liveLiftEqual(item, right[index]));
+      return left.length === right.length && left.every((item, index) => __liveLiftEqual(item, right[index], exact));
     }
     const keys = Object.keys(left);
     return keys.length === Object.keys(right).length &&
-      keys.every((key) => Object.hasOwn(right, key) && __liveLiftEqual(left[key], right[key]));
+      keys.every((key) => Object.hasOwn(right, key) && __liveLiftEqual(left[key], right[key], exact));
   }
   function __liveLiftTruthy(value) { return value !== false && value !== null; }
   function __liveLiftCondFailure() { throw new Error("LiveLift cond has no true clause"); }
@@ -124,6 +126,25 @@ defmodule LiveLift.Client.Compiler do
   function __liveLiftList(value) {
     if (!Array.isArray(value)) throw new Error("LiveLift expected a list");
     return value;
+  }
+  function __liveLiftListDelete(list, value) {
+    list = __liveLiftList(list);
+    const index = list.findIndex((item) => __liveLiftEqual(item, value, true));
+    if (index < 0) return list;
+    return list.slice(0, index).concat(list.slice(index + 1));
+  }
+  function __liveLiftListEdit(list, index, operation, value) {
+    list = __liveLiftList(list);
+    index = __liveLiftInt(index);
+    if (operation === "insert_at") {
+      if (list.length >= 10000) throw new Error("LiveLift list length limit exceeded");
+      if (index < 0) index = Math.max(0, list.length + index + 1);
+      return list.slice(0, index).concat([value], list.slice(index));
+    }
+    if (index < 0) index += list.length;
+    if (index < 0 || index >= list.length) return list;
+    if (operation === "delete_at") return list.slice(0, index).concat(list.slice(index + 1));
+    return list.slice(0, index).concat([value], list.slice(index + 1));
   }
   function __liveLiftMap(value) {
     if (!value || typeof value !== "object" || Array.isArray(value) || __liveLiftIsFloat(value)) {
@@ -650,6 +671,22 @@ defmodule LiveLift.Client.Compiler do
 
   defp compile_expr({:length, _, [value]}, arg),
     do: compile_list_count(value, arg)
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:List]}, :delete]}, _, [list, value]}, args) do
+    "__liveLiftListDelete(#{compile_expr(list, args)}, #{compile_expr(value, args)})"
+  end
+
+  defp compile_expr({{:., _, [{:__aliases__, _, [:List]}, :delete_at]}, _, [list, index]}, args) do
+    "__liveLiftListEdit(#{compile_expr(list, args)}, #{compile_expr(index, args)}, \"delete_at\")"
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:List]}, operation]}, _, [list, index, value]},
+         args
+       )
+       when operation in [:insert_at, :replace_at] do
+    "__liveLiftListEdit(#{compile_expr(list, args)}, #{compile_expr(index, args)}, #{Jason.encode!(operation)}, #{compile_expr(value, args)})"
+  end
 
   defp compile_expr({{:., _, [{:__aliases__, _, [:Enum]}, :reverse]}, _, [list]}, arg),
     do: "[...__liveLiftList(#{compile_expr(list, arg)})].reverse()"

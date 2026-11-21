@@ -80,6 +80,13 @@ defmodule LiveLift.PropertyParityTest do
         indexed_items:
           Enum.with_index(state.items, fn item, index -> %{id: item.id, index: index} end),
         member: Enum.member?(state.items, state.target),
+        list_deleted: List.delete(state.items, state.target),
+        list_deleted_at: List.delete_at(state.items, state.amount),
+        list_replaced_at: List.replace_at(state.items, state.amount, state.target),
+        list_inserted_at: List.insert_at(state.items, state.amount, state.target),
+        list_exact: List.delete([[1.0], [1], [1]], [1]) |> length(),
+        list_exact_order: List.delete([1.0, 1], 1) |> Enum.join(),
+        list_signed_zero: List.delete([0.0, -0.0], -0.0) |> Enum.join(),
         taken: Enum.take(state.items, state.amount),
         dropped: Enum.drop(state.items, state.amount),
         unique: Enum.uniq(state.items),

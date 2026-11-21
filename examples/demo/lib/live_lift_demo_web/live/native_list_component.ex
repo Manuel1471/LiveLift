@@ -6,6 +6,8 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
     ~H"""
     <section aria-label="Native LiveComponent list">
       <button type="button" phx-click="add" phx-target={@myself}>Add row</button>
+      <button type="button" phx-click="reset_last" phx-target={@myself}>Reset last row</button>
+      <button type="button" phx-click="remove_last" phx-target={@myself}>Remove last row</button>
       <button type="button" phx-click="reverse" phx-target={@myself}>Reverse rows</button>
       <button type="button" phx-click="sort_labels" phx-target={@myself}>Sort labels</button>
       <button type="button" phx-click="find_new" phx-target={@myself}>Find new row</button>
@@ -51,10 +53,31 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
      socket
      |> assign(
        :items,
-       socket.assigns.items ++
-         [%{id: "row-" <> Integer.to_string(socket.assigns.next_id), label: "New"}]
+       List.insert_at(socket.assigns.items, -1, %{
+         id: "row-" <> Integer.to_string(socket.assigns.next_id),
+         label: "New"
+       })
      )
      |> update(:next_id, &(&1 + 1))}
+  end
+
+  @client true
+  def handle_event("reset_last", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(
+       :items,
+       List.replace_at(socket.assigns.items, -1, %{
+         id: "row-" <> Integer.to_string(socket.assigns.next_id),
+         label: "Reset"
+       })
+     )
+     |> update(:next_id, &(&1 + 1))}
+  end
+
+  @client true
+  def handle_event("remove_last", _params, socket) do
+    {:noreply, update(socket, :items, &List.delete_at(&1, -1))}
   end
 
   @client true
@@ -208,7 +231,15 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
 
   @client true
   def handle_event("remove", params, socket) do
-    {:noreply, update(socket, :items, &Enum.reject(&1, fn item -> item.id == params["id"] end))}
+    {:noreply,
+     assign(
+       socket,
+       :items,
+       List.delete(
+         socket.assigns.items,
+         Enum.find(socket.assigns.items, fn item -> item.id == params["id"] end)
+       )
+     )}
   end
 
   @client true

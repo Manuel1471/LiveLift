@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Compile exact deletion and positional insertion, replacement, and deletion for lists.
+
 - Compile map projection counts and explicitly sorted atom key names with Elixir parity.
 
 - Compile `String.replace/3,4` with Elixir pattern, grapheme, callback iodata, and `global` semantics; verify seeded parity and native browser behavior.

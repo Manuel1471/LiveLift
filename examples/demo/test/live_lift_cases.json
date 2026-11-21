@@ -18,6 +18,8 @@
   {"module":"LiveLiftDemoWeb.NativeFloatComponent","event":"helper_step","state":{"value":{"$live_lift_float":"0.5"}}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"add","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3,"first_match":"None","combined_labels":"","new_count":0}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"reverse","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3,"first_match":"None","combined_labels":"","new_count":0}},
+  {"module":"LiveLiftDemoWeb.NativeListComponent","event":"reset_last","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3,"first_match":"None","combined_labels":"","new_count":0}},
+  {"module":"LiveLiftDemoWeb.NativeListComponent","event":"remove_last","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3,"first_match":"None","combined_labels":"","new_count":0}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"find_new","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3,"first_match":"None","combined_labels":"","new_count":0}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"find_new","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-3","label":"New"}],"next_id":4,"first_match":"None","combined_labels":"","new_count":0}},
   {"module":"LiveLiftDemoWeb.NativeListComponent","event":"edit","state":{"items":[{"id":"row-1","label":"One"},{"id":"row-2","label":"Two"}],"next_id":3,"first_match":"None","combined_labels":"","new_count":0},"params":{"row_id":"row-1","label":"Édité <&>"}},

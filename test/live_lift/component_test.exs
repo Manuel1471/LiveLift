@@ -509,7 +509,7 @@ defmodule LiveLift.ComponentTest do
       "String.replace(socket.assigns.value, ~r/a/, \"b\")",
       "Map.keys(socket.assigns.value)",
       "Map.values(socket.assigns.value)",
-      "List.delete(socket.assigns.items, 1)",
+      "List.keydelete(socket.assigns.items, 1, 0)",
       "socket.assigns.items |> Enum.sum()"
     ]
 

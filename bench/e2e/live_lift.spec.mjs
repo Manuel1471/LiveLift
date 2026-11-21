@@ -119,6 +119,18 @@ test("native list adds and removes rows with dynamic phx-value-id", async ({page
   await expect(root.locator("li")).toHaveCount(2);
 });
 
+test("native list replaces and deletes its last row by index", async ({page}) => {
+  await page.goto("/native-list");
+  const root = page.locator("#native-list");
+  await root.getByRole("button", {name: "Reset last row"}).click();
+  await expect(root.locator("li").last().getByRole("textbox")).toHaveValue("Reset");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await root.getByRole("button", {name: "Remove last row"}).click();
+  await expect(root.locator("li")).toHaveCount(1);
+  await expect(root.locator("li").last().getByRole("textbox")).toHaveValue("One");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+});
+
 test("native Enum.find predicts the first matching row and converges", async ({page}) => {
   await page.goto("/native-list");
   const root = page.locator("#native-list");

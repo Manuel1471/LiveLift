@@ -9,7 +9,7 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**Fase activa: 2, Compilador v2. Próxima entrega: operaciones `List`.** Las fases
+**Fase activa: 2, Compilador v2. Próxima entrega: normalización del compilador y cierre de la fase 2.** Las fases
 S, 0 y 1 están cerradas. La fase 8 es opcional y posterior a 1.0. Los avances
 antiguos de fases 3–7 se conservan como inventario, pero no abren esas fases.
 
@@ -26,8 +26,9 @@ verificar el conjunto completo. No se calcula un porcentaje a partir de checks.
 | 2.3a | `String.downcase` y `String.split` | Hecho | Paridad Unicode, demo y límites documentados |
 | 2.3b | `String.replace` | Hecho | Semántica, paridad, rechazos, demo y benchmarks |
 | 2.4a | Proyecciones `Map.keys` y `Map.values` | Hecho | Conteo y nombres ordenados con paridad; rechazos con ubicación |
-| 2.4b | Operaciones `List` | **En curso** | Casos de uso, semántica y paridad |
-| 2.5 | Regresión integral y puerta 2 | En espera | Tres casos, paridad, tres navegadores, benchmarks |
+| 2.4b | Operaciones `List` | Hecho | Edición por índice y borrado exacto con paridad |
+| 2.5 | IR y normalización del compilador | **En curso** | Separar normalización y emisión, conservar origen y paridad |
+| 2.6 | Regresión integral y puerta 2 | En espera | Tres casos, paridad, tres navegadores, benchmarks |
 | 3 | Sincronización | Bloqueada por 2 | Convergencia ante entrega caótica |
 | 4 | Rendimiento | Bloqueada por 3 | Presupuestos y diffs medidos |
 | 5 | Funciones | Bloqueada por 4 | Cada función con paridad y límites |
@@ -210,9 +211,10 @@ Orden de funcionalidades:
 
 El subconjunto inicial ya acepta patrones anidados como
 `%{"profile" => %{"note" => note}}` y cadenas
-de `assign/update`, tanto por pipe como por llamadas anidadas. Los patrones
-generales, callbacks de un argumento en `assign_new` y las demás operaciones de esta fase siguen
-pendientes; por eso sigue abierta.
+de `assign/update`, tanto por pipe como por llamadas anidadas. La matriz
+documenta qué patrones de handlers y callbacks de `assign_new` quedan en el
+servidor. La puerta sigue abierta por la normalización del compilador y la
+regresión integral.
 El modelo para literales decimales está documentado en
 `docs/decimal-model-spike.md`: floats binarios finitos con un escalar etiquetado
 en el protocolo de estado. La sintaxis decimal ya compila; 5,000 patrones de
@@ -351,8 +353,12 @@ esta decisión, el bloque `Enum` de la fase queda resuelto; la puerta 2 sigue
 abierta por `String`, `Map`/`List` y la regresión final. El paquete de referencia,
 que no usa `with_index`, midió `54,049` bytes gzip; se repitieron los benchmarks
 de render, evento Phoenix y DOM.
-`Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros; las
-formas de `List` de esta fase siguen pendientes.
+`Map.merge/2` y `Map.delete/2` ya tienen paridad para mapas seguros.
+`List.delete/2` borra la primera coincidencia exacta, incluso con números dentro
+de mapas y listas. El corpus compara índices negativos, positivos y fuera de
+rango en `List.insert_at/3`, `List.replace_at/3` y `List.delete_at/2`. El demo
+usa estas operaciones para añadir, reemplazar y quitar filas. Las funciones
+de listas que requieren tuplas se mantienen en el servidor.
 
 Trampas de paridad a probar a propósito: `String.length` por grafemas (`Intl.Segmenter`),
 orden de strings fuera del plano básico, `downcase` con Unicode, redondeo y formato de
@@ -369,7 +375,8 @@ validación de formulario en vivo, lista ordenable.
 | Slots con nombre y componentes remotos | Alcance decidido | Rechazo accionable con origen; quedan en LiveView servidor |
 | `class={[...]}` | Verificado | Comparación de render inicial y actualización para listas condicionales |
 | `phx-debounce` | Verificado para input/textarea | HTML inicial, temporizador y `blur` en tres navegadores; otras formas se rechazan |
-| Formas y funciones restantes de handlers | Pendiente | `|>` ya compila en expresiones admitidas; faltan las operaciones enumeradas arriba y sus rechazos cercanos |
+| Alcance de handlers | Verificado | Operaciones publicadas y formas rechazadas en la matriz de handlers |
+| IR y normalización | En curso | Normalización previa a la emisión y pruebas de ubicación y paridad |
 | Tres casos completos | Verificado | Contador, formulario anidado y lista ordenable; detalles abajo |
 | Regresión final de fase | Pendiente | Formato, tests de librería y demo, Node, paridad, tres navegadores y benchmarks afectados |
 

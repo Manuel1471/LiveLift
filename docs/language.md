@@ -117,6 +117,14 @@ names from safe atom-keyed state maps. Bare projections are rejected because
 map iteration order is unspecified. Use an explicitly ordered list when the
 order of values matters. See the [map iteration spike](map-iteration-spike.md).
 
+`List.delete/2` removes the first exact match. This includes the distinction
+between integers and floats in nested lists and maps. `List.replace_at/3`
+and `List.delete_at/2` leave the list unchanged when the index is out of
+range. Negative indexes count from the end. For `List.insert_at/3`, index
+`-1` appends, other negative indexes count insertion positions from the
+end, and indexes outside the list clamp to the nearest end. Indexes must be
+safe integers, and the output must respect the 10,000-item list limit.
+
 Also supported are `Integer.to_string/1` for safe integers;
 `String.trim/1`; `String.length/1`; `String.downcase/1`; `String.split/1,2,3`;
 `String.replace/3,4`; and
