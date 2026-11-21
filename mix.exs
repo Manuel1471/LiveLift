@@ -15,6 +15,7 @@ defmodule LiveLift.MixProject do
           "assets/js/live_lift/client_hook.js",
           "assets/js/live_lift/class_commands.js",
           "assets/js/live_lift/form_drafts.js",
+          "assets/js/live_lift/devtools.js",
           "assets/js/live_lift/component_timers.js",
           "docs",
           "mix.exs",

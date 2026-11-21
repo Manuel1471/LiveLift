@@ -32,7 +32,12 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, LiveLift: createClientHook(views)},
+  hooks: {
+    ...colocatedHooks,
+    LiveLift: LIVE_LIFT_INSPECT && new URLSearchParams(window.location.search).get("live_lift_inspect") === "1"
+      ? require("../../../../assets/js/live_lift/devtools.js").withStateInspector(createClientHook(views), document)
+      : createClientHook(views),
+  },
 })
 
 // The preview uses a native custom event from the counter.

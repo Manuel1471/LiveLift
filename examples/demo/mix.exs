@@ -55,6 +55,10 @@ defmodule LiveLiftDemo.MixProject do
     ]
   end
 
+  defp inspector_flag do
+    if Mix.env() == :dev, do: " --define:LIVE_LIFT_INSPECT=true", else: ""
+  end
+
   # Aliases are shortcuts or tasks specific to the current project.
   # For example, to install project dependencies and perform other setup tasks, run:
   #
@@ -68,7 +72,7 @@ defmodule LiveLiftDemo.MixProject do
       "assets.build": [
         "compile",
         "live_lift.compile --split --output assets/js/generated_views.js",
-        "esbuild live_lift_demo --sourcemap=external"
+        "esbuild live_lift_demo --sourcemap=external#{inspector_flag()}"
       ],
       "assets.deploy": [
         "live_lift.compile --split --output assets/js/generated_views.js",

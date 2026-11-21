@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Inspect and browse LiveLift state history with an opt-in development panel.
+
 - Report source locations, diagnostic codes, and corrections for rejected native handlers and HEEx.
 
 - Walk through a native LiveView migration with a diff verified in a fresh Phoenix app.

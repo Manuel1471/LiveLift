@@ -15,7 +15,9 @@ config :live_lift_demo, LiveLiftDemoWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "zl8M5bXTx3N6yYlCrwtnAh0DvbjRIX+uhD9jLK1VYFJk0QcvjPX5boqgkBU8FRRL",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:live_lift_demo, ~w(--sourcemap=inline --watch)]}
+    esbuild:
+      {Esbuild, :install_and_run,
+       [:live_lift_demo, ~w(--sourcemap=inline --watch --define:LIVE_LIFT_INSPECT=true)]}
   ]
 
 # ## SSL Support

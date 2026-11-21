@@ -23,6 +23,8 @@ compare every marked handler in Elixir and Node; see the
 [native component guide](docs/native-livecomponent.md).
 Use the [event telemetry guide](docs/telemetry.md) to measure frequency and
 server time before opting in and compare browser latency after migration.
+Use the [development inspector](docs/state-inspector.md) to compare optimistic
+state and authoritative corrections in the browser.
 
 ## Use it in a Phoenix app
 
