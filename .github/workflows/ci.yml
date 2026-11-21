@@ -33,6 +33,7 @@ jobs:
         env:
           LIVE_LIFT_FORCE_TEMPLATE_FALLBACK: '1'
       - run: mix run spikes/liveview_api.exs
+      - run: elixir bench/changeset_parity.exs
       - run: npm test
         working-directory: assets
       - run: mix deps.get

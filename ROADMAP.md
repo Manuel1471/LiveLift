@@ -527,9 +527,12 @@ y comprobó que no se emite una segunda solicitud de programación.
 ### 5.2 Validación con Ecto.Changeset
 
 El [spike de formularios](docs/changeset-form-spike.md) comprobó siete casos
-con Ecto y Phoenix. El siguiente paso es compilar una proyección acotada
-para `validate_required/3`, `validate_length/3` y `validate_format/4`, con
-paridad de los valores visibles, los errores y los campos usados.
+con Ecto y Phoenix. La primera proyección compila `.valid?` y
+`Ecto.Changeset.get_field/2` tras `validate_required/3`,
+`validate_length/3` y `validate_format/4`. El arnés
+`elixir bench/changeset_parity.exs` compara 1,440 entradas con Ecto real.
+Faltan valores de presentación, metadatos de errores, seguimiento de
+campos usados y verificación del formulario completo en navegador.
 
 ## Fase 6: Migración y experiencia de desarrollo (puerta posterior a fase 5)
 

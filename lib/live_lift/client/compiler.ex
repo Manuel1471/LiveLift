@@ -5,7 +5,7 @@ defmodule LiveLift.Client.Compiler do
   Unsupported Elixir syntax raises instead of silently changing semantics.
   """
 
-  alias LiveLift.Client.IR
+  alias LiveLift.Client.{Changeset, IR}
 
   @max_safe_integer 9_007_199_254_740_991
   @identifier ~r/^[a-zA-Z_$][a-zA-Z0-9_$]*$/
@@ -460,6 +460,49 @@ defmodule LiveLift.Client.Compiler do
     }
     return output;
   }
+  function __liveLiftChangeset(data, params, fields, rules, projection) {
+    data = __liveLiftMap(data);
+    params = __liveLiftMap(params);
+    const changes = Object.create(null);
+    const base = (field) => Object.hasOwn(data, field) ? data[field] : null;
+    const value = (field) => Object.hasOwn(changes, field) ? changes[field] : base(field);
+    const blank = (value) => value === null || (typeof value === "string" && __liveLiftTrim(value) === "");
+    let valid = true;
+
+    for (const field of fields) {
+      if (base(field) !== null) __liveLiftString(base(field));
+      if (!Object.hasOwn(params, field)) continue;
+      const input = params[field];
+      if (input !== null && typeof input !== "string") {
+        valid = false;
+        continue;
+      }
+      const cast = blank(input) ? null : input;
+      if (cast !== base(field)) changes[field] = cast;
+    }
+
+    for (const [operation, field, options] of rules) {
+      if (operation === "required") {
+        for (const required of field) {
+          if (!blank(value(required))) continue;
+          delete changes[required];
+          valid = false;
+        }
+      } else if (Object.hasOwn(changes, field) && changes[field] !== null) {
+        const changed = changes[field];
+        if (operation === "length") {
+          const length = __liveLiftStringLength(changed);
+          if ((options.min !== undefined && length < options.min) ||
+              (options.max !== undefined && length > options.max) ||
+              (options.is !== undefined && length !== options.is)) valid = false;
+        } else if (!new RegExp(options, "u").test(changed)) {
+          valid = false;
+        }
+      }
+    }
+
+    return projection === "valid" ? valid : value(projection[1]);
+  }
   """
 
   @timer_source Path.expand("../../../assets/js/live_lift/component_timers.js", __DIR__)
@@ -642,6 +685,20 @@ defmodule LiveLift.Client.Compiler do
       do: Atom.to_string(name),
       else: raise(ArgumentError, "unsupported client variable: #{name}")
   end
+
+  defp compile_expr({{:., _, [source, :valid?]}, _, []}, arg) do
+    compile_changeset_projection(source, :valid, arg)
+  end
+
+  defp compile_expr(
+         {{:., _, [{:__aliases__, _, [:Ecto, :Changeset]}, :get_field]}, _, [source, field]},
+         arg
+       ) do
+    compile_changeset_projection(source, [:field, field], arg)
+  end
+
+  defp compile_expr({:__live_lift_changeset_projection__, _, [source, projection]}, arg),
+    do: compile_changeset_projection(source, projection, arg)
 
   defp compile_expr({{:., _, [source, key]}, _, []}, arg) when is_atom(key) do
     "__liveLiftGet(#{compile_expr(source, arg)}, #{Jason.encode!(identifier!(key))})"
@@ -1087,6 +1144,23 @@ defmodule LiveLift.Client.Compiler do
   defp compile_expr(other, _arg) do
     raise ArgumentError, "unsupported client expression: #{Macro.to_string(other)}"
   end
+
+  defp compile_changeset_projection({:case, meta, [input, [do: clauses]]}, projection, arg) do
+    projected =
+      Enum.map(clauses, fn
+        {:->, _, [_, {:__live_lift_helper_failure__, _, _}]} = failure ->
+          failure
+
+        {:->, meta, [pattern, expression]} ->
+          {:->, meta,
+           [pattern, {:__live_lift_changeset_projection__, meta, [expression, projection]}]}
+      end)
+
+    compile_expr({:case, meta, [input, [do: projected]]}, arg)
+  end
+
+  defp compile_changeset_projection(source, projection, arg),
+    do: Changeset.expression!(source, projection, &compile_expr(&1, arg))
 
   defp compile_list_count(list, args) do
     case list do

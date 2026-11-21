@@ -639,6 +639,43 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  test "unsupported changeset forms fail at their source" do
+    for {operations, error} <- [
+          {"Ecto.Changeset.cast({%{title: nil}, %{title: :integer}}, params[\"post\"], [:title])",
+           "literal :string field types"},
+          {"|> Ecto.Changeset.validate_required([:other])", "fields selected by cast/3"},
+          {"|> Ecto.Changeset.validate_length(:title, min: 2, count: :bytes)",
+           "literal grapheme bounds"},
+          {"|> Ecto.Changeset.validate_format(:title, ~r/^a+z+$/)", "one variable repeat"},
+          {"|> Ecto.Changeset.validate_format(:title, ~r/[^A]/i)", "anchored literal ~r"},
+          {"|> Ecto.Changeset.validate_format(:title, ~r/^(a|b)$/)", "anchored literal ~r"}
+        ] do
+      cast =
+        if String.starts_with?(operations, "|>") do
+          "Ecto.Changeset.cast({%{title: nil}, %{title: :string}}, params[\"post\"], [:title]) " <>
+            operations
+        else
+          operations
+        end
+
+      source = """
+      defmodule LiveLift.ComponentTest.UnsupportedChangeset do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@valid}</output>"
+        @client true
+        def handle_event("validate", params, socket) do
+          {:noreply, assign(socket, :valid, (#{cast}).valid?)}
+        end
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/changeset.ex:6: unsupported @client handler: unsupported client changeset:.*#{Regex.escape(error)}.*move it to a server handler/,
+                   fn -> Code.compile_string(source, "changeset.ex") end
+    end
+  end
+
   test "unpublished handler forms fail at their source before generating JavaScript" do
     expressions = [
       "Float.round(1.5, 1)",

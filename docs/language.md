@@ -85,6 +85,42 @@ owns the actions and state. Components have no slots or independent state yet.
 
 ## Action expressions
 
+### Ecto changeset values
+
+Marked handlers can read `.valid?` or use `Ecto.Changeset.get_field/2` on a
+schemaless string changeset. Ecto runs the original pipeline on the server.
+The generated JavaScript computes the same boolean or field value. For
+example, a marked event can call this local helper with
+`socket.assigns.profile` and `params["profile"]`.
+
+```elixir
+defp valid_profile?(data, params) do
+  (Ecto.Changeset.cast({data, %{name: :string, code: :string}}, params, [:name, :code])
+   |> Ecto.Changeset.validate_required([:name, :code])
+   |> Ecto.Changeset.validate_length(:name, min: 2, max: 40)
+   |> Ecto.Changeset.validate_format(:code, ~r/\A[A-Z]{2}\z/)).valid?
+end
+```
+
+Use fully qualified Ecto calls, a literal type map, one to 32 distinct
+cast fields, and string or `nil` base values. Casting uses Ecto's default
+empty values. Required validation can remove a blank change. Length and
+format validations run on changed, non-`nil` values. Length counts graphemes
+and accepts literal `min` and `max`, or `is` by itself.
+
+Format accepts an unflagged literal regex with both anchors
+(`\A...\z` or `^...$`), ASCII literals and positive character classes, fixed
+repeats from 1 to 99, and at most one `+` or `?` repeat. The pattern body can
+be up to 128 bytes. An Ecto `$` permits one trailing line feed, which the
+generated pattern also permits. Keep other regex forms and changeset options
+on the server.
+
+This projection covers validity and effective field values. Form display
+values, field usage, and error metadata are tracked in the next step of
+[the changeset form spike](changeset-form-spike.md).
+
+### Timers
+
 Marked native LiveComponent handlers support a single
 `Phoenix.LiveView.send_update_after(socket.assigns.myself, [field: literal], delay)`
 followed by `{:noreply, socket}`. This schedules a one-shot assignment; the
@@ -108,6 +144,8 @@ any pending actions already taken. The LiveView runs the original
 `handle_info/2` on its current assigns when its own process timer fires. The
 result is authoritative when network delay changes the execution order.
 Try the native timer demo at `/native-timer` in the example app.
+
+### General expressions
 
 `defclient` supports safe integer, finite binary64 float, string, boolean, and `nil` literals;
 atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);

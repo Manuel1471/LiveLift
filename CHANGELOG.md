@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compile validity and field reads from schemaless Ecto string changesets with required, grapheme length, and bounded format validation.
 - Restore acknowledged timers when reconnecting to the same instance with an older DOM snapshot.
 - Compile native LiveView mailbox timers and replay their `handle_info/2` effects in order with pending actions.
 - Reuse native optimistic event reconciliation for opted-in root LiveViews, including authoritative mailbox and URL parameter updates.
