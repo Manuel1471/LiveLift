@@ -87,6 +87,11 @@ jobs:
         working-directory: bench
         env:
           LIVE_LIFT_TEST_DEPLOY: '1'
+      - name: Verify reconnect and debounce with digested assets
+        run: npm run e2e -- --grep 'connection cut|phx-debounce delays|submit cancels'
+        working-directory: bench
+        env:
+          LIVE_LIFT_TEST_DEPLOY: '1'
 
   liveview-main:
     runs-on: ubuntu-latest

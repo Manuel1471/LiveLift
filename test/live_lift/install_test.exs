@@ -34,7 +34,14 @@ defmodule LiveLift.InstallTest do
                )
                |> length() == 3
 
-        assert elem(first, 2) =~ "/assets/js/generated_views.js.map"
+        ignored = String.split(elem(first, 2), "\n", trim: true)
+
+        for name <-
+              ~w(generated_views.js generated_views.js.map generated_views.d.ts live_lift_runtime.js live_lift_runtime.d.ts) do
+          assert Enum.count(ignored, &(&1 == "/assets/js/#{name}")) == 1
+        end
+
+        assert "/_build/" in ignored
       end)
     after
       File.rm_rf!(root)
@@ -85,6 +92,7 @@ defmodule LiveLift.InstallTest do
 
     File.write!(Path.join(root, "assets/js/app.js"), js)
     File.write!(Path.join(root, "mix.exs"), mix)
+    File.write!(Path.join(root, ".gitignore"), "/_build/\n")
 
     try do
       File.cd!(root, fn ->
@@ -94,6 +102,7 @@ defmodule LiveLift.InstallTest do
 
         assert File.read!("assets/js/app.js") == js
         assert File.read!("mix.exs") == mix
+        assert File.read!(".gitignore") == "/_build/\n"
       end)
     after
       File.rm_rf!(root)

@@ -612,18 +612,39 @@ test("native component reconnects from the server snapshot", async ({page}) => {
 });
 
 test("a pending prediction is discarded after a connection cut", async ({page}) => {
+  const sequences = [];
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      const sequence = frame?.[4]?.value?._live_lift_seq;
+      if (frame?.[4]?.event === "inc" && Number.isInteger(sequence)) {
+        sequences.push(sequence);
+        if (sequences.length === 1) return;
+      }
+      server.send(message);
+    });
+  });
   await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");
   const count = root.locator("output");
-  await page.evaluate(() => window.liveSocket.enableLatencySim(500));
-  await root.getByRole("button", {name: "Add one"}).click();
-  await expect(count).toHaveText("1", {timeout: 200});
+  const increment = root.getByRole("button", {name: "Add one"});
+  const instance = await root.getAttribute("data-live-lift-instance");
+
+  await increment.click();
+  await expect(count).toHaveText("1");
+  await expect.poll(() => sequences).toEqual([1]);
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "0");
+
   await page.evaluate(() => { window.liveSocket.disconnect(); window.liveSocket.connect(); });
-  await page.waitForFunction(() => window.liveSocket.isConnected());
+  await expect(root).not.toHaveAttribute("data-live-lift-instance", instance);
+  await expect(count).toHaveText("0");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
-  await expect(count).toHaveText("0");
-  await page.waitForTimeout(600);
-  await expect(count).toHaveText("0");
+  await increment.click();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await expect(count).toHaveText("1");
+  expect(sequences).toEqual([1, 1]);
 });
 
 test("offline clicks replay in order after the fresh LiveView snapshot", async ({page}) => {
@@ -696,43 +717,65 @@ test("native form validates a nested field locally and on the server", async ({p
 });
 
 test("native phx-debounce delays prediction and flushes on blur", async ({page}) => {
+  await page.clock.install();
   await gotoLiveLift(page, "/native-form");
   const root = page.locator("#native-form");
   const draft = root.getByRole("textbox", {name: "Debounced draft"});
   const output = root.locator("output");
   await expect(draft).toHaveAttribute("phx-debounce", "300");
-  await page.evaluate(() => window.liveSocket.enableLatencySim(400));
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
 
   await draft.fill("First");
-  await page.waitForTimeout(120);
+  await page.clock.runFor(299);
   await expect(output).toHaveText("");
   await draft.fill("Second");
-  await page.waitForTimeout(120);
+  await page.clock.runFor(299);
   await expect(output).toHaveText("");
+  await page.clock.runFor(1);
   await expect(output).toHaveText("Second");
+  await page.clock.resume();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
 
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   await draft.evaluate((input) => input.setAttribute("phx-debounce", "blur"));
   await draft.fill("On blur");
-  await page.waitForTimeout(120);
+  await page.clock.runFor(300);
   await expect(output).toHaveText("Second");
   await draft.blur();
   await expect(output).toHaveText("On blur");
+  await page.clock.resume();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
 });
 
 test("native submit cancels a pending debounced form change", async ({page}) => {
+  const markedEvents = [];
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      const event = frame?.[4];
+      if (Number.isInteger(event?.value?._live_lift_seq)) markedEvents.push(event.event);
+      server.send(message);
+    });
+  });
+  await page.clock.install();
   await gotoLiveLift(page, "/native-form");
   const root = page.locator("#native-form");
   const note = root.getByRole("textbox", {name: "Note"});
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   await note.evaluate((input) => input.setAttribute("phx-debounce", "300"));
   await note.fill("Valid note");
+  await page.clock.runFor(299);
   await root.locator("form").evaluate((form) => form.requestSubmit());
-
   await expect(root.locator("p").last()).toHaveText("Saved: Valid note");
-  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
-  await page.waitForTimeout(450);
-  await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
+  await page.clock.runFor(301);
+
+  // A second submit is a socket barrier after the canceled timer's deadline.
+  await root.locator("form").evaluate((form) => form.requestSubmit());
+  await page.clock.resume();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "2");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  expect(markedEvents).toEqual(["save", "save"]);
 });
 
 test("native assign_new reveals an initially absent field and converges", async ({page}) => {

@@ -75,11 +75,29 @@ assets/node_modules/.bin/tsc --strict --noEmit --module NodeNext   --lib es2022,
   cd assets
   node --input-type=module <<'NODE'
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {SourceMap} from "node:module";
 import {createClientHook} from "live-lift-assets";
 import {views} from "./js/generated_views.js";
 assert.equal(typeof createClientHook(views).mounted, "function");
 const {views: loaded} = await views["ConsumerLiftWeb.CounterComponent"]();
 assert.equal(typeof loaded["ConsumerLiftWeb.CounterComponent"].actions.inc, "function");
+
+const chunk = "./js/generated_views_views/ConsumerLiftWeb.CounterComponent.js";
+const sourceFile = "lib/consumer_lift_web/live/counter_component.ex";
+const javascript = readFileSync(chunk, "utf8");
+const source = readFileSync(`../${sourceFile}`, "utf8");
+const mapName = /sourceMappingURL=(.+)$/m.exec(javascript)?.[1];
+assert.equal(mapName, "ConsumerLiftWeb.CounterComponent.js.map");
+const payload = JSON.parse(readFileSync(`${chunk}.map`, "utf8"));
+assert.equal(payload.file, "ConsumerLiftWeb.CounterComponent.js");
+const viewLine = javascript.split("\n").findIndex((line) =>
+  line.includes('"ConsumerLiftWeb.CounterComponent": {actions:'));
+assert.ok(viewLine >= 0);
+const entry = new SourceMap(payload).findEntry(viewLine, 2);
+assert.equal(entry.originalSource, sourceFile);
+assert.match(source.split("\n")[entry.originalLine], /^\s*~H"""/);
+assert.equal(payload.sourcesContent[payload.sources.indexOf(sourceFile)], source);
 NODE
 )
 
