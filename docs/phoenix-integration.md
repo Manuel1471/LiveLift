@@ -1,13 +1,17 @@
 # Add LiveLift to a Phoenix LiveView app
 
 LiveLift 0.1.0-rc.1 is an experimental package targeting Phoenix LiveView
-1.2.x. Template parsing has a bounded fallback for the published subset. A
-template outside that subset fails with its source location:
+1.2.x. The local artifacts have passed installation in a fresh Phoenix app.
+Once the release is available on Hex, add this dependency:
 
 ```elixir
 # mix.exs
 {:live_lift, "~> 0.1.0-rc.1"}
 ```
+
+To try the prepared local release before publication, unpack it with
+`mix hex.build --unpack --output /tmp/live_lift_package` from the LiveLift
+checkout. In the Phoenix app, use `{:live_lift, path: "/tmp/live_lift_package"}`.
 
 Run `mix deps.get` and `mix live_lift.install`. The installer checks the
 standard Phoenix 1.8 colocated hook and both asset aliases before writing.

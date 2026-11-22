@@ -1,28 +1,49 @@
 # Experimental production limits
 
+## Verified locally
+
+- **Native adoption.** Ordinary LiveComponents and routed LiveViews can opt in
+  supported handlers. The migration diff, compiler diagnostics, audit task,
+  and parity command were exercised in a generated Phoenix app. The
+  [native guide](native-livecomponent.md) lists the bounded template, handler,
+  timer, and form support.
+- **Installation and assets.** The Mix and Igniter routes, TypeScript
+  declarations, copied and npm runtime builds, and version mismatch rejection
+  passed in a generated app using local artifacts. The [asset verification](progress/6-versioned-assets.md)
+  records the commands.
+- **Browser behavior.** The suite exercises reordering, duplicates,
+  reconnects, native form events, keyed focus, selected field drafts,
+  and the development inspector in Chromium, Firefox, and WebKit.
+- **Operational controls.** Global and per-component `:live_lift` switches
+  restore server-only rendering for new mounts. Active clients reload on their
+  next marked event. The [security model](security.md) documents the trust
+  boundary, internal XSS review, and legacy `$server` validation.
+- **Performance.** The shared hook measured 8,179 bytes gzip against an
+  8 KiB budget. The [native event measurements](progress/6-event-telemetry.md)
+  record server cost and browser latency for the measured fixture.
+
 ## Compatibility
 
-The CI matrix runs the library tests with Phoenix LiveView 1.2.0 and 1.2.13.
-Both passed locally on Elixir 1.20.2 / OTP 29 on 2026-11-06. The parser uses
-`Phoenix.LiveView.TagEngine.Parser`, an internal API, with a bounded fallback
-for the published template subset. The dependency is still restricted to
-1.2.x. LiveView 1.3 and later are not claimed compatible.
-An optional CI lane tests LiveView `main` without blocking releases. It passed
-locally on 2026-11-06 after installing the property harness dependencies;
-that is an early compatibility signal, not a supported version claim.
-The `use LiveLift` / `@client true` LiveComponent API currently covers simple
-click, change and submit handlers with chained `assign/3` and `update/3`, bounded nested event
-params and a literal `~H` template. It has real browser tests for optimistic
-events, server replies, an unmarked server handler and reconnect. It does not
-yet cover form arrays, nested components, streams, durable offline actions or
-arbitrary Elixir handlers.
-The [security model](security.md) documents the trust boundaries and internal
-XSS review. The legacy `$server` bridge passes proposed client values to the
-app's LiveView handler; it must validate them and decide whether to accept
-them. This review is not an external audit.
-The global and per-component `:live_lift` switches restore server-only
-rendering for new mounts. Active opt-in clients reload after their next marked
-event; operators should refresh active pages when disabling the feature.
+CI is configured for Elixir 1.18 with OTP 27 and Elixir 1.20 with OTP 29,
+using Node 22. Both stable lanes run against the repository lockfiles, which
+pin Phoenix LiveView 1.2.13. A separate non-blocking lane targets LiveView
+`main`. The dependency requirement `~> 1.2.0` declares the intended
+1.2.x range. The library suite also passed locally with LiveView 1.2.0
+on Elixir 1.20.2 and OTP 29, using both parser paths. See the
+[regression report](progress/test-refresh.md). The published subset uses a
+bounded fallback when the internal LiveView template parser is unavailable.
+
+## Pending
+
+- Publish the matching Hex and npm releases, then verify an installation
+  from both public registries. This is the remaining phase 6 gate.
+- Verify the phase 7 security and compatibility criteria, including a
+  cross-review or external audit and the full HEEx fuzzing work.
+- Complete client error reporting and the release and deprecation policy.
+- Collect evidence from two real applications in production and at least one
+  LiveView cycle with a frozen API before declaring 1.0.
+
+The [roadmap](../ROADMAP.md) tracks the gates in order.
 
 ## Accessibility
 
@@ -45,13 +66,17 @@ technology and production deployment are not yet covered.
 
 ## Source maps
 
-`mix live_lift.compile` writes `generated_views.js.map` alongside the registry,
-with the original Elixir source embedded. Each generated view entry points to
-the `client_template` declaration line. Action expressions within a view entry
-currently map to that declaration, so line-level action debugging is a known
-limit. The demo's `assets.build` uses esbuild's external map; production builds
-omit it to avoid publishing app source by default. Apps with custom bundlers
-must enable source-map consumption there.
+`mix live_lift.compile` writes a registry source map in eager mode. Split
+mode writes a map for each generated view module. Both embed the original
+Elixir source and map each generated view entry to its native `~H` sigil or
+legacy `client_template` declaration. The consumer test resolves the
+split native mapping through Node's source-map API. Mapping individual
+action expressions remains pending.
+
+The demo's `assets.build` emits external bundle maps. Use a clean workspace
+for `assets.deploy`. A previous `assets.build` can leave maps in the static
+output directory, and Phoenix can digest those files on the next deploy. Custom bundlers
+must explicitly configure consumption of the generated maps.
 
 ## Benchmarks
 

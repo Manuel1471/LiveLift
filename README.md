@@ -29,7 +29,12 @@ covers TypeScript and the optional npm runtime.
 
 ## Use it in a Phoenix app
 
-Add the experimental Hex package to your app's `mix.exs`:
+The experimental release has passed installation from local artifacts.
+Public installation awaits publication of `0.1.0-rc.1`. See the
+[verified and pending items](docs/production-readiness.md) and
+[release instructions](docs/release.md).
+
+Once published, add the Hex dependency to your app's `mix.exs`:
 
 ```elixir
 {:live_lift, "~> 0.1.0-rc.1"}
@@ -69,7 +74,8 @@ Phoenix 1.8 app. The build generates `generated_views.js` and copies
 LiveLift source checkout. For custom asset layouts, integrate manually as in
 the [integration guide](docs/phoenix-integration.md).
 
-The generated hook configuration in `assets/js/app.js` is equivalent to:
+Keep the existing `colocatedHooks` import in `assets/js/app.js` and merge the
+LiveLift hook:
 
 ```javascript
 import {createClientHook} from "./live_lift_runtime.js"
@@ -77,7 +83,7 @@ import {views} from "./generated_views.js"
 
 let liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
-  hooks: {LiveLift: createClientHook(views)}
+  hooks: {...colocatedHooks, LiveLift: createClientHook(views)}
 })
 ```
 
