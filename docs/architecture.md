@@ -30,7 +30,3 @@ versioned snapshot. A mounted `@client :local` event updates separate
 transient assigns in the browser and skips LiveView transport entirely. A full
 remount reinitializes those fields from server state.
 See the [sync contract](sync.md) and [native guide](native-livecomponent.md).
-
-The deprecated `client_template` and `defclient` API uses its own server HTML
-renderer and explicit `$server` bridge. Existing consumers can follow the
-[migration diff](liveview-migration-diff.md).

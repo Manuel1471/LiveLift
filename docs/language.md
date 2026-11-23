@@ -9,9 +9,6 @@ nested `params["name"]` reads, and supported chains of `assign/3`,
 synchronous transient display state. Unsupported syntax raises an error
 with a source location. See [the component guide](native-livecomponent.md).
 
-Examples using `client_template`, `$click`, `$server`, or `event.value` describe
-the deprecated API. Native apps use HEEx, `phx-*` bindings and handler params.
-See the [migration guide](liveview-migration-diff.md).
 The exact native handler boundary is listed in the
 [handler matrix](native-handler-matrix.md); unmarked handlers stay on LiveView.
 Marked handlers may call private functions declared in the same component,
@@ -67,24 +64,13 @@ leaves and 64 KiB of UTF-8 keys and values may cross the boundary. Put
 
 | Syntax | Behavior |
 | --- | --- |
-| `{@name}` or `{@item.name}` | Escaped text binding. Collections cannot be displayed directly. |
-| `class="{@tone}"` | Dynamic `class`; also supported: `title`, `aria-label`, `value`. |
-| `$show="visible"` | Keeps the element mounted; sets `hidden` when the field is `false` or `nil`. |
-| `:if={@visible}` | Adds or removes the element with Elixir truthiness. |
-| `:for={item <- @items} :key={item.id}` | Repeats an element for a list. Keys must be unique strings or safe integers. |
-| `$click="action"` | Runs a client action on click. |
-| `$input="action"`, `$change="action"`, `$submit="action"` | Runs a client action for the named DOM event. Submit prevents the browser default. |
-| `checked={@enabled}`, `selected={@selected}` | Boolean attributes on inputs and options. Values must be `true`, `false`, or `nil`. |
-| `<textarea>{@draft}</textarea>` | Uses the browser's native textarea value; bindings are escaped on the server. |
-| `:params={%{id: @item.id}}` | Passes typed parameters to the action in `event.params`. |
-| `$server="event"` | Sends the current local state to the enclosing LiveView's `handle_event/3`. |
-
-Events receive `event.value`, `event.checked`, and `event.params`. Define
-`defclient action(state, event)` to use them. One-argument actions remain valid.
-Components are referenced by their full module name, for example
-`<MyApp.TaskItem item={item} />`. Component props are Elixir expressions from
-the template subset. Components can contain event bindings; their parent view
-owns the actions and state. Components have no slots or independent state yet.
+| `{@name}` or `{@item.name}` | Render an escaped scalar value. |
+| `class={@tone}` | Bind an attribute expression. See the supported attributes above. |
+| `:if={@visible}` | Render the element when the expression is truthy in Elixir. |
+| `:for={item <- @items} id={item.id} :key={item.id}` | Render a list with stable row identity across server and browser renders. |
+| `phx-click="rename" phx-value-id={item.id}` | Pass the row ID as a string in `params["id"]`. |
+| `phx-change="validate"` or `phx-submit="save"` | Use a normal LiveView form binding. Mark a handler only when it fits the client subset. |
+| `checked={@enabled}` or `selected={@selected}` | Render a Boolean attribute from `true`, `false`, or `nil`. |
 
 ### Native click commands
 
@@ -233,7 +219,7 @@ Try the native timer demo at `/native-timer` in the example app.
 
 ### General expressions
 
-`defclient` supports safe integer, finite binary64 float, string, boolean, and `nil` literals;
+Marked handlers support safe integer, finite binary64 float, string, boolean, and `nil` literals;
 atom-keyed maps and lists; field reads; map updates (`%{state | count: ...}`);
 numeric `+`, `-`, `*`, integer-only `rem/2`, and numeric comparisons; `==`, `!=`;
 `if` with `do` and optional `else` (omission returns `nil`); unary `!`;
@@ -263,7 +249,7 @@ counting `Map.keys/1` or `Map.values/1` with `length/1` or `Enum.count/1`;
 `map |> Map.keys() |> Enum.map(&Atom.to_string/1) |> Enum.sort()` for sorted
 names from safe atom-keyed state maps. Bare projections are rejected because
 map iteration order is unspecified. Use an explicitly ordered list when the
-order of values matters. See the [map iteration spike](map-iteration-spike.md).
+order of values matters. See the [map iteration spike](https://github.com/Manuel1471/LiveLift/blob/main/docs/map-iteration-spike.md).
 
 `List.delete/2` removes the first exact match. This includes the distinction
 between integers and floats in nested lists and maps. `List.replace_at/3`
@@ -290,7 +276,7 @@ including U+0085 and excluding U+FEFF. `String.length/1` counts graphemes
 with `Intl.Segmenter`; browsers without it raise an explicit error.
 `String.downcase/1` applies Elixir's context-free Unicode lowercase mapping,
 including `"ΟΣ" -> "οσ"`; JavaScript's whole-string `toLowerCase()` would
-produce `"ος"`. The [Unicode spike](downcase-spike.md) records the full scalar
+produce `"ος"`. The [Unicode spike](https://github.com/Manuel1471/LiveLift/blob/main/docs/downcase-spike.md) records the full scalar
 comparison on the tested runtime. Locale-specific `/2` stays on the server.
 `String.split/1` uses Elixir's whitespace set and omits empty parts.
 `String.split/2` accepts a string or list of nonempty string patterns; a
@@ -298,7 +284,7 @@ single empty string splits at grapheme boundaries and includes both outer
 empty parts. `String.split/3` accepts literal `trim: true/false` and positive
 `parts: n` options (or `:infinity`). For overlapping patterns, the earliest
 and longest match wins. Regex patterns and dynamic options stay on the
-server. See the [split spike](split-spike.md) for whitespace and grapheme
+server. See the [split spike](https://github.com/Manuel1471/LiveLift/blob/main/docs/split-spike.md) for whitespace and grapheme
 details.
 `String.replace/3,4` accepts a string or list of nonempty string patterns,
 a string replacement or a one-argument anonymous callback returning valid
@@ -307,7 +293,7 @@ Matches choose the earliest position and then the longest pattern. `/4`
 supports a literal `global: true/false` option; the default replaces all
 matches. The replacement string is literal, including `$&` and `\\0`.
 Regex patterns, dynamic options, and deprecated `insert_replaced` stay on
-the server. See the [replace spike](replace-spike.md).
+the server. See the [replace spike](https://github.com/Manuel1471/LiveLift/blob/main/docs/replace-spike.md).
 Unsupported calls fail at compile time. Integer-only browser arithmetic fails
 if it would leave JavaScript's safe integer range. Float results must remain finite. A
 float operand produces a float result, and `1 == 1.0` is true, including inside

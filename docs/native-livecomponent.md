@@ -204,6 +204,8 @@ the same form. Both handlers read `params["profile"]["note"]`; the change
 handler shows a local error immediately and the save handler enforces the same
 three-grapheme minimum on the server. The browser keeps the input value and
 reconciles with the authoritative reply.
+### Reconnect and offline actions
+
 The browser shares a 100-action limit between sent and offline actions.
 Offline actions created during a disconnect expire after 30 seconds.
 
@@ -225,6 +227,8 @@ config :live_lift, reconnect_conflict: :discard
 
 The default is `:replay_offline`. The queue survives a transport
 disconnect while the hook stays mounted. Reloading the page clears it.
+### Event limits and reconciliation
+
 Optimistic events accept at most 64 string leaf parameters, nested to four
 segments, and 64 KiB of
 combined UTF-8 key/value content. The browser checks before predicting; the
@@ -263,7 +267,8 @@ each row's label with a flat form using both `phx-change` and `phx-submit`.
 The edit handler uses ordinary `Enum.map/2` and `%{item | label: value}`.
 The hook suppresses the extra browser `change` event after an `input` event,
 so LiveView does not send a second form request with its `_target` metadata.
-Nested form params and checkbox, radio or file changes remain server only.
+Use form-level bindings for bounded nested map parameters. Checkbox, radio
+and file changes stay on the server.
 Place a marked `phx-change` on the form; a marked child input inside a form
 fails compilation with guidance because LiveView's form payload is different.
 The hook targets the stable component root when sending a predicted event, so
@@ -271,11 +276,10 @@ removing the clicked button locally does not cancel its server delivery.
 `/native-counter` runs the opt-in component;
 `/native-counter-server` runs the same render and handlers without LiveLift. These paths are also tested
 in Chromium with delayed responses, consecutive clicks, server-only reset and
-reconnect. This is an early supported subset of the new API, not a claim that
-arbitrary LiveComponents compile to JavaScript.
+reconnect. The [language reference](language.md) lists the supported HEEx and Elixir forms.
 
 
-Apps that use esbuild can [load each island on demand](island-loading-spike.md).
+Apps that use esbuild can [load each island on demand](https://github.com/Manuel1471/LiveLift/blob/main/docs/island-loading-spike.md).
 
 ## Compiler diagnostics
 

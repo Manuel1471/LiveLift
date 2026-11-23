@@ -1,7 +1,6 @@
 # Client language semantics
 
-LiveLift compiles a defined subset of Elixir. The same `defclient` function
-runs as Elixir in tests and as generated JavaScript in the browser. A syntax
+LiveLift compiles a defined subset of Elixir. A marked handler runs as Elixir in parity tests and as generated JavaScript in the browser. A syntax
 form outside this table is unsupported even if it is valid Elixir.
 
 | Area | Contract |
@@ -14,16 +13,16 @@ form outside this table is unsupported even if it is valid Elixir.
 | Private helpers | Marked handlers may call same-module `defp` functions with unguarded clauses that use the bounded case patterns. Arguments are evaluated once and clauses keep source order. A missing clause raises at runtime. Recursion, guarded clauses, and expansion beyond 1,000 calls or 50,000 visited AST nodes fail during compilation. |
 | Maps | Keys in state are safe atoms; JSON sends their string names to JavaScript. A field read and `%{map | key: value}` require the key to exist. `Map.get/2,3` returns `nil` or its fallback for a missing key. |
 | Lists | `++`, `length`, `Enum.map/filter/reject/any?/all?/member?/reverse` are supported with the documented function shapes. List order is stable unless an action changes it. |
-| Strings | `<>` concatenates binaries. Grapheme counting, case mapping, locale-aware comparison and general `String` functions are unsupported. |
+| Strings | `<>` concatenates binaries. Selected `String` operations are available, including grapheme counting and context-free lowercase. See the [language reference](language.md#general-expressions). |
 | Templates | Text and dynamic attributes are HTML-escaped on the server; the browser uses text nodes and DOM attributes. `:if` removes false/nil content. `:for` requires unique string or safe-integer keys within each loop. |
 | Forms | `checked={...}` on input and `selected={...}` on option accept only booleans or `nil`. `<textarea>{@value}</textarea>` renders plain escaped text. The client reconciler updates `checked`, selected options and textarea values. |
 | Native form params | Marked forms accept unique map names up to four segments (`profile[note]`). No arrays, duplicate or prefix-conflicting names, dynamic names, or unsupported controls. At most 64 string leaves and 64 KiB of UTF-8 keys and values. |
-| Server sync | Browser actions own every field except `server_fields`. Server patches must have increasing revisions. On reconnect, a newer server snapshot updates only server-owned fields. |
+| Local actions | Local edits overlay their own display assigns for the life of the island. The server snapshot remains the base for optimistic replay. |
 | Native component predictions | At most 100 marked actions may be pending. Server replies carry a revision, an acknowledged action sequence, and authoritative state. Reconnect resets the local prediction from the server snapshot. |
 
 For unary `+`, the asset compiler checks how its BEAM handles a dynamic
 negative zero. The generated action follows that behavior and preserves
-recognized folded constant results. See the [signed-zero probe](unary-plus-spike.md).
+recognized folded constant results. See the [signed-zero probe](https://github.com/Manuel1471/LiveLift/blob/main/docs/unary-plus-spike.md).
 
 Invalid state, missing fields, arithmetic overflow and unsupported syntax fail
 explicitly. The compiler must reject unsupported source at build time; runtime

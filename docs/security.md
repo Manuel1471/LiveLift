@@ -14,24 +14,17 @@ the original LiveView handler.
 | Browser event to server | Marked handlers receive normal LiveView events. The server validates bounded string params and nested maps and runs the original handler against its own assigns. Per-socket sequence numbers deduplicate marked events. | A client can forge values, event names, and sequence numbers. The app must validate domain rules and authorization. |
 | Server reply to browser | Snapshots are validated and versioned; pending predictions replay after a newer reply. | In-flight events may have reached the server before a disconnect. Recovery retries unacknowledged events on the same instance, where sequences deduplicate them. New offline optimistic actions are queued in memory for up to 30 seconds. A page reload loses that queue. |
 
-The legacy `$server` bridge sends client-owned state as an event payload. Treat
-it as a **proposed value**, validate it in the LiveView handler, and use server
-assigns and authorization checks to decide whether to accept it. The native
-`@client true` path sends event params, not client state, and executes the
-original handler on server-owned assigns. Local actions send zero events
-after mount. Treat any value explicitly submitted from local UI as untrusted
-input to the original LiveView handler.
+Optimistic actions send event parameters and a sequence through LiveView.
+The server executes the handler against its own assigns. A mounted local
+action sends zero events. When a user explicitly submits a value from local
+UI, that value enters the regular LiveView handler as untrusted input.
 
 ## XSS and CSP review
 
-The runtime has two `innerHTML` assignments. Entity decoding uses a detached
-element and a literal value from the compiled app template; the legacy
-string-template mount likewise uses a generated app-owned literal. Neither
-assignment receives state or event data. Dynamic text uses `textContent` or
-text nodes. The runtime and generated actions use no `eval`, `new Function`,
-or inline script generation. This design is compatible with a CSP that does
-not allow `unsafe-eval`; the host app must still configure its own CSP and
-asset loading policy.
+App-owned template literals supply the static markup. Dynamic text is
+written through text nodes or `textContent`. The generated actions use
+ordinary JavaScript functions and are compatible with a CSP that disallows
+`unsafe-eval`. Configure CSP and asset loading in the host application.
 
 Static `href`, `xlink:href`, `src`, `action`, and `formaction` values may be relative or use
 an allowed scheme. Both `href` forms also accept `mailto:` and `tel:`. Schemes hidden
@@ -56,5 +49,4 @@ This is an internal review of the current subset, not an external security
 audit. A seeded corpus compiles 1,000 varied action expressions, checks that
 unsupported forms raise an explicit compiler error, and syntax-checks every
 generated action in Node. It does not cover arbitrary HEEx or all Elixir ASTs.
-The internal LiveView parser dependency, legacy event bridge, offline
-behavior, many-island load, and browser compatibility remain release gates.
+The [production limits](production-readiness.md) describe the verification completed for this release candidate.

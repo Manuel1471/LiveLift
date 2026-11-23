@@ -1,63 +1,53 @@
-# LiveView state contract
+# How state and events move
 
-## Native LiveView and LiveComponent
+A LiveLift island is the region inside an opted-in LiveView or
+LiveComponent. Phoenix renders the initial HTML and supplies the initial
+assigns used by that region. After the hook mounts, LiveLift reconciles
+the island's children. Phoenix continues to own the rest of the page.
 
-`@client true` sends event parameters through LiveView and reconciles the
-optimistic result with a server snapshot. `@client :local` keeps edits in its
-mounted island. Normal server events can receive explicit parameters from
-either mode. The server validates parameters and owns persistence. See the
-[native guide](native-livecomponent.md#local-actions).
+## Choose the event mode
 
-## Deprecated island API
+| Handler | What the user sees | Who owns the result |
+| --- | --- | --- |
+| Unmarked | LiveView sends the event and renders the server result. | The server owns decisions, permissions and persisted data. |
+| `@client true` | The hook applies a prediction immediately. LiveView receives the event and confirms or corrects it. | The server owns the confirmed assigns. |
+| `@client :local` | The mounted hook changes display assigns immediately, with zero LiveView events. | The browser owns those edits for the life of the island. A fresh mount uses server defaults. |
 
-Each legacy island has a single owner for every top-level state field. Fields listed in
-`server_fields` belong to LiveView; every other field belongs to the browser.
+## Follow an optimistic click
 
-```heex
-<LiveLift.View.island
-  id="score"
-  module={MyApp.ScoreView}
-  state={%{count: 0, saved_count: nil}}
-  server_fields={[:saved_count]}
-  server_revision={@score_revision}
-/>
-```
+1. A click on `phx-click="inc"` reaches the mounted hook. LiveLift runs the
+   generated action on its current projection of assigns and updates the
+   visible count.
+2. The hook sends the event name, explicit parameters, and an action
+   sequence through LiveView. Phoenix runs the original `handle_event/3`
+   against the server's socket assigns.
+3. The response identifies the acknowledged sequence and supplies a server
+   snapshot. LiveLift applies the snapshot and reapplies pending predictions
+   in order. If the server count changed independently, the visible value
+   converges to the server's result once the pending events settle.
 
-`defclient` actions may omit server fields. LiveLift carries their latest values
-forward. An action that changes a server field fails before rendering. `$server`
-submits only client-owned fields as `%{"state" => ..., "revision" => ...}`.
-Treat them as a proposed value. Validate both the domain value and the last
-revision observed by the browser before accepting it:
+For example, the browser may show 6 immediately after incrementing a count
+last seen as 5. If another server event has already advanced the count to 7,
+the server applies the increment to 7 and confirms 8. The browser displays 8
+after reconciliation.
 
-```elixir
-def handle_event("save", %{"state" => %{"count" => count}, "revision" => seen}, socket) do
-  if is_integer(count) and count in 0..1_000 and seen == socket.assigns.score_revision do
-    revision = socket.assigns.score_revision + 1
-    socket = assign(socket, score_revision: revision, saved_count: count)
-    {:noreply, LiveLift.Sync.push(socket, "score", revision, %{saved_count: count})}
-  else
-    {:noreply, socket}
-  end
-end
+LiveLift manages the revision and sequence. Keep your usual `phx-*` event
+bindings and handle the application parameters as usual. After reconnect,
+the hook uses a server snapshot to recover pending optimistic actions.
+The offline queue is bounded and lives in memory. Treat confirmed
+persistence as an explicit server operation. See the
+[reconnect options](native-livecomponent.md#reconnect-and-offline-actions).
 
-def handle_event("save", _params, socket), do: {:noreply, socket}
-```
+## Combine local preview with a server save
 
-Keep the revision in the LiveView socket and increment it for every patch to
-the same island. The browser ignores a duplicate or older revision, validates
-the patch, and merges only declared server fields. LiveView's own assigns and
-HTML outside the island can update at the same time. `phx-update="ignore"`
-keeps LiveView from replacing locally edited DOM.
+A local sort can update a `:preview_rows` assign. Keep fields written by
+that action separate from fields read or written by optimistic handlers and
+their timers. If the user chooses a row to save, pass its ID through
+`phx-value-id` on an unmarked event. The server verifies the selection and
+can update a separate `:saved_row` assign. The user's preview order remains
+visible on the same island.
 
-Pass current server-owned values in `state` and the current revision in
-`server_revision` on every render. On remount, the browser starts from that
-snapshot instead of revision zero. When LiveView updates the island's `data-*`
-attributes after reconnect, the hook applies newer server-owned values while
-retaining client-owned fields. A missed event cannot silently roll back a
-newer server revision.
-
-This is an explicit event protocol, not automatic shared state. Each server
-event must validate its input and decide how to handle stale submitted data.
-The `revision` in a submitted event is the last server revision observed by
-that browser; use it for optimistic concurrency checks when writes can race.
-On a full remount, initialize the island from the current server state.
+The [native component guide](native-livecomponent.md#local-actions) covers
+behavior during loading and remounts. The [adoption practices](best-practices.md)
+show how to choose the right boundary for an existing page. See the complete
+[sort and save demo](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/lib/live_lift_demo_web/live/local_actions_live.ex).

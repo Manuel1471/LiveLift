@@ -9,7 +9,7 @@
   timer, and form support.
 - **Installation and assets.** The Mix and Igniter routes, TypeScript
   declarations, copied and npm runtime builds, and version mismatch rejection
-  passed in a generated app using local artifacts. The [asset verification](progress/6-versioned-assets.md)
+  passed in a generated app using local artifacts. The [asset verification](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/6-versioned-assets.md)
   records the commands.
 - **Browser behavior.** The suite exercises reordering, duplicates,
   reconnects, native form events, keyed focus, selected field drafts,
@@ -20,11 +20,11 @@
 - **Operational controls.** Global and per-component `:live_lift` switches
   restore server-only rendering for new mounts. Active clients reload after
   their next synchronized marked event receives the disabled reply. The [security model](security.md) documents the trust
-  boundary, internal XSS review, and legacy `$server` validation.
+  boundary and internal XSS review.
 - **Performance.** The shared hook measured 8,183 bytes gzip against an
-  8 KiB budget. The [native event measurements](progress/6-event-telemetry.md)
+  8 KiB budget. The [native event measurements](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/6-event-telemetry.md)
   record server cost and browser latency for the measured fixture.
-  The [snapshot measurement](progress/unchanged-snapshot-optimization.md)
+  The [snapshot measurement](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/unchanged-snapshot-optimization.md)
   covers browser CPU for duplicate revisions. The local-action demo checks
   that preview events produce no outbound LiveView messages after mount.
 
@@ -36,7 +36,7 @@ pin Phoenix LiveView 1.2.13. A separate non-blocking lane targets LiveView
 `main`. The dependency requirement `~> 1.2.0` declares the intended
 1.2.x range. The library suite also passed locally with LiveView 1.2.0
 on Elixir 1.20.2 and OTP 29, using both parser paths. See the
-[regression report](progress/test-refresh.md). The published subset uses a
+[regression report](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/test-refresh.md). The published subset uses a
 bounded fallback when the internal LiveView template parser is unavailable.
 
 ## Pending
@@ -49,13 +49,12 @@ bounded fallback when the internal LiveView template parser is unavailable.
 - Collect evidence from two real applications in production and at least one
   LiveView cycle with a frozen API before declaring 1.0.
 
-The [roadmap](../ROADMAP.md) tracks the gates in order.
+The [roadmap](https://github.com/Manuel1471/LiveLift/blob/main/ROADMAP.md) tracks the gates in order.
 
 ## Accessibility
 
 Use native buttons for `phx-click` and native form controls for changes and
-submissions. The deprecated API likewise uses native controls for its event
-directives. These controls support keyboard activation. The demo labels its
+submissions. These controls support keyboard activation. The demo labels its
 inputs, exposes changing counts with `aria-live`, and retains the active input
 when keyed rows move. App authors must still give controls accessible names,
 test their own components with assistive technology, and avoid using color
@@ -74,8 +73,7 @@ technology and production deployment are not yet covered.
 
 `mix live_lift.compile` writes a registry source map in eager mode. Split
 mode writes a map for each generated view module. Both embed the original
-Elixir source and map each generated view entry to its native `~H` sigil or
-legacy `client_template` declaration. The consumer test resolves the
+Elixir source and map each generated view entry to its `~H` sigil. The consumer test resolves the
 split native mapping through Node's source-map API. Mapping individual
 action expressions remains pending.
 
@@ -108,5 +106,5 @@ pure interactions that benefit from immediate client response while LiveView
 continues to own server workflows. Benchmark the complete app before making a
 production performance claim.
 
-The [performance and adoption check](performance-and-adoption.md) measures the
+The [performance and adoption check](https://github.com/Manuel1471/LiveLift/blob/main/docs/performance-and-adoption.md) measures the
 bundle cost, a parent LiveView event, and keyed DOM work separately.
