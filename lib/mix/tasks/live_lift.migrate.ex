@@ -413,15 +413,17 @@ defmodule Mix.Tasks.LiveLift.Migrate do
   end
 
   defp render_attr({"$input", {:string, event, _}, meta}, file, actions) do
-    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode in [:value, :none] end),
-           do: Mix.raise("#{file}:#{meta.line}: $input requires a two-argument action #{event}")
+    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode in [:value, :none] end) do
+      Mix.raise("#{file}:#{meta.line}: $input requires a two-argument action #{event}")
+    end
 
     " phx-change=\"#{event}\""
   end
 
   defp render_attr({"$change", {:string, event, _}, meta}, file, actions) do
-    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode in [:value, :none] end),
-           do: Mix.raise("#{file}:#{meta.line}: $change requires a two-argument action #{event}")
+    unless Enum.any?(actions, fn {name, _, mode} -> name == event and mode in [:value, :none] end) do
+      Mix.raise("#{file}:#{meta.line}: $change requires a two-argument action #{event}")
+    end
 
     " phx-change=\"#{event}\""
   end
