@@ -123,6 +123,7 @@ export function withStateInspector(hook, document) {
       const entry = {id, option};
       islands.set(this, entry);
 
+      this.recordLocalState = (next) => record(entry, next);
       let value = this.state;
       Object.defineProperty(this, "state", {
         configurable: true,
@@ -130,7 +131,7 @@ export function withStateInspector(hook, document) {
         get: () => value,
         set(next) {
           value = next;
-          record(entry, next);
+          record(entry, this.visibleLocalState?.() ?? next);
         },
       });
       record(entry, value);

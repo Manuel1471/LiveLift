@@ -5,11 +5,7 @@ defmodule LiveLiftDemoWeb.FormParityLive do
     ~H"""
     <main>
       <h1>Form parity fixture</h1>
-      <LiveLift.View.island
-        id="form-parity"
-        module={LiveLiftDemo.FormParityView}
-        state={%{enabled: true, first: true, second: false, note: "A & <B>"}}
-      />
+      <.live_component module={LiveLiftDemo.FormParityView} id="form-parity" />
     </main>
     """
   end

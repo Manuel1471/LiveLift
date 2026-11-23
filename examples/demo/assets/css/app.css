@@ -103,6 +103,7 @@ h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; }
 .task-list li { border: 1px solid #2d4654; border-radius: 10px; background: #1a2d3a; }
 .task-item { display: flex; align-items: center; gap: 11px; padding: 8px 12px; }
 .task-bullet { color: #aaf3cb; font-size: 20px; }
+.task-item form { display: flex; flex: 1; min-width: 0; }
 .task-item input { flex: 1; padding: 8px 10px; border-color: transparent; background: transparent; font-size: 13px; }
 .task-remove { width: 27px; height: 27px; border: 0; border-radius: 6px; color: #b5cad6; background: #304756; font-size: 20px; line-height: 1; }
 .task-remove:hover { color: white; background: #a04e5a; }

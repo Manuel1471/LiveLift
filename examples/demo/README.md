@@ -20,6 +20,10 @@ Open <http://localhost:4000/local-actions>.
   row updates without disturbing the local order. Reload the page to reset
   the preview.
 
+The [home page](http://localhost:4000/) also uses native LiveComponents.
+Try changing the score locally, triggering a separate server event, and
+saving the selected score. The task list keeps its edits in the browser.
+
 ## Explore native components
 
 | Route | What to try |

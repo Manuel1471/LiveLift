@@ -7,6 +7,8 @@ function __liveLiftLocalActions(hook, writes, validateState, validateParams) {
     return overlay ? {...state, ...overlay} : state;
   }
 
+  hook.visibleLocalState = () => visibleState(hook.state);
+
   hook.render = function (state = this.state, previous = this.state) {
     render.call(this, visibleState(state),
       previous === null || resetLocalDOM ? null : visibleState(previous));
@@ -45,5 +47,6 @@ function __liveLiftLocalActions(hook, writes, validateState, validateParams) {
     for (const field of writes[event]) updated[field] = next[field];
     render.call(this, {...this.state, ...updated}, previous);
     overlay = updated;
+    this.recordLocalState?.(this.visibleLocalState());
   };
 }

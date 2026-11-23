@@ -98,19 +98,19 @@ for (const size of [10, 100, 1000]) {
   const el = document.getElementById("tasks");
   el.dataset.liveLiftModule = "LiveLiftDemo.TaskListView";
   el.dataset.liveLiftState = JSON.stringify({
-    items: Array.from({length: size}, (_, index) => ({id: index + 1, name: `Task ${index + 1}`})),
-    next_id: size + 1, draft: "", has_items: true, empty: false,
+    items: Array.from({length: size}, (_, index) => ({id: String(index + 1), form_id: `edit-task-${index + 1}`, name: `Task ${index + 1}`})),
+    next_id: size + 1, draft: "", empty: false,
   });
   const hook = {...createClientHook(views), el};
   hook.mounted();
-  const button = el.querySelector("[data-live-lift-action='reverse']");
-  button.click();
+  const button = el.querySelector("[phx-click='reverse']");
+  hook.runAction("reverse", button);
   assert.equal(el.querySelectorAll("[data-live-lift-key]").length, size);
   assert.equal(el.querySelector("[data-live-lift-key]").getAttribute("data-live-lift-key"), String(size));
   const samples = [];
   for (let i = 0; i < 50; i++) {
     const start = performance.now();
-    button.click();
+    hook.runAction("reverse", button);
     samples.push(performance.now() - start);
   }
   hook.view.actions.__benchmark_noop = (state) => ({...state});

@@ -23,7 +23,7 @@ test("local state and server patches coexist", async ({page}) => {
 
 test("keyed task editing preserves focus across reorder", async ({page}) => {
   await gotoLiveLift(page, "/");
-  const input = page.locator('#task-list [data-live-lift-key="1"] input');
+  const input = page.locator('#task-list [data-live-lift-key="1"] input[name="value"]');
   await input.fill("Edited in browser");
   await expect(input).toBeFocused();
   await page.getByRole("button", {name: "Reverse order"}).evaluate((button) => button.click());
@@ -318,18 +318,28 @@ test("server HTML and client render produce the same island DOM", async ({page})
   await expect(page.locator("#local-counter .client-panel")).toHaveAttribute("title", "Score & activity");
   await expect(page.locator("#local-counter progress")).toHaveAttribute("title", 'A & B "<demo>"');
   const snapshot = () => page.locator("#local-counter").evaluate((root) => {
-    const project = (node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return node.nodeValue.trim() ? ["text", node.nodeValue] : null;
+    const projectionAttributes = new Set(["phx-r", "data-live-lift-action"]);
+    function projectChildren(node) {
+      const children = [];
+      for (const child of node.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const previous = children.at(-1);
+          if (previous?.[0] === "text") previous[1] += child.nodeValue;
+          else children.push(["text", child.nodeValue]);
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          children.push(project(child));
+        }
       }
-      if (node.nodeType !== Node.ELEMENT_NODE) return null;
+      return children.filter(([type, value]) => type !== "text" || value.trim());
+    }
+    function project(node) {
       const attrs = [...node.attributes]
-        .filter((attr) => !attr.name.startsWith("data-phx-"))
-        .map((attr) => [attr.name, attr.value])
+        .filter(({name}) => !name.startsWith("data-phx-") && !projectionAttributes.has(name))
+        .map(({name, value}) => [name, value])
         .sort(([a], [b]) => a.localeCompare(b));
-      return [node.tagName, attrs, [...node.childNodes].map(project).filter(Boolean)];
-    };
-    return [...root.childNodes].map(project).filter(Boolean);
+      return [node.tagName, attrs, projectChildren(node)];
+    }
+    return projectChildren(root);
   });
   const before = await snapshot();
   await page.getByRole("button", {name: "Reset"}).click();

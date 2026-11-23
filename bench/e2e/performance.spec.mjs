@@ -115,7 +115,7 @@ test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserNam
     button.click();
     const first = rows()[0];
     if (first.getAttribute("data-live-lift-key") !== "1000") throw new Error("Reverse failed");
-    const preservedInput = root.querySelector('[data-live-lift-key="1000"] input');
+    const preservedInput = root.querySelector('[data-live-lift-key="1000"] input[name="value"]');
     const values = [];
     for (let index = 0; index < 25; index += 1) {
       const start = performance.now();
@@ -125,7 +125,7 @@ test("benchmark 1,000 keyed row reversals in Chromium", async ({page, browserNam
     values.sort((a, b) => a - b);
     return {
       medianMs: values[12], p95Ms: values[23], rows: rows().length,
-      preservedInput: root.querySelector('[data-live-lift-key="1000"] input') === preservedInput,
+      preservedInput: root.querySelector('[data-live-lift-key="1000"] input[name="value"]') === preservedInput,
       preservedValue: preservedInput.value,
     };
   });

@@ -99,8 +99,10 @@ test("development inspector bounds history and renders state as text", async ({p
   await expect(page.locator("#inspector-unsafe")).toHaveCount(0);
   await inspector.getByRole("button", {name: "Close inspector"}).click();
 
-  await page.getByRole("button", {name: "+ 2 points"}).evaluate((button) => {
-    for (let index = 0; index < 75; index++) button.click();
+  await page.locator("#local-counter").evaluate((root) => {
+    for (let index = 0; index < 75; index++) {
+      root.querySelector('[phx-click="advance"]').click();
+    }
   });
   await page.getByRole("button", {name: "Inspect LiveLift state"}).click();
   await inspector.getByLabel("Island").selectOption({label: "local-counter"});

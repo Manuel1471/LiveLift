@@ -4,9 +4,15 @@ defmodule LiveLiftDemoWeb.CounterLive do
   def mount(params, _session, socket) do
     task_items =
       if params["bench_rows"] == "1000" do
-        Enum.map(1..1_000, &%{id: &1, name: "Task #{&1}"})
+        Enum.map(
+          1..1_000,
+          &%{id: Integer.to_string(&1), form_id: "edit-task-#{&1}", name: "Task #{&1}"}
+        )
       else
-        [%{id: 1, name: "Write Elixir"}, %{id: 2, name: "Ship a component"}]
+        [
+          %{id: "1", form_id: "edit-task-1", name: "Write Elixir"},
+          %{id: "2", form_id: "edit-task-2", name: "Ship a component"}
+        ]
       end
 
     {:ok,
@@ -58,22 +64,17 @@ defmodule LiveLiftDemoWeb.CounterLive do
           </p>
         </div>
         <div class="panel-grid">
-          <LiveLift.View.island
-            id="local-counter"
+          <.live_component
             module={LiveLiftDemo.ScoreView}
-            state={
-              %{
-                count: 10,
-                step: 2,
-                tone: "regular",
-                title: ~s(A & B "<demo>"),
-                milestone: false,
-                saved_score: @saved_score,
-                server_total: @server_count
-              }
-            }
-            server_fields={[:saved_score, :server_total]}
-            server_revision={@sync_revision}
+            id="local-counter"
+            count={10}
+            step={2}
+            tone="regular"
+            title={~s(A & B "<demo>")}
+            milestone={false}
+            saved_score={@saved_score}
+            server_total={@server_count}
+            sync_revision={@sync_revision}
           />
           <section class="server-panel" aria-label="LiveView server counter">
             <div class="panel-topline">
@@ -114,18 +115,13 @@ defmodule LiveLiftDemoWeb.CounterLive do
             </div>
           </section>
         </div>
-        <LiveLift.View.island
-          id="task-list"
+        <.live_component
           module={LiveLiftDemo.TaskListView}
-          state={
-            %{
-              items: @task_items,
-              next_id: length(@task_items) + 1,
-              draft: "",
-              has_items: true,
-              empty: false
-            }
-          }
+          id="task-list"
+          items={@task_items}
+          next_id={length(@task_items) + 1}
+          draft=""
+          empty={false}
         />
       </section>
 
@@ -137,7 +133,7 @@ defmodule LiveLiftDemoWeb.CounterLive do
         </div><div class="flow-grid">
           <div class="flow-card">
             <span>01</span><strong>Define in Elixir</strong><p>
-              Your app owns the markup and <code>defclient</code> actions.
+              Your app owns the HEEx and <code>handle_event/3</code> callbacks.
             </p>
           </div><div class="flow-card">
             <span>02</span><strong>Compile the client</strong><p>
@@ -145,7 +141,7 @@ defmodule LiveLiftDemoWeb.CounterLive do
             </p>
           </div><div class="flow-card">
             <span>03</span><strong>Bridge when needed</strong><p>
-              Send local state to LiveView with an explicit event.
+              Send selected values to LiveView with a regular event.
             </p>
           </div>
         </div>
@@ -165,24 +161,18 @@ defmodule LiveLiftDemoWeb.CounterLive do
     socket =
       assign(socket, server_count: next_count, server_history: history, sync_revision: revision)
 
-    {:noreply, LiveLift.Sync.push(socket, "local-counter", revision, %{server_total: next_count})}
+    {:noreply, socket}
   end
 
-  def handle_event("save_score", params, socket) do
-    # The browser submits a proposal, not an authoritative state snapshot.
-    count =
-      case params do
-        %{"state" => %{"count" => value}} -> value
-        _ -> nil
-      end
-
-    if is_integer(count) and count >= -1_000 and count <= 1_000 and
-         params["revision"] == socket.assigns.sync_revision do
-      revision = socket.assigns.sync_revision + 1
-      socket = assign(socket, saved_score: count, sync_revision: revision)
-      {:noreply, LiveLift.Sync.push(socket, "local-counter", revision, %{saved_score: count})}
+  def handle_info({:save_score, params}, socket) do
+    with %{"count" => count_text, "revision" => revision_text} <- params,
+         true <- is_binary(count_text) and is_binary(revision_text),
+         {count, ""} when count in -1_000..1_000 <- Integer.parse(count_text),
+         {revision, ""} when revision == socket.assigns.sync_revision <-
+           Integer.parse(revision_text) do
+      {:noreply, assign(socket, saved_score: count, sync_revision: revision + 1)}
     else
-      {:noreply, socket}
+      _ -> {:noreply, socket}
     end
   end
 end
