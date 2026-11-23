@@ -109,6 +109,8 @@ admits up to 32 pending timers per instance; further schedules are acknowledged
 without adding a timer until a slot frees up. Keep computed patches, other
 targets, or custom updates in unmarked server handlers.
 
+## Verify parity
+
 Check a marked handler against the generated JavaScript from your Phoenix app:
 
 ```sh
@@ -136,6 +138,8 @@ every marked event. It also fails if the app contains an opted-in module
 omitted from the file.
 Run it in CI with representative and boundary cases. A finite corpus cannot
 prove parity for every input or replace browser tests.
+
+## Supported handlers and templates
 
 This path accepts a literal `~H` render. For synchronous updates, write a marked
 `handle_event/3` whose body returns `{:noreply, socket}` after one or more

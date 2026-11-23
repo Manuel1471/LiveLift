@@ -1,6 +1,6 @@
 # Migrate a Phoenix LiveComponent in place
 
-Use this guide after [installing LiveLift](phoenix-integration.md). Start
+Use this guide after [adding LiveLift to an existing app](phoenix-integration.md#adopt-livelift-in-an-existing-phoenix-app). Start
 with one frequent interaction that the audit reports as compatible.
 
 ## Audit the existing component

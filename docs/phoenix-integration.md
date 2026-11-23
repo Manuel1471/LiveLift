@@ -1,32 +1,45 @@
 # Add LiveLift to a Phoenix LiveView app
 
-LiveLift 0.1.0-rc.1 is an experimental package targeting Phoenix LiveView
-1.2.x. The local artifacts have passed installation in a fresh Phoenix app.
-Once the release is available on Hex, add this dependency:
+LiveLift 0.1.0-rc.1 is experimental and supports Phoenix LiveView 1.2.x.
+The automatic installer targets the standard Phoenix 1.8 asset layout.
+Choose [a new Phoenix app](#start-a-new-phoenix-app) or
+[an existing Phoenix app](#adopt-livelift-in-an-existing-phoenix-app).
 
-```elixir
-# mix.exs
-{:live_lift, "~> 0.1.0-rc.1"}
+## Start a new Phoenix app
+
+Create a small app with LiveView and the default assets. This example uses
+an in-memory counter. See the [Phoenix generator guide](https://phx-new.hexdocs.pm/1.8.16/Mix.Tasks.Phx.New.html).
+
+```sh
+mix archive.install hex phx_new 1.8.16
+mix phx.new lift_example --no-ecto --no-install
+cd lift_example
 ```
 
-To try the prepared local release before publication, unpack it with
-`mix hex.build --unpack --output /tmp/live_lift_package` from the LiveLift
-checkout. In the Phoenix app, use `{:live_lift, path: "/tmp/live_lift_package"}`.
+[Add the LiveLift dependency](#add-the-dependency) in the new app's
+`mix.exs`, then run the installer from the app root.
 
-Run `mix deps.get` and `mix live_lift.install`. The installer checks the
-standard Phoenix 1.8 colocated hook and both asset aliases before writing.
-It repairs a missing compile step if only one alias was previously integrated;
-an unsupported hook layout fails with an explanation and leaves the files
-unchanged. Follow the [verified migration diff](liveview-migration-diff.md)
-to opt in an existing component. For a new component, keep ordinary LiveView
-syntax and add two opt-in lines:
+```sh
+mix deps.get
+mix live_lift.install
+```
+
+Create `lib/lift_example_web/live/counter_live.ex`.
 
 ```elixir
-defmodule MyAppWeb.Counter do
-  use Phoenix.LiveComponent
+defmodule LiftExampleWeb.CounterLive do
+  use LiftExampleWeb, :live_view
   use LiveLift
 
-  def render(assigns), do: ~H"<button phx-click='inc' phx-target={@myself}>{@count}</button>"
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, :count, 0)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <button type="button" phx-click="inc">Count: {@count}</button>
+    """
+  end
 
   @client true
   def handle_event("inc", _params, socket) do
@@ -35,18 +48,119 @@ defmodule MyAppWeb.Counter do
 end
 ```
 
-Without `use LiveLift` and the marker, this is a normal server component.
-Use `@client :local` for a transient display update that needs no server
-event after mount.
-The [native component guide](native-livecomponent.md) lists the currently
-supported templates and handlers. Run `mix live_lift.audit --path lib/my_app_web`
-to check existing LiveViews and LiveComponents before editing them.
-Each event has a location and either `compatible` or the reason it is blocked.
-The audit checks literal component update timers and LiveView mailbox
-timers, including their `handle_info/2` clauses. It checks each candidate
-as a separate opt-in and reads source without loading app macros. The
-normal compilation, parity checks and browser tests verify the migrated
-component in context.
+In `lib/lift_example_web/router.ex`, add the following route inside the
+existing `scope "/", LiftExampleWeb` that uses the `:browser` pipeline.
+
+```elixir
+live "/counter", CounterLive
+```
+
+Run setup to install the asset tools and build the browser registry, then
+start Phoenix.
+
+```sh
+mix setup
+mix phx.server
+```
+
+Open <http://localhost:4000/counter> and click the button. The count changes
+from 0 to 1 immediately, and LiveView confirms the same value on the server.
+
+## Adopt LiveLift in an existing Phoenix app
+
+1. Check that the app uses LiveView 1.2.x. In an umbrella, work in the app
+   that owns the Phoenix endpoint and builds its browser assets.
+2. [Add the dependency](#add-the-dependency), then run `mix deps.get` and
+   `mix live_lift.install` in the Phoenix app. Review the changes to
+   `mix.exs`, `assets/js/app.js`, and `.gitignore`. If the app uses a
+   custom asset pipeline or hook factory, follow the
+   [manual integration](#manual-asset-integration).
+3. Audit a routed LiveView or stateful LiveComponent. Replace the example
+   path with the existing module's path. The audit reports which handlers
+   can compile and gives a source location when a handler is blocked.
+
+   ```sh
+   mix live_lift.audit --path lib/my_app_web/live/counter_component.ex
+   ```
+
+4. Choose one compatible handler. Add `use LiveLift` after the existing
+   `use` in that module, and put `@client true` immediately before the
+   handler. Keep the HEEx, event bindings, and component mount. For a
+   LiveComponent, keep `phx-target={@myself}` on events that it handles.
+   Save and other unmarked handlers continue through regular LiveView
+   event handling. See the [verified migration diff](liveview-migration-diff.md).
+5. Run `mix assets.build` and exercise the interaction in the browser.
+   Verify that the surrounding page and its server events still work. Add
+   the marked handler to your app's [parity cases](native-livecomponent.md#verify-parity)
+   and keep `mix assets.deploy` in the deployment build. Rerun
+   `mix assets.build` when you edit the opted-in HEEx or handler.
+
+LiveLift compiles the opted-in module's `render/1` along with its marked
+handlers. If the template uses unsupported HEEx, opt in a smaller
+LiveComponent with the markup and events you want to run in the browser.
+
+Use `@client :local` for a transient preview, filter, or sort that should
+stay in the mounted browser. See the
+[three event modes and their state rules](native-livecomponent.md#local-actions).
+To return a handler to ordinary LiveView, remove its marker and rebuild the
+assets. Remove `use LiveLift` from the module if you remove its last marker.
+
+## Add the dependency
+
+Once the release is available on Hex, add this entry to the existing
+`deps/0` list in the Phoenix app's `mix.exs`.
+
+```elixir
+{:live_lift, "~> 0.1.0-rc.1"}
+```
+
+To try the candidate before publication, run
+`mix hex.build --unpack --output /tmp/live_lift_package` from the LiveLift
+checkout, then use this dependency entry in the Phoenix app instead.
+
+```elixir
+{:live_lift, path: "/tmp/live_lift_package"}
+```
+
+## Manual asset integration
+
+LiveLift compiles opted-in modules into a browser registry. Phoenix loads
+that registry using the `LiveLift` hook on the app's existing LiveSocket.
+For custom asset pipelines, wire the same two pieces by hand.
+
+1. In the existing `assets.build` and `assets.deploy` aliases in `mix.exs`,
+   insert `"live_lift.compile --output assets/js/generated_views.js"` before
+   the JavaScript bundler. Keep the app's current asset tasks and their order.
+   LiveLift generates `assets/js/generated_views.js` and
+   `assets/js/live_lift_runtime.js` with their associated source map and type
+   declarations. Add the generated outputs to `.gitignore`.
+
+   ```gitignore
+   /assets/js/generated_views.js
+   /assets/js/generated_views.js.map
+   /assets/js/generated_views.d.ts
+   /assets/js/live_lift_runtime.js
+   /assets/js/live_lift_runtime.d.ts
+   ```
+
+2. Import the generated modules in the JavaScript entry point and add LiveLift
+   to the hook map already passed to LiveSocket. This example uses
+   `assets/js/app.js` and the standard Phoenix colocated hooks. Include any
+   other hooks your app already registers.
+
+   ```javascript
+   import {createClientHook} from "./live_lift_runtime.js"
+   import {views} from "./generated_views.js"
+
+   const liveSocket = new LiveSocket("/live", Socket, {
+     params: {_csrf_token: csrfToken},
+     hooks: {...colocatedHooks, LiveLift: createClientHook(views)},
+   })
+   ```
+
+3. Run `mix assets.build` locally and `mix assets.deploy` for deployment.
+   Apps using npm to provide the runtime can follow the
+   [versioned asset guide](versioned-assets.md).
 
 ## Install with Igniter
 
@@ -122,37 +236,7 @@ defmodule MyAppWeb.ScoreClient do
 end
 ```
 
-In a standard Phoenix 1.8 app, `mix live_lift.install` adds generation
-before the asset bundler in `assets.build` and `assets.deploy` and merges the
-hook with Phoenix's colocated hooks. The command is safe to rerun. For a
-custom app, make these changes manually:
-
-```elixir
-"assets.build": [
-  "compile",
-  "live_lift.compile --output assets/js/generated_views.js",
-  "esbuild my_app"
-],
-"assets.deploy": [
-  "live_lift.compile --output assets/js/generated_views.js",
-  "esbuild my_app --minify",
-  "phx.digest"
-]
-```
-
-The command writes `generated_views.js` and `live_lift_runtime.js` into
-`assets/js`. Ignore both generated files in Git. Merge the hook into the
-existing LiveSocket hooks in `assets/js/app.js`:
-
-```javascript
-import {createClientHook} from "./live_lift_runtime.js"
-import {views} from "./generated_views.js"
-
-const liveSocket = new LiveSocket("/live", Socket, {
-  params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, LiveLift: createClientHook(views)},
-})
-```
+Use the same [asset integration](#manual-asset-integration) for legacy views.
 
 Mount the view in a LiveView template:
 
