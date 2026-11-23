@@ -222,6 +222,10 @@ test("enforces list and total state size limits before mounting", () => {
   assert.throws(() => mount({item: Object.fromEntries(Array.from({length: 1_025}, (_, i) => [`field_${i}`, null]))}),
     /map field limit exceeded/);
   assert.throws(() => mount({text: "é".repeat(524_289)}), /state size limit exceeded/);
+  const text = "é".repeat(524_273);
+  const amount = {$live_lift_float: "-0.0"};
+  assert.doesNotThrow(() => mount({text, amount}));
+  assert.throws(() => mount({text: text + "x", amount}), /state size limit exceeded/);
   assert.throws(() => mount({groups: Array(50).fill({items: Array(1_000).fill(null)})}),
     /state size limit exceeded/);
 });

@@ -34,8 +34,9 @@ def measure(split):
             esbuild, str(folder / "app.js"), "--bundle", "--format=esm", "--splitting",
             "--chunk-names=chunks/[name]-[hash]", "--target=es2022", "--minify",
             "--external:/fonts/*", "--external:/images/*", "--alias:@=.",
+            "--define:LIVE_LIFT_INSPECT=false", "--log-level=warning",
             f"--outdir={folder / 'out'}", f"--metafile={metadata}",
-        ], cwd=assets, env=env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ], cwd=assets, env=env, check=True, stdout=subprocess.DEVNULL)
         outputs = json.loads(metadata.read_text())["outputs"]
         main = next(key for key, info in outputs.items()
                     if key.endswith("/app.js") and info.get("entryPoint"))

@@ -11,7 +11,7 @@ defmodule LiveLift.State do
 
   @spec validate!(map()) :: map()
   def validate!(state) when is_map(state) do
-    validate_map!(state, "state", 0, {0, 0})
+    validate_map!(state, [], 0, {0, 0})
     state
   end
 
@@ -19,7 +19,7 @@ defmodule LiveLift.State do
 
   defp validate_value!(value, path, _depth, budget) when is_binary(value) do
     unless String.valid?(value),
-      do: raise(ArgumentError, "invalid UTF-8 in LiveLift state at #{path}")
+      do: raise(ArgumentError, "invalid UTF-8 in LiveLift state at #{format_path(path)}")
 
     charge!(budget, 1, byte_size(value), path)
   end
@@ -36,41 +36,55 @@ defmodule LiveLift.State do
 
   defp validate_value!(value, path, depth, budget) when is_list(value) and depth < 16 do
     if length(value) > @max_list_length,
-      do: raise(ArgumentError, "LiveLift list length limit exceeded at #{path}")
+      do: raise(ArgumentError, "LiveLift list length limit exceeded at #{format_path(path)}")
 
-    value
-    |> Enum.with_index()
-    |> Enum.reduce(charge!(budget, 1, 0, path), fn {item, index}, acc ->
-      validate_value!(item, "#{path}[#{index}]", depth + 1, acc)
-    end)
+    validate_list!(value, path, depth + 1, charge!(budget, 1, 0, path), 0)
   end
 
   defp validate_value!(value, path, depth, budget) when is_map(value) and depth < 16,
     do: validate_map!(value, path, depth, budget)
 
   defp validate_value!(_value, path, _depth, _budget),
-    do: raise(ArgumentError, "unsupported LiveLift state value at #{path}")
+    do: raise(ArgumentError, "unsupported LiveLift state value at #{format_path(path)}")
 
   defp validate_map!(map, path, depth, budget) do
     if map_size(map) > @max_map_fields,
-      do: raise(ArgumentError, "LiveLift map field limit exceeded at #{path}")
+      do: raise(ArgumentError, "LiveLift map field limit exceeded at #{format_path(path)}")
 
     Enum.reduce(map, charge!(budget, 1, 0, path), fn {key, value}, acc ->
-      unless is_atom(key) and Regex.match?(@key, Atom.to_string(key)) and
-               Atom.to_string(key) not in @reserved do
-        raise ArgumentError, "unsafe LiveLift state key at #{path}: #{inspect(key)}"
+      key_string = if is_atom(key), do: Atom.to_string(key)
+
+      unless key_string && Regex.match?(@key, key_string) && key_string not in @reserved do
+        raise ArgumentError, "unsafe LiveLift state key at #{format_path(path)}: #{inspect(key)}"
       end
 
-      acc = charge!(acc, 0, byte_size(Atom.to_string(key)), path)
-      validate_value!(value, "#{path}.#{key}", depth + 1, acc)
+      acc = charge!(acc, 0, byte_size(key_string), path)
+      validate_value!(value, [key_string | path], depth + 1, acc)
     end)
+  end
+
+  defp validate_list!([], _path, _depth, budget, _index), do: budget
+
+  defp validate_list!([item | rest], path, depth, budget, index) do
+    budget = validate_value!(item, [index | path], depth, budget)
+    validate_list!(rest, path, depth, budget, index + 1)
+  end
+
+  defp format_path(path) do
+    "state" <>
+      (path
+       |> Enum.reverse()
+       |> Enum.map_join(fn
+         index when is_integer(index) -> "[#{index}]"
+         key -> "." <> key
+       end))
   end
 
   defp charge!({nodes, bytes}, more_nodes, more_bytes, path) do
     next = {nodes + more_nodes, bytes + more_bytes}
 
     if elem(next, 0) > @max_nodes or elem(next, 1) > @max_bytes,
-      do: raise(ArgumentError, "LiveLift state size limit exceeded at #{path}")
+      do: raise(ArgumentError, "LiveLift state size limit exceeded at #{format_path(path)}")
 
     next
   end

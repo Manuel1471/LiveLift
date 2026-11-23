@@ -44,7 +44,7 @@ function validateValue(value, path, depth, budget) {
     if (typeof text !== "string" || !FLOAT_TEXT.test(text) || !Number.isFinite(Number(text))) {
       throw new Error(`Invalid LiveLift float at ${path}`);
     }
-    charge(budget, 1, encoder.encode(text).length + 16, path);
+    charge(budget, 1, text.length + 16, path);
     return;
   }
   if (depth >= 16) throw new Error(`Unsupported LiveLift state value at ${path}`);
@@ -62,7 +62,7 @@ function validateValue(value, path, depth, budget) {
       if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key)) {
         throw new Error(`Unsafe LiveLift state key at ${path}: ${key}`);
       }
-      charge(budget, 0, encoder.encode(key).length, path);
+      charge(budget, 0, key.length, path);
       validateValue(item, `${path}.${key}`, depth + 1, budget);
     }
     return;
@@ -209,7 +209,7 @@ function validateEventParams(params, depth = 0, budget = {fields: 0, bytes: 0}) 
     if (!SAFE_KEY.test(key) || RESERVED_KEYS.has(key) || key === "_live_lift_seq") {
       throw new Error(`Unsafe LiveLift event parameter: ${key}`);
     }
-    budget.bytes += encoder.encode(key).length;
+    budget.bytes += key.length;
     if (typeof value === "string") {
       budget.fields += 1;
       budget.bytes += encoder.encode(value).length;

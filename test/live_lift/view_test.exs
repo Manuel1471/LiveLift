@@ -95,6 +95,21 @@ defmodule LiveLift.ViewTest do
     end
   end
 
+  test "keeps exact byte limits and reports nested validation paths" do
+    text = String.duplicate("é", 524_273)
+    state = %{text: text, amount: -0.0}
+
+    assert LiveLift.State.validate!(state) === state
+
+    assert_raise ArgumentError, ~r/state size limit exceeded/, fn ->
+      LiveLift.State.validate!(%{state | text: text <> "x"})
+    end
+
+    assert_raise ArgumentError, "invalid UTF-8 in LiveLift state at state.items[1].label", fn ->
+      LiveLift.State.validate!(%{items: [%{label: "valid"}, %{label: <<255>>}]})
+    end
+  end
+
   test "accepts browser-safe primitive state" do
     html =
       render_component(&LiveLift.View.island/1,
