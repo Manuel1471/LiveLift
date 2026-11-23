@@ -31,7 +31,7 @@ LiveLift: LIVE_LIFT_INSPECT && new URLSearchParams(window.location.search).get("
 Add `--define:LIVE_LIFT_INSPECT=false` to the default esbuild profile. Append
 `--define:LIVE_LIFT_INSPECT=true` to the development invocation and watcher
 only. Keep the deployment invocation on the default false definition.
-The [demo entry point](../examples/demo/assets/js/app.js) imports the same
+The [demo entry point](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/assets/js/app.js) imports the same
 module using a checkout-relative path. The deployed inspector test checks
 the digested JavaScript and verifies that the development query has no
 effect on the deployed page.

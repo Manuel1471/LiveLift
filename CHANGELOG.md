@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-rc.1
+
+- Skip decoding unchanged authoritative snapshots during LiveView hook updates.
 
 - Run transient native LiveView actions without a server event using `@client :local`.
 
@@ -149,7 +151,7 @@
 - Preserve Phoenix's used-field markers for optimistic changeset forms.
 - Read displayed values, field usage, and error messages from native changeset forms in marked handlers.
 
-## 0.1.0-rc.1 (prepared, not published)
+### Initial experimental API
 
 - Initial experimental client templates, actions, keyed lists and app-defined components.
 - Explicit LiveView event bridge with versioned server patches.

@@ -64,7 +64,7 @@ defmodule LiveLift.Component.Compiler do
     if String.contains?(reason, " (E052):") do
       raise ArgumentError,
             "#{file}:#{line}: unsupported @client handler: #{reason} " <>
-              "Remove @client true to move it to a server handler."
+              "Remove the @client marker to move it to a server handler."
     end
 
     Diagnostic.error!("E052", file, line, "unsupported @client handler: #{reason}")

@@ -9,7 +9,7 @@ with one frequent interaction that the audit reports as compatible.
 mix live_lift.audit --path lib/consumer_lift_web/live/counter_component.ex
 ```
 
-In the [server-side counter fixture](../test/integration/fixtures/counter_component.ex),
+In the [server-side counter fixture](https://github.com/Manuel1471/LiveLift/blob/main/test/integration/fixtures/counter_component.ex),
 `inc` updates the count, `preview` schedules a label update, and `save`
 uses the current server count. In your app, use the path to the component
 you want to migrate.
@@ -65,7 +65,7 @@ Keep the parity command in CI. Use `mix assets.deploy` for production
 assets. To return this component to server mode, remove its opt-in
 lines and rebuild the assets.
 
-The [Phoenix consumer check](../test/integration/phoenix_consumer.sh)
+The [Phoenix consumer check](https://github.com/Manuel1471/LiveLift/blob/main/test/integration/phoenix_consumer.sh)
 creates a separate app, runs the server fixture, and applies the exact
 diff from this page. It verifies the counter and its server save again
 after migration, along with parity and both asset aliases.

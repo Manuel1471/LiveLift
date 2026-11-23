@@ -1,47 +1,32 @@
 # LiveLift, LiveView, and Hologram
 
-LiveLift lets one Phoenix LiveView page contain a browser-owned view defined in
-Elixir. It compiles a restricted set of `defclient` expressions and template
-bindings to JavaScript. A `phx-update="ignore"` boundary keeps that view's DOM
-out of LiveView's normal patching. An explicit `$server` binding can send the
-local state to `handle_event/3`.
+LiveLift extends an existing LiveView with selected Elixir interactions in the
+browser. Add `use LiveLift` to a routed LiveView or stateful LiveComponent and
+mark a supported handler. Keep your app's HEEx, event names, and server logic.
 
-| Aspect | Phoenix LiveView | Hologram | LiveLift today |
+| Aspect | Phoenix LiveView | LiveView with LiveLift | Hologram |
 | --- | --- | --- | --- |
-| Main runtime | Elixir on the server; browser receives DOM updates | Elixir application code compiled for the browser | LiveView on the server plus selected Elixir client views compiled to JavaScript |
-| Browser interactions | Usually events sent to the server; LiveView JS commands and hooks also run locally | Client-side component and page runtime | `defclient` actions update a local island immediately |
-| Templates | HEEx | `~HOLO` | `client_template` with a small set of bindings |
-| Server communication | Built into LiveView events | Hologram's own server interaction model | Explicit `$server` event sends local state to LiveView |
-| Adoption | Phoenix application | Hologram application architecture | Add a package and mount an island inside an existing LiveView |
+| Where UI state lives | Server assigns drive the LiveView. JS commands and hooks can maintain browser state. | LiveView owns shared state. Opted-in islands may have transient browser assigns. | Pages and components maintain UI state in the browser after initial server rendering. |
+| Local Elixir | App handlers ordinarily run on the server. | `@client :local` runs a supported handler in the browser without a LiveView event after mount. | Actions implement browser behavior and can trigger server commands. |
+| Server work | Ordinary `handle_event/3` and LiveView lifecycle callbacks. | Unmarked handlers stay on LiveView. `@client true` predicts locally and confirms through LiveView. | Commands handle server work and may trigger browser actions. |
+| Adoption | Use Phoenix LiveView to build the page. | Opt in a compatible region and run the LiveLift asset compiler. | Build pages and components using Hologram's application model on Phoenix. |
 
-## What works
+See Hologram's [introduction](https://hologram.page/docs/introduction),
+[architecture](https://hologram.page/docs/architecture),
+[actions](https://hologram.page/docs/actions), and
+[commands](https://hologram.page/docs/commands).
 
-- The app authors its own markup and actions in Elixir. LiveLift does not ship
-  prefabricated UI components for those interactions.
-- The server renders the first HTML with escaped state values. The browser
-  keeps those nodes on mount and handles later local actions without a round
-  trip.
-- The app can deliberately send local state to a LiveView event. The demo
-  verifies that a server update does not reset the local island.
-- Unsupported client expressions fail at compile time instead of silently
-  falling back to server execution.
+## What changes in an existing app
 
-## Tradeoffs and current limits
+A list can reverse its preview with `@client :local`, update a shared count
+with `@client true`, and persist a selected row with an unmarked handler.
+Phoenix still serves the initial HTML, handles navigation and receives the
+app's explicit server events. The browser owns the DOM inside the island
+boundary and discards transient local edits on a full remount.
+See the [native guide](native-livecomponent.md#local-actions).
 
-- The compiler covers only a small, explicit subset of Elixir. It supports
-  keyed lists, conditional nodes, and presentation components, but does not
-  compile arbitrary functions, dependencies, processes, or full HEEx. The
-  exact subset is in the [language reference](language.md).
-- State can contain JSON-safe nested maps and lists. The client and server do not
-  share one automatically synchronized state store. A server event is a
-  deliberate transfer, and the server must validate its payload.
-- `phx-update="ignore"` assigns DOM ownership to the client island. LiveView
-  cannot patch its descendants in the normal way. Remounting loses local state.
-- JavaScript is added to the asset bundle. There are two runtimes to debug,
-  and the current implementation has no source maps or benchmark evidence.
-- Hologram has a broader compiler and client runtime. LiveLift is an
-  incremental extension experiment for LiveView, not a Hologram replacement.
-
-The main benefit is selective client behavior inside an existing LiveView
-application. The main engineering cost is maintaining matching Elixir and
-JavaScript semantics while keeping ownership and state flow explicit.
+LiveLift adds generated JavaScript and limits which HEEx and Elixir forms can
+run in the browser. Check the [language reference](language.md) before opting
+in a region. [Production limits](production-readiness.md) explain source-map
+granularity and what the published benchmarks measure. Compare the same app
+workload before drawing conclusions about overall performance.

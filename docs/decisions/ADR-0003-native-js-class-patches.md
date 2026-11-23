@@ -20,6 +20,6 @@ its template classes.
 The compiler admits literal commands and simple descendant selectors.
 Transitions, delayed click bindings and selectors outside the source
 element are beyond this increment. The browser comparison in
-[js_commands_spike.spec.mjs](../../bench/e2e/js_commands_spike.spec.mjs)
+[js_commands_spike.spec.mjs](https://github.com/Manuel1471/LiveLift/blob/main/bench/e2e/js_commands_spike.spec.mjs)
 checks the observed behavior against LiveView directly. Rerun that
 comparison when upgrading the supported version of LiveView.

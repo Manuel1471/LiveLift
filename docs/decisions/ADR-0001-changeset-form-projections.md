@@ -31,6 +31,6 @@ envelope and existing limits stay the same.
 
 ## Evidence
 
-The [Elixir/Node corpus](../../bench/changeset_parity.exs) and
-[browser corpus](../../bench/e2e/changeset_parity.spec.mjs) compare the results
+The [Elixir/Node corpus](https://github.com/Manuel1471/LiveLift/blob/main/bench/changeset_parity.exs) and
+[browser corpus](https://github.com/Manuel1471/LiveLift/blob/main/bench/e2e/changeset_parity.spec.mjs) compare the results
 with Ecto and Phoenix. [E052](../errors/E052.md) records the compiler boundary.

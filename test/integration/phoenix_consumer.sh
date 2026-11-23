@@ -81,6 +81,8 @@ defmodule ConsumerLiftWeb.MailboxLive do
   def render(assigns) do
     ~H"""
     <button phx-click="preview">{@label}</button>
+    <button phx-click="toggle_preview">Preview</button>
+    <span :if={@preview_visible}>Local</span>
     """
   end
 
@@ -88,6 +90,11 @@ defmodule ConsumerLiftWeb.MailboxLive do
   def handle_event("preview", _params, socket) do
     Process.send_after(self(), :ready, 50)
     {:noreply, socket}
+  end
+
+  @client :local
+  def handle_event("toggle_preview", _params, socket) do
+    {:noreply, update(socket, :preview_visible, &(&1 == false))}
   end
 
   def handle_info(:ready, socket) do
@@ -107,7 +114,8 @@ mailbox = "ConsumerLiftWeb.MailboxLive"
 cases = [
     {"module": counter, "event": "inc", "state": {"count": 9007199254740990, "saved": None}},
     {"module": counter, "event": "preview", "state": {"count": 0, "saved": "Déjà"}},
-    {"module": mailbox, "event": "preview", "state": {"label": None}},
+    {"module": mailbox, "event": "preview", "state": {"label": None, "preview_visible": False}},
+    {"module": mailbox, "event": "toggle_preview", "state": {"label": None, "preview_visible": False}},
 ]
 variants = {
     "live_lift_cases.json": cases,
@@ -283,7 +291,7 @@ PYTHON
   LIVE_LIFT_MIGRATION_BASELINE=0 mix test test/consumer_lift_web/live/counter_live_test.exs
   printf '%s\n' 'Verified the documented migration diff before and after opt-in.'
   mix live_lift.test --cases test/live_lift_cases.json >parity.log
-  rg -q '3 parity cases passed across 2 modules' parity.log
+  rg -q '4 parity cases passed across 2 modules' parity.log
   if mix live_lift.test --cases test/missing_event.json >missing-event.log 2>&1; then
     echo 'Expected parity to fail for a missing marked event' >&2
     exit 1
@@ -309,7 +317,7 @@ end
 EOF
   mix live_lift.audit --path unsupported_clock.ex >unsupported-audit.log
   rg -q 'unsupported_clock.ex:6: unsupported @client handler: unsupported client expression: System.monotonic_time\(\) \(E056\)' unsupported-audit.log
-  rg -q 'remove @client true.*docs/errors/E056.md' unsupported-audit.log
+  rg -q 'remove the @client marker.*docs/errors/E056.md' unsupported-audit.log
   python3 - <<'PYTHON'
 from pathlib import Path
 
@@ -323,10 +331,11 @@ PYTHON
     exit 1
   fi
   rg -q 'unsupported_clock.ex:8: unsupported @client handler: unsupported client expression: System.monotonic_time\(\) \(E056\)' unsupported-compile.log
-  rg -q 'remove @client true.*docs/errors/E056.md' unsupported-compile.log
+  rg -q 'remove the @client marker.*docs/errors/E056.md' unsupported-compile.log
   rm lib/consumer_lift_web/live/unsupported_clock.ex
   printf '%s\n' 'Verified the same actionable diagnostic in audit and compilation.'
   mix assets.build
+  rg -q "function __liveLiftLocalActions" assets/js/generated_views.js
   mix assets.deploy
   if [ "$igniter_mode" = "1" ] || [ -n "$registry_version" ]; then
     sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets" "$registry_version"

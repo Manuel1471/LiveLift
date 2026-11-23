@@ -13,14 +13,20 @@
   records the commands.
 - **Browser behavior.** The suite exercises reordering, duplicates,
   reconnects, native form events, keyed focus, selected field drafts,
-  and the development inspector in Chromium, Firefox, and WebKit.
+  and the development inspector in Chromium, Firefox, and WebKit. The
+  candidate passed 246 browser tests and 12 selected tests with deployed
+  assets. The 30 opt-in benchmark or spike cases were skipped in the
+  default browser run.
 - **Operational controls.** Global and per-component `:live_lift` switches
-  restore server-only rendering for new mounts. Active clients reload on their
-  next marked event. The [security model](security.md) documents the trust
+  restore server-only rendering for new mounts. Active clients reload after
+  their next synchronized marked event receives the disabled reply. The [security model](security.md) documents the trust
   boundary, internal XSS review, and legacy `$server` validation.
-- **Performance.** The shared hook measured 8,179 bytes gzip against an
+- **Performance.** The shared hook measured 8,183 bytes gzip against an
   8 KiB budget. The [native event measurements](progress/6-event-telemetry.md)
   record server cost and browser latency for the measured fixture.
+  The [snapshot measurement](progress/unchanged-snapshot-optimization.md)
+  covers browser CPU for duplicate revisions. The local-action demo checks
+  that preview events produce no outbound LiveView messages after mount.
 
 ## Compatibility
 
@@ -47,9 +53,9 @@ The [roadmap](../ROADMAP.md) tracks the gates in order.
 
 ## Accessibility
 
-Event directives require native controls: `$click` and `$server` on buttons,
-`$input` and `$change` on form controls, and `$submit` on forms. These controls
-support keyboard activation without a custom key handler. The demo labels its
+Use native buttons for `phx-click` and native form controls for changes and
+submissions. The deprecated API likewise uses native controls for its event
+directives. These controls support keyboard activation. The demo labels its
 inputs, exposes changing counts with `aria-live`, and retains the active input
 when keyed rows move. App authors must still give controls accessible names,
 test their own components with assistive technology, and avoid using color

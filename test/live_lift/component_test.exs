@@ -696,7 +696,7 @@ defmodule LiveLift.ComponentTest do
       """
 
       assert_raise ArgumentError,
-                   ~r/changeset.ex:6: unsupported @client handler: unsupported client changeset:.*#{Regex.escape(error)}.*\(E052\).*remove @client true.*server.*docs\/errors\/E052.md/is,
+                   ~r/changeset.ex:6: unsupported @client handler: unsupported client changeset:.*#{Regex.escape(error)}.*\(E052\).*remove the @client marker.*server.*docs\/errors\/E052.md/is,
                    fn -> Code.compile_string(source, "changeset.ex") end
     end
   end
@@ -763,7 +763,7 @@ defmodule LiveLift.ComponentTest do
       """
 
       assert_raise ArgumentError,
-                   ~r/matrix.ex:6: unsupported @client handler: unsupported client expression:.*\(E056\).*remove @client true to move it to a server handler.*docs\/errors\/E056.md/s,
+                   ~r/matrix.ex:6: unsupported @client handler: unsupported client expression:.*\(E056\).*remove the @client marker to move it to a server handler.*docs\/errors\/E056.md/s,
                    fn -> Code.compile_string(source, "matrix.ex") end
     end
 

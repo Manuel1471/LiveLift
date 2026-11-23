@@ -87,7 +87,7 @@ cd bench
 LIVE_LIFT_BENCH=1 npm run e2e -- --project=chromium --grep 'benchmark native component click latency'
 ```
 
-The [browser probe](../bench/e2e/support.mjs) starts the clock just before
+The [browser probe](https://github.com/Manuel1471/LiveLift/blob/main/bench/e2e/support.mjs) starts the clock just before
 dispatching the click in the page. It watches the counter's DOM and the
 optimistic acknowledgment, and returns only elapsed times. For each CPU
 profile, the benchmark discards five warmups per variant and interleaves

@@ -1,14 +1,17 @@
 # Supported client language
 
-LiveLift compiles a deliberately limited subset of Elixir. A module uses
-`LiveLift.Client` for an island view or `LiveLift.Client.Component` for a
-presentation component inside a view. Both define a literal `client_template`.
-Unsupported syntax raises an error during compilation with a source location.
-The native LiveComponent opt-in currently translates literal `~H`, static
-`phx-click`, `phx-change`, `phx-submit`, `phx-value-*`,
-`phx-target={@myself}`, bounded nested `params["name"]` reads, and one `assign/3` or
-`update/3` inside a marked `handle_event/3`. See
-[the component guide](native-livecomponent.md).
+LiveLift compiles a bounded subset of Elixir in a routed LiveView or
+LiveComponent. Its native API accepts literal `~H`, static `phx-click`,
+`phx-change`, `phx-submit`, `phx-value-*`, `phx-target={@myself}`, bounded
+nested `params["name"]` reads, and supported chains of `assign/3`,
+`update/3`, and `assign_new/3` in a marked `handle_event/3`. Use
+`@client true` for optimistic synchronization and `@client :local` for
+synchronous transient display state. Unsupported syntax raises an error
+with a source location. See [the component guide](native-livecomponent.md).
+
+Examples using `client_template`, `$click`, `$server`, or `event.value` describe
+the deprecated API. Native apps use HEEx, `phx-*` bindings and handler params.
+See the [migration guide](liveview-migration-diff.md).
 The exact native handler boundary is listed in the
 [handler matrix](native-handler-matrix.md); unmarked handlers stay on LiveView.
 Marked handlers may call private functions declared in the same component,
@@ -89,7 +92,7 @@ In `phx-click`, use literal, fully qualified `Phoenix.LiveView.JS` calls to
 `focus`, `focus_first`, `add_class`, `remove_class`, or `toggle_class`.
 Use the bound element or select descendants with `to: {:inner, "#id"}`
 or `to: {:inner, ".class"}`. Pipes run in native LiveView order, with up to
-eight calls. The [native counter fixture](../examples/demo/lib/live_lift_demo_web/live/native_counter_component.ex)
+eight calls. The [native counter fixture](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/lib/live_lift_demo_web/live/native_counter_component.ex)
 uses these same bindings.
 
 Phoenix executes the commands. A class effect stays on its target while
@@ -112,7 +115,7 @@ to 32 characters, and also accepts underscores. The namespaces `phx`,
 The command supports the bound element or a simple literal `{:inner, ...}`
 selector. It can share a pipe with focus commands. Write class commands in
 a separate binding. App code can listen on the target or during the capture
-phase, as in the [demo's dialog listener](../examples/demo/assets/js/app.js).
+phase, as in the [demo's dialog listener](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/assets/js/app.js).
 The native event includes `detail.dispatcher`.
 
 ### Optional form drafts
@@ -138,7 +141,7 @@ signed-in session and the record. Scopes use 1 to 128 ASCII letters, digits,
 underscores or hyphens. For instance, a server-generated digest of the
 session and record IDs can be used. Form IDs and field names are bounded
 to 128 characters. Keep sensitive fields outside the opt-in. The
-[native demo](../examples/demo/lib/live_lift_demo_web/live/native_form_component.ex)
+[native demo](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/lib/live_lift_demo_web/live/native_form_component.ex)
 uses a synthetic scope.
 
 LiveLift stores one versioned record per field in `sessionStorage`. A
@@ -193,7 +196,7 @@ fully qualified `Phoenix.Component.to_form/2`, with literal `:action`,
 `Enum.map(form[:field].errors, fn {message, opts} -> ... end)` can return
 safe values computed from the message and `Keyword.get(opts, :count)`.
 This preserves Phoenix's error order and suppresses form errors for a
-`nil` or `:ignore` action. See the [compiled parity fixture](../bench/changeset_parity.exs)
+`nil` or `:ignore` action. See the [compiled parity fixture](https://github.com/Manuel1471/LiveLift/blob/main/bench/changeset_parity.exs)
 and [E052](errors/E052.md) for the rejection boundary.
 
 For forms with a marked handler that reads `used_input?/1`, LiveLift adds

@@ -23,13 +23,13 @@ time or production latency.
 
 ## Result
 
-The [server test](../examples/demo/test/live_lift_demo_web/live/event_telemetry_test.exs)
+The [server test](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/test/live_lift_demo_web/live/event_telemetry_test.exs)
 saw the same Phoenix component span on both routes. Two increments on
 the server-only component produced two spans. On the opted-in route,
 Phoenix's span contains LiveLift's wrapper duration. The native root
 LiveView span also reports its event and duration.
 
-The [browser test](../bench/e2e/event_telemetry.spec.mjs) held the counter
+The [browser test](https://github.com/Manuel1471/LiveLift/blob/main/bench/e2e/event_telemetry.spec.mjs) held the counter
 frame before delivery. The DOM count changed while the acknowledgment
 sequence was still zero in Chromium, Firefox and WebKit. The probe
 completed after the frame was forwarded and Phoenix acknowledged it.

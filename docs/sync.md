@@ -1,6 +1,16 @@
 # LiveView state contract
 
-Each island has a single owner for every top-level state field. Fields listed in
+## Native LiveView and LiveComponent
+
+`@client true` sends event parameters through LiveView and reconciles the
+optimistic result with a server snapshot. `@client :local` keeps edits in its
+mounted island. Normal server events can receive explicit parameters from
+either mode. The server validates parameters and owns persistence. See the
+[native guide](native-livecomponent.md#local-actions).
+
+## Deprecated island API
+
+Each legacy island has a single owner for every top-level state field. Fields listed in
 `server_fields` belong to LiveView; every other field belongs to the browser.
 
 ```heex

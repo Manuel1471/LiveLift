@@ -26,6 +26,14 @@ El formato de las respuestas sigue siendo el mismo. El
 [evidencia comparativa](docs/progress/state-validation-optimization.md)
 registran la mejora y el trabajo pendiente sobre el costo de las respuestas.
 
+La versión candidata incluye `@client :local` para acciones de interfaz que
+no requieren enviar un evento a LiveView. El [demo](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/README.md)
+combina una lista local, una acción optimista y una selección guardada por
+el servidor. El hook también omite la decodificación de snapshots con la
+misma revisión y confirmación, fuera del flujo de recuperación. La
+[medición](docs/progress/unchanged-snapshot-optimization.md) registra el
+resultado y el presupuesto de assets.
+
 La revisión de pruebas del 22 de noviembre de 2026 reforzó la cobertura
 de reconexión, debounce, instalación y mapas de origen. Los
 [resultados de regresión](docs/progress/test-refresh.md) y
@@ -70,7 +78,7 @@ revisión cruzada y las apps piloto, se verifican por separado.
 1. **LiveView-shaped.** Nada de sintaxis nueva donde LiveView ya tiene una (`~H`,
    `phx-*`, `:if`, `:for`, `attr`/`slot`, `handle_event/3`, `assign`/`update`).
 2. **No tocar LiveView.** Solo API pública, hooks y eventos. Sin forks ni parches.
-3. **Presupuesto de conceptos nuevos:** idealmente `use LiveLift` y `@client true`.
+3. **Presupuesto de conceptos nuevos:** `use LiveLift` y una marca `@client` por handler admitido.
 4. **Reversible.** Subir o bajar de nivel es añadir o quitar una marca.
 5. **El servidor es la autoridad.** Nunca acepta estado del cliente, solo parámetros
    que valida como cualquier `handle_event`.
@@ -84,7 +92,7 @@ revisión cruzada y las apps piloto, se verifican por separado.
 | 0 | Nada (LiveView puro) | Estado actual de la app |
 | 1 | Comandos `JS` y hooks | Ya existe en LiveView |
 | 2 | Un handler con predicción optimista | `@client true` sobre `handle_event` |
-| 3 | Un componente con estado local | `@client` en el componente |
+| 3 | Un handler con cambios locales en la isla | `@client :local` sobre `handle_event` |
 | 4 | Una región con varios componentes, contexto y navegación local | Post-1.0 |
 | 5 | Página completa cliente-primero, datos locales y offline | Post-1.0, opcional |
 
@@ -207,7 +215,7 @@ El subconjunto inicial ya acepta patrones anidados como
 `%{"profile" => %{"note" => note}}` y cadenas
 de `assign/update`, tanto por pipe como por llamadas anidadas. La matriz
 documenta qué patrones de handlers y callbacks de `assign_new` quedan en el
-servidor. El módulo `LiveLift.Client.IR` baja pipes a llamadas y representa
+servidor. El módulo [LiveLift.Client.IR](https://github.com/Manuel1471/LiveLift/blob/main/lib/live_lift/client/ir.ex) baja pipes a llamadas y representa
 cada `if` con sus dos ramas antes de emitir JavaScript. Distingue condiciones
 booleanas de valores que requieren las reglas de verdad de Elixir. El
 compilador mantiene el diagnóstico del handler con archivo y línea.
@@ -639,7 +647,7 @@ compartido quedó en 8,179 bytes gzip.
   y [evidencia](docs/progress/6-versioned-assets.md).
 - **En espera:** Publicación humana y prueba de instalación desde Hex y
   npm. El consumidor público está preparado y Hex aún no encuentra el
-  paquete. [Procedimiento de publicación](docs/release.md).
+  paquete. [Procedimiento de publicación](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md).
 
 ## Fase 7: Seguridad y operación (4 semanas, v0.9)
 

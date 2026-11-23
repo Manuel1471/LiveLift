@@ -9,7 +9,7 @@ in the browser without a server event once the hook mounts.
 
 ## Run the browser demo
 
-The [Phoenix demo](examples/demo/README.md) contains native LiveComponents and
+The [Phoenix demo](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/README.md) contains native LiveComponents and
 legacy client views inside a regular LiveView. From `examples/demo`, run `mix setup` and
 `mix phx.server`, then visit <http://localhost:4000>.
 
@@ -33,7 +33,7 @@ covers TypeScript and the optional npm runtime.
 The experimental release has passed installation from local artifacts.
 Public installation awaits publication of `0.1.0-rc.1`. See the
 [verified and pending items](docs/production-readiness.md) and
-[release instructions](docs/release.md).
+[release instructions](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md).
 
 Once published, add the Hex dependency to your app's `mix.exs`:
 
@@ -97,8 +97,8 @@ a LiveView template:
 ```
 
 LiveLift creates the `phx-update="ignore"` boundary for the opted-in component.
-Marked events predict locally, travel through the normal LiveView channel, and
-converge on the server result. Unmarked events stay on the server. The
+`@client true` predicts and confirms through LiveView. `@client :local` updates
+the mounted island in the browser. Unmarked events stay on the server. The
 [native component guide](docs/native-livecomponent.md) describes the current
 language subset and compile-time failures. Use `mix live_lift.audit` before
 opting in a larger component.

@@ -35,7 +35,9 @@ defmodule MyAppWeb.Counter do
 end
 ```
 
-Without `use LiveLift` and `@client true`, this is a normal server component.
+Without `use LiveLift` and the marker, this is a normal server component.
+Use `@client :local` for a transient display update that needs no server
+event after mount.
 The [native component guide](native-livecomponent.md) lists the currently
 supported templates and handlers. Run `mix live_lift.audit --path lib/my_app_web`
 to check existing LiveViews and LiveComponents before editing them.

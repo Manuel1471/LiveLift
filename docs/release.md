@@ -1,6 +1,6 @@
 # Publish the experimental release
 
-Release `0.1.0-rc.1` is a matching pair of public packages. The Hex package
+Release `0.1.0-rc.1` ships as a matching pair of packages. The Hex package
 `live_lift` contains the compiler and the default copied runtime. The npm
 package `live-lift-assets` supplies the same hook and TypeScript declarations
 for apps that use npm. A fresh Phoenix app passed both local package paths.
@@ -12,16 +12,19 @@ From the verified LiveLift checkout, confirm that `mix.exs` and
 `assets/package.json` use the same version, then run the local checks.
 
 ```sh
-mix hex.publish --dry-run
+mix docs --warnings-as-errors
+mix hex.publish --dry-run --yes
 (cd assets && npm pack)
 ```
 
 The npm command creates `assets/live-lift-assets-0.1.0-rc.1.tgz`. Use that
 reviewed tarball for the npm release.
 
-Build both artifacts from the same commit. A change to the browser hook
+Build both artifacts from the same reviewed commit. A change to the browser hook
 changes the compatibility binding, even while the unpublished version
-number stays the same.
+number stays the same. Run
+`LIVE_LIFT_INTEGRATION_IGNITER=1 sh test/integration/phoenix_consumer.sh` to
+verify both local artifacts in a fresh Phoenix app before publishing.
 
 ## Publish with the maintainer accounts
 

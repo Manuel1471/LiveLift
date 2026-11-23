@@ -11,7 +11,12 @@ The [row-edit profile](state-validation-profile-spike.md) separates the
 optimistic edit, confirmation, and browser samples for 100 and 1,000 rows.
 The [paired validation report](progress/state-validation-optimization.md)
 measures the validation optimization on BEAM and Chromium and records the
-shared hook size after the change.
+shared hook size after the change. The
+[unchanged snapshot profile](progress/unchanged-snapshot-optimization.md)
+measures the cost avoided when a LiveView hook receives the same revision
+and acknowledgment. A mounted `@client :local` action also eliminates the
+event and confirmation for that interaction. The
+[native demo](native-livecomponent.md#local-actions) checks its socket trace.
 
 Run `bench/phoenix_bundle.sh` to generate two fresh Phoenix apps from the same
 template, add one tiny LiveLift view to the second, and compare minified bundles.
@@ -166,5 +171,5 @@ The compiler rejects unsupported expressions and parity tests compare the
 published subset with generated JavaScript. The demo and a second generated
 Phoenix app pass their integration tests. The main risks before a stable
 release are the internal LiveView parser dependency, incomplete Elixir
-semantics, coarse source maps for actions, and full-subtree work on every
-client update. These limits matter more than the small action microbenchmark.
+semantics, coarse source maps, and the cost of validating and transporting full
+authoritative snapshots after a synchronized change. These limits matter more than the small action microbenchmark.

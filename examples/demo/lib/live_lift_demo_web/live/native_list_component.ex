@@ -202,7 +202,9 @@ defmodule LiveLiftDemoWeb.NativeListComponent do
         |> Enum.sort()
         |> Enum.join(" · ")) <>
          " (" <>
-         Integer.to_string(Enum.count(Map.values(%{rows: socket.assigns.items, next_id: socket.assigns.next_id}))) <>
+         Integer.to_string(
+           Enum.count(Map.values(%{rows: socket.assigns.items, next_id: socket.assigns.next_id}))
+         ) <>
          ")"
      )}
   end

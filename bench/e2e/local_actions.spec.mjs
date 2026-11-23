@@ -34,4 +34,11 @@ test("local Elixir actions render without sending events and survive LiveView up
 
   await gotoLiveLift(page, "/local-actions");
   await expect(rows).toHaveText(["One", "Two"]);
+
+  await page.evaluate(() => window.liveSocket.disconnect());
+  await page.waitForFunction(() => !window.liveSocket.isConnected());
+  await root.getByRole("button", {name: "Reverse preview"}).click();
+  await expect(rows).toHaveText(["Two", "One"]);
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "0");
+  expect(events).toEqual(["increase_count", "save_first"]);
 });

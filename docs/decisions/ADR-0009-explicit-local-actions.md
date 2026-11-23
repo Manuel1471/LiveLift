@@ -15,9 +15,9 @@ works from the server snapshot. Compile-time checks reject local writes that
 overlap with optimistic handler and timer reads or writes. A server save
 receives explicit event parameters under the normal Phoenix trust model.
 
-The [browser acceptance case](../../bench/e2e/local_actions.spec.mjs) checks
+The [browser acceptance case](https://github.com/Manuel1471/LiveLift/blob/main/bench/e2e/local_actions.spec.mjs) checks
 the outbound event trace, focus, and rendering after optimistic and server
-updates. It checks a full reload and covers Chromium, Firefox, and WebKit.
+updates. It checks a full reload, a disconnected click, and all three browser engines.
 The [native guide](../native-livecomponent.md#local-actions) covers semantics
 before mount and on a new instance. Revisit the storage model if app pilots
 need local values to outlive the island.
