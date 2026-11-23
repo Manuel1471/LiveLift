@@ -181,7 +181,7 @@ EOF
     cp .gitignore original-gitignore
     install_spec="live_lift@path:$live_lift_dep"
     mix igniter.install "$install_spec" --dry-run --yes >igniter-preview.log
-    rg -q 'live_lift.install' igniter-preview.log
+    grep -Fq 'live_lift.install' igniter-preview.log
     mix run --no-start -e '
       Application.ensure_all_started(:rewrite)
 
@@ -189,8 +189,8 @@ EOF
       |> Mix.Tasks.LiveLift.Install.igniter()
       |> Igniter.do_or_dry_run(dry_run: true, yes: false)
     ' >igniter-diff.log
-    rg -q 'assets/js/app.js' igniter-diff.log
-    rg -q 'live_lift_runtime.js' igniter-diff.log
+    grep -Fq 'assets/js/app.js' igniter-diff.log
+    grep -Fq 'live_lift_runtime.js' igniter-diff.log
     cmp original-app.js assets/js/app.js
     cmp original-mix.exs mix.exs
     cmp original-gitignore .gitignore
@@ -224,7 +224,7 @@ app.write_text(Path("original-app.js").read_text().replace("hooks: {...colocated
 PYTHON
     cp assets/js/app.js unsupported-app.js
     mix igniter.install "$install_spec" --yes >unsupported-igniter.log 2>&1
-    rg -q 'unsupported LiveSocket hooks configuration' unsupported-igniter.log
+    grep -Fq 'unsupported LiveSocket hooks configuration' unsupported-igniter.log
     cmp unsupported-app.js assets/js/app.js
     cmp original-mix.exs mix.exs
     cmp original-gitignore .gitignore
@@ -237,12 +237,12 @@ mix.write_text(mix.read_text().replace("esbuild consumer_lift --minify", "custom
 PYTHON
     cp mix.exs unsupported-mix.exs
     mix igniter.install "$install_spec" --yes >unsupported-alias.log 2>&1
-    rg -q 'unsupported assets.deploy alias' unsupported-alias.log
+    grep -Fq 'unsupported assets.deploy alias' unsupported-alias.log
     if mix igniter.install "$install_spec" --check --yes >unsupported-check.log 2>&1; then
       echo 'Expected Igniter --check to report the custom alias as an issue' >&2
       exit 1
     fi
-    rg -q 'unsupported assets.deploy alias' unsupported-check.log
+    grep -Fq 'unsupported assets.deploy alias' unsupported-check.log
     cmp original-app.js assets/js/app.js
     cmp unsupported-mix.exs mix.exs
     cmp original-gitignore .gitignore
@@ -263,14 +263,14 @@ PYTHON
     echo 'Expected the legacy $server migration to stop' >&2
     exit 1
   fi
-  rg -q 'sends client state and revision' migration.log
+  grep -Fq 'sends client state and revision' migration.log
   test ! -e lib/consumer_lift_web/live/legacy_score_component.ex
   mix format
   mix format --check-formatted
   LIVE_LIFT_MIGRATION_BASELINE=1 mix test test/consumer_lift_web/live/counter_live_test.exs
   mix live_lift.audit --path lib/consumer_lift_web/live/counter_component.ex >audit.log
-  rg -q 'ConsumerLiftWeb.CounterComponent.handle_event\("inc"\): compatible' audit.log
-  rg -q 'ConsumerLiftWeb.CounterComponent.handle_event\("preview"\): compatible' audit.log
+  grep -Fq 'ConsumerLiftWeb.CounterComponent.handle_event("inc"): compatible' audit.log
+  grep -Fq 'ConsumerLiftWeb.CounterComponent.handle_event("preview"): compatible' audit.log
   python3 - "$repo_dir/docs/liveview-migration-diff.md" <<'PYTHON'
 from pathlib import Path
 import subprocess
@@ -291,17 +291,17 @@ PYTHON
   LIVE_LIFT_MIGRATION_BASELINE=0 mix test test/consumer_lift_web/live/counter_live_test.exs
   printf '%s\n' 'Verified the documented migration diff before and after opt-in.'
   mix live_lift.test --cases test/live_lift_cases.json >parity.log
-  rg -q '4 parity cases passed across 2 modules' parity.log
+  grep -Fq '4 parity cases passed across 2 modules' parity.log
   if mix live_lift.test --cases test/missing_event.json >missing-event.log 2>&1; then
     echo 'Expected parity to fail for a missing marked event' >&2
     exit 1
   fi
-  rg -q 'marked events without cases: preview' missing-event.log
+  grep -Fq 'marked events without cases: preview' missing-event.log
   if mix live_lift.test --cases test/missing_module.json >missing-module.log 2>&1; then
     echo 'Expected parity to fail for a missing opted-in module' >&2
     exit 1
   fi
-  rg -q 'without parity cases: ConsumerLiftWeb.MailboxLive' missing-module.log
+  grep -Fq 'without parity cases: ConsumerLiftWeb.MailboxLive' missing-module.log
   cat parity.log
   printf '%s\n' 'Verified missing event and missing module failures.'
   cat > unsupported_clock.ex <<'EOF'
@@ -316,8 +316,8 @@ defmodule ConsumerLiftWeb.UnsupportedClock do
 end
 EOF
   mix live_lift.audit --path unsupported_clock.ex >unsupported-audit.log
-  rg -q 'unsupported_clock.ex:6: unsupported @client handler: unsupported client expression: System.monotonic_time\(\) \(E056\)' unsupported-audit.log
-  rg -q 'remove the @client marker.*docs/errors/E056.md' unsupported-audit.log
+  grep -Fq 'unsupported_clock.ex:6: unsupported @client handler: unsupported client expression: System.monotonic_time() (E056)' unsupported-audit.log
+  grep -Eq 'remove the @client marker.*docs/errors/E056\.md' unsupported-audit.log
   python3 - <<'PYTHON'
 from pathlib import Path
 
@@ -330,12 +330,12 @@ PYTHON
     echo 'Expected an unsupported marked event to fail compilation' >&2
     exit 1
   fi
-  rg -q 'unsupported_clock.ex:8: unsupported @client handler: unsupported client expression: System.monotonic_time\(\) \(E056\)' unsupported-compile.log
-  rg -q 'remove the @client marker.*docs/errors/E056.md' unsupported-compile.log
+  grep -Fq 'unsupported_clock.ex:8: unsupported @client handler: unsupported client expression: System.monotonic_time() (E056)' unsupported-compile.log
+  grep -Eq 'remove the @client marker.*docs/errors/E056\.md' unsupported-compile.log
   rm lib/consumer_lift_web/live/unsupported_clock.ex
   printf '%s\n' 'Verified the same actionable diagnostic in audit and compilation.'
   mix assets.build
-  rg -q "function __liveLiftLocalActions" assets/js/generated_views.js
+  grep -Fq "function __liveLiftLocalActions" assets/js/generated_views.js
   mix assets.deploy
   if [ "$igniter_mode" = "1" ] || [ -n "$registry_version" ]; then
     sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets" "$registry_version"

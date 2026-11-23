@@ -112,7 +112,7 @@ rejected_package() {
     echo "Expected esbuild to reject the mismatched runtime package $artifact" >&2
     exit 1
   fi
-  rg -q 'No matching export.*__liveLiftRuntime_' "$log"
+  grep -Eq 'No matching export.*__liveLiftRuntime_' "$log"
 }
 
 # Same version with different source bytes.
