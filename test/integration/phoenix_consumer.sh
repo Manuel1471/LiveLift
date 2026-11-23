@@ -31,6 +31,8 @@ version = sys.argv[4]
 mix = app / "mix.exs"
 source = mix.read_text()
 assert "      {:phoenix," in source
+# Phoenix 1.8.16 generates a DNSCluster requirement that predates the Elixir 1.20 fix.
+source = source.replace('{:dns_cluster, "~> 0.2.0"}', '{:dns_cluster, "~> 0.3.1"}')
 options = ", override: true" if igniter else ""
 if version:
     assert re.fullmatch(r"[0-9A-Za-z.+-]+", version)
