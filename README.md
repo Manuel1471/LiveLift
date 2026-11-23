@@ -1,44 +1,87 @@
 # LiveLift
 
-LiveLift runs selected interactions from Phoenix LiveView and LiveComponents in the browser. Keep
-your `~H` template and `handle_event/3`; add `use LiveLift` and mark a supported
-handler with `@client true`. The server still runs that handler on its own state
-and sends the authoritative result. The surrounding page remains a regular
-LiveView. Use `@client :local` for a preview, filter, or sort that should run
-in the browser without a server event once the hook mounts.
+**Elixir interactions in the browser, inside Phoenix LiveView.**
 
-## Use it in a Phoenix app
+Keep your HEEx and `handle_event/3`. Add `use LiveLift` to a LiveView or
+LiveComponent and mark the handlers you want to run in the browser.
 
-The experimental release has passed installation from local artifacts.
-Public installation awaits publication of `0.1.0-rc.1`. See the
-[verified and pending items](docs/production-readiness.md) and
-[release instructions](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md).
+[Try the demo](#try-the-demo) · [Add to a Phoenix app](#add-livelift-to-a-phoenix-app) · [How it works](docs/sync.md)
 
-- [Start a new Phoenix app](docs/phoenix-integration.md#start-a-new-phoenix-app)
-  and build a working counter from scratch.
-- [Add LiveLift to an existing app](docs/phoenix-integration.md#adopt-livelift-in-an-existing-phoenix-app)
-  and opt in one handler while keeping your LiveView page.
-- [Wire a custom asset pipeline](docs/phoenix-integration.md#manual-asset-integration)
-  and keep your existing LiveSocket hooks.
+![LiveLift demo showing a local score of 12, one LiveView server event, and a saved score of 12](docs/images/livelift-demo.png)
 
-## Learn the event model
+*The score changes in the browser. LiveView handles server activity and saves the score when you sync it.*
 
-- [How state and events move](docs/sync.md) follows an optimistic click
-  from the first browser update through server confirmation.
-- [Adoption practices](docs/best-practices.md) help you choose an event mode,
-  keep state small, test both runtimes, and measure the result.
-- [Supported Elixir and HEEx](docs/language.md) describes what the browser
-  compiler accepts.
-- [Development inspector](docs/state-inspector.md) helps you see predictions
-  and corrections. [Versioned assets](docs/versioned-assets.md) covers
-  TypeScript and the optional npm runtime.
+## One handler, three ways to run it
 
-## Run the browser demo
+| Handler | What happens |
+| --- | --- |
+| `@client :local` | The browser updates the UI without sending a LiveView event after the hook mounts. Use it for previews, filters, or sorting. |
+| `@client true` | The browser predicts the result immediately. LiveView runs the handler on the server and confirms or corrects the result. |
+| Unmarked | LiveView handles the event on the server. Use this for persistence, permissions, or external calls. |
 
-From `examples/demo`, run `mix setup` and `mix phx.server`. Open
-<http://localhost:4000/local-actions> to compare a sort that stays in the
-browser, a shared counter confirmed by LiveView, and a selection saved by
-a server handler. See the [demo guide](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/README.md).
+This counter uses ordinary HEEx and a local handler.
+
+```elixir
+defmodule MyAppWeb.Counter do
+  use Phoenix.LiveComponent
+  use LiveLift
+
+  def render(assigns) do
+    ~H"""
+    <button type="button" phx-click="increment" phx-target={@myself}>
+      Count: {@count}
+    </button>
+    """
+  end
+
+  @client :local
+  def handle_event("increment", _params, socket) do
+    {:noreply, update(socket, :count, &(&1 + 1))}
+  end
+end
+```
+
+Mount it from a LiveView with
+`<.live_component module={MyAppWeb.Counter} id="counter" count={0} />`.
+See the [native component guide](docs/native-livecomponent.md) for supported handlers.
+
+## Try the demo
+
+Run these commands from the repository root.
+
+```sh
+cd examples/demo
+mix setup
+mix phx.server
+```
+
+Open [the demo at localhost:4000](http://localhost:4000/) to try the score and
+task list from the screenshot. Visit [`/local-actions`](http://localhost:4000/local-actions)
+to compare all three event modes on one page.
+See the [demo guide](https://github.com/Manuel1471/LiveLift/blob/main/examples/demo/README.md)
+for more examples.
+
+## Add LiveLift to a Phoenix app
+
+| I want to… | Start here |
+| --- | --- |
+| Create a Phoenix app and see a working counter | [New project walkthrough](docs/phoenix-integration.md#start-a-new-phoenix-app) |
+| Try LiveLift in an app I already have | [Opt in one handler](docs/phoenix-integration.md#adopt-livelift-in-an-existing-phoenix-app) |
+| Keep my own JavaScript build or LiveSocket hooks | [Manual asset integration](docs/phoenix-integration.md#manual-asset-integration) |
+| Check whether my Elixir and HEEx are supported | [Language reference](docs/language.md) |
+
+LiveLift `0.1.0-rc.1` is an experimental first release candidate for Hex and
+targets Phoenix LiveView 1.2.x. The [installation guide](docs/phoenix-integration.md#add-the-dependency)
+covers trying it from a local package and installing from Hex once available.
+See the [release instructions](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md)
+for publication and public verification.
+
+## Go deeper
+
+- [Event flow and state ownership](docs/sync.md) traces a prediction through server confirmation.
+- [Adoption practices](docs/best-practices.md) covers state boundaries, parity tests, and measuring user feedback.
+- [Development inspector](docs/state-inspector.md) shows browser snapshots. [Versioned assets](docs/versioned-assets.md) covers the optional npm runtime and TypeScript.
+- [Production limits](docs/production-readiness.md) and the [security model](docs/security.md) explain the tested boundaries.
 
 ## Development
 
@@ -46,11 +89,5 @@ a server handler. See the [demo guide](https://github.com/Manuel1471/LiveLift/bl
 mix deps.get
 npm ci --prefix bench
 mix test
-cd assets && npm test
+npm test --prefix assets
 ```
-
-This release is experimental and currently supports Phoenix LiveView 1.2.x.
-See [production limits and reproducible benchmarks](docs/production-readiness.md)
-before using it in a deployed app.
-See the [security model](docs/security.md) before sending client values to a
-server handler or including app state in an island.

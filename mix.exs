@@ -23,7 +23,9 @@ defmodule LiveLift.MixProject do
     docs/versioned-assets.md
   )
   @compiler_diagnostics "docs/errors/README.md"
-  @package_guides @getting_started ++ @reference_guides ++ ~w(docs/errors CHANGELOG.md)
+  @package_guides @getting_started ++
+                    @reference_guides ++
+                    ~w(docs/errors docs/images/livelift-demo.png CHANGELOG.md)
   @prototype_modules [
     LiveLift.Client,
     LiveLift.Client.Component,
@@ -69,6 +71,7 @@ defmodule LiveLift.MixProject do
 
     [
       main: "readme",
+      assets: %{"docs/images" => "docs/images"},
       source_ref: "main",
       filter_modules: fn module, _ -> module not in @prototype_modules end,
       extras:
