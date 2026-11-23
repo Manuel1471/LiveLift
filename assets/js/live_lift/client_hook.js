@@ -851,7 +851,6 @@ export function createClientHook(views) {
       };
 
       this.onOptimisticClick = (event) => {
-        if (!this.optimistic) return;
         const control = event.target.closest("[phx-click]");
         if (!control || !this.el.contains(control)) return;
         const eventName = control.getAttribute("phx-click");
@@ -872,7 +871,6 @@ export function createClientHook(views) {
       };
 
       this.onOptimisticChange = (event) => {
-        if (!this.optimistic) return;
         const control = event.target.closest("[phx-change]");
         if (!control || !this.el.contains(control)) return;
         const eventName = control.getAttribute("phx-change");
@@ -942,7 +940,6 @@ export function createClientHook(views) {
       };
 
       this.onOptimisticSubmit = (event) => {
-        if (!this.optimistic) return;
         const form = event.target.closest("form[phx-submit]");
         if (!form || !this.el.contains(form)) return;
         const eventName = form.getAttribute("phx-submit");
@@ -1040,14 +1037,15 @@ export function createClientHook(views) {
         }
         const revision = Number(this.el.dataset.liveLiftServerRevision);
         if (Number.isSafeInteger(revision) && revision >= this.serverRevision) {
-          const state = JSON.parse(this.el.dataset.liveLiftState);
           const ack = Number(this.el.dataset.liveLiftAckSeq || "0");
+          if (!this.recovery && revision === this.serverRevision && ack === this.ackSequence) return;
+          const state = JSON.parse(this.el.dataset.liveLiftState);
           const timers = this.el.dataset.liveLiftTimers;
           if (this.recovery) {
             this.authoritativeBatch.flush();
             this.applyAuthoritative(revision, state, ack, timers);
             this.recoverPending();
-          } else if (revision > this.serverRevision || ack !== this.ackSequence) {
+          } else {
             this.authoritativeBatch.enqueue({revision, state, ack_seq: ack, timers});
           }
         }
