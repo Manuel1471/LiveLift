@@ -562,6 +562,30 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  test "local writes cannot overlap synchronized reads or writes" do
+    for {shared_body, index} <-
+          Enum.with_index([
+            "assign(socket, :shared, socket.assigns.preview)",
+            "assign(socket, :preview, 0)"
+          ]) do
+      source = """
+      defmodule LiveLift.ComponentTest.LocalConflict#{index} do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@shared}</output>"
+        @client :local
+        def handle_event("preview", _, socket), do: {:noreply, assign(socket, :preview, 1)}
+        @client true
+        def handle_event("shared", _, socket), do: {:noreply, #{shared_body}}
+      end
+      """
+
+      assert_raise ArgumentError,
+                   ~r/local.ex:6: @client :local field :preview is also used by a synchronized action.*E055/,
+                   fn -> Code.compile_string(source, "local.ex") end
+    end
+  end
+
   test "unsupported marked handlers fail with a source location" do
     source = """
     defmodule LiveLift.ComponentTest.Unsupported do

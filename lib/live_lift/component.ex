@@ -7,7 +7,7 @@ defmodule LiveLift.Component do
   alias LiveLift.Component.{ProcessTimer, Timer}
 
   def on_definition(env, :def, :render, [_assigns], _guards, body) do
-    if Module.get_attribute(env.module, :client) == true do
+    if Module.get_attribute(env.module, :client) in [true, :local] do
       Diagnostic.error!(
         "E055",
         env.file,
@@ -20,7 +20,9 @@ defmodule LiveLift.Component do
   end
 
   def on_definition(env, :def, :handle_event, [event, params, socket], guards, body) do
-    if Module.get_attribute(env.module, :client) == true do
+    mode = Module.get_attribute(env.module, :client)
+
+    if mode in [true, :local] do
       unless is_binary(event) and guards == [] do
         Diagnostic.error!(
           "E055",
@@ -33,6 +35,10 @@ defmodule LiveLift.Component do
       timer =
         Timer.extract(body, params, socket, env) ||
           ProcessTimer.extract(body, params, socket, env)
+
+      if timer && mode == :local do
+        Diagnostic.error!("E055", env.file, env.line, "timers require @client true")
+      end
 
       action =
         if timer do
@@ -51,7 +57,7 @@ defmodule LiveLift.Component do
       Module.put_attribute(
         env.module,
         :live_lift_marked_actions,
-        {event, action, timer, env.file, env.line}
+        {event, action, timer, env.file, env.line, mode}
       )
     end
 
@@ -59,7 +65,7 @@ defmodule LiveLift.Component do
   end
 
   def on_definition(env, :def, :handle_info, [message, socket], guards, body) do
-    if Module.get_attribute(env.module, :client) == true do
+    if Module.get_attribute(env.module, :client) in [true, :local] do
       Diagnostic.error!(
         "E059",
         env.file,
@@ -77,7 +83,7 @@ defmodule LiveLift.Component do
 
   def on_definition(env, kind, name, [assigns_arg], guards, body)
       when kind in [:def, :defp] and is_atom(name) do
-    if Module.get_attribute(env.module, :client) == true do
+    if Module.get_attribute(env.module, :client) in [true, :local] do
       Diagnostic.error!(
         "E055",
         env.file,
@@ -104,7 +110,7 @@ defmodule LiveLift.Component do
   end
 
   def on_definition(env, :defp, name, args, guards, body) when is_atom(name) and is_list(args) do
-    if Module.get_attribute(env.module, :client) == true do
+    if Module.get_attribute(env.module, :client) in [true, :local] do
       Diagnostic.error!(
         "E055",
         env.file,
@@ -121,7 +127,7 @@ defmodule LiveLift.Component do
   end
 
   def on_definition(env, _kind, name, _args, _guards, _body) do
-    if Module.get_attribute(env.module, :client) == true do
+    if Module.get_attribute(env.module, :client) in [true, :local] do
       Diagnostic.error!(
         "E055",
         env.file,
@@ -155,7 +161,7 @@ defmodule LiveLift.Component do
         Map.put(acc, name, %{source: source, file: file, line: line, template_line: template_line})
       end)
 
-    if Module.get_attribute(env.module, :client) == true do
+    if Module.get_attribute(env.module, :client) in [true, :local] do
       Diagnostic.error!(
         "E055",
         env.file,
@@ -175,7 +181,7 @@ defmodule LiveLift.Component do
 
     if event = List.first(events -- Enum.uniq(events)) do
       [_, duplicate | _] = Enum.filter(actions, &(elem(&1, 0) == event))
-      {event, _, _, file, line} = duplicate
+      {event, _, _, file, line, _mode} = duplicate
 
       Diagnostic.error!(
         "E055",
@@ -199,7 +205,7 @@ defmodule LiveLift.Component do
     helpers = env.module |> Module.get_attribute(:live_lift_local_helpers) |> Enum.reverse()
 
     action_tuples =
-      Enum.map(actions, fn {_event, {name, args, body}, _timer, file, line} ->
+      Enum.map(actions, fn {_event, {name, args, body}, _timer, file, line, _mode} ->
         expanded = LiveLift.Component.Helpers.expand!(body, helpers, file, line)
         action = {name, args, expanded}
         LiveLift.Component.Compiler.validate_action!(action, file, line)
@@ -209,14 +215,20 @@ defmodule LiveLift.Component do
     callbacks = env.module |> Module.get_attribute(:live_lift_info_callbacks) |> Enum.reverse()
 
     timers =
-      for {event, _action, {timer, line}, file, _} <- actions,
+      for {event, _action, {timer, line}, file, _, _mode} <- actions,
           into: %{},
           do: {event, {resolve_timer(timer, callbacks, helpers, file, line), line}}
 
     state_actions =
       action_tuples ++ for {_event, {%{action: action}, _line}} <- timers, do: action
 
-    fields = state_fields(template, state_actions)
+    local_actions = local_actions!(actions, action_tuples, timers)
+
+    fields =
+      Enum.uniq(
+        state_fields(template, state_actions) ++ Enum.flat_map(local_actions, &elem(&1, 1))
+      )
+
     optional_fields = optional_state_fields(state_actions)
 
     timers =
@@ -244,6 +256,9 @@ defmodule LiveLift.Component do
 
       @doc false
       def __live_lift_client_actions__, do: unquote(Macro.escape(action_tuples))
+
+      @doc false
+      def __live_lift_local_actions__, do: unquote(Macro.escape(local_actions))
 
       @doc false
       def __live_lift_component_timers__, do: unquote(Macro.escape(timers))
@@ -681,6 +696,56 @@ defmodule LiveLift.Component do
     |> Enum.uniq()
     |> Enum.map(&String.to_atom/1)
   end
+
+  defp local_actions!(definitions, actions, timers) do
+    {local, synced} =
+      definitions
+      |> Enum.zip(actions)
+      |> Enum.split_with(fn {{_, _, _, _, _, mode}, _} -> mode == :local end)
+
+    if local == [] do
+      %{}
+    else
+      synced_actions =
+        Enum.map(synced, &elem(&1, 1)) ++
+          for {_event, {%{action: action}, _line}} <- timers, do: action
+
+      timer_writes =
+        for {_event, {%{patch: patch}, _line}} <- timers, field <- Map.keys(patch), do: field
+
+      synced_fields =
+        MapSet.new(
+          state_fields([], synced_actions) ++
+            Enum.flat_map(synced_actions, fn {_, _, body} -> written_fields(body) end) ++
+            timer_writes
+        )
+
+      Map.new(local, fn {{event, _, _, file, line, _}, {_, _, body}} ->
+        writes = body |> written_fields() |> Enum.uniq()
+
+        case Enum.find(writes, &MapSet.member?(synced_fields, &1)) do
+          nil ->
+            {event, writes}
+
+          field ->
+            Diagnostic.error!(
+              "E055",
+              file,
+              line,
+              "@client :local field #{inspect(field)} is also used by a synchronized action; use separate assigns"
+            )
+        end
+      end)
+    end
+  end
+
+  defp written_fields({:%{}, _, [{:|, _, [source, fields]}]}),
+    do: Keyword.keys(fields) ++ written_fields(source)
+
+  defp written_fields({:__live_lift_assign_new__, _, [source, field, _]}),
+    do: [field | written_fields(source)]
+
+  defp written_fields(_), do: []
 
   defp optional_state_fields(actions) do
     actions

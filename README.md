@@ -4,7 +4,8 @@ LiveLift runs selected Phoenix LiveComponent interactions in the browser. Keep
 your `~H` template and `handle_event/3`; add `use LiveLift` and mark a supported
 handler with `@client true`. The server still runs that handler on its own state
 and sends the authoritative result. The surrounding page remains a regular
-LiveView.
+LiveView. Use `@client :local` for a preview, filter, or sort that should run
+in the browser without a server event once the hook mounts.
 
 ## Run the browser demo
 
@@ -15,7 +16,7 @@ legacy client views inside a regular LiveView. From `examples/demo`, run `mix se
 For an existing Phoenix app, follow the [integration guide](docs/phoenix-integration.md).
 See the [migration diff](docs/liveview-migration-diff.md) for an existing
 LiveComponent and the [native guide](docs/native-livecomponent.md) for
-supported handlers.
+supported handlers and the [three event modes](docs/native-livecomponent.md#local-actions).
 Run `mix live_lift.audit` to see which existing LiveView and LiveComponent handlers fit the
 current client subset and why others are blocked.
 Run `mix live_lift.test --cases test/live_lift_cases.json` in your app's CI to

@@ -7,6 +7,9 @@ defmodule LiveLift do
   existing `~H` template for immediate browser prediction. LiveView still runs
   the original handler on server-owned state and sends the authoritative result.
 
+  Use `@client :local` for transient assigns such as a list's preview order.
+  Once the hook mounts, this action runs without sending a LiveView event.
+
   The earlier `LiveLift.Client` and `LiveLift.View.island/1` API remains
   available for existing apps while they migrate.
   """

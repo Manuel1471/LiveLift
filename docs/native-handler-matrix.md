@@ -1,8 +1,9 @@
 # Native `@client` handler matrix
 
 This is the current experimental surface of a marked `handle_event/3`. An unmarked
-handler remains a normal LiveView server handler. A marked handler runs its
-original Elixir body on the server and generated JavaScript for prediction.
+handler remains a normal LiveView server handler. `@client true` predicts and
+confirms via LiveView. `@client :local` uses the synchronous subset and runs
+only in the mounted browser, with separate write fields.
 The seeded language corpus and app parity cases compare those paths. Source locations and alternatives
 for unsupported forms are tested in `test/live_lift/component_test.exs`.
 

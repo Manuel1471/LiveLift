@@ -576,6 +576,9 @@ defmodule LiveLift.Client.Compiler do
   @class_source Path.expand("../../../assets/js/live_lift/class_commands.js", __DIR__)
   @external_resource @class_source
   @class_runtime File.read!(@class_source)
+  @local_source Path.expand("../../../assets/js/live_lift/local_actions.js", __DIR__)
+  @external_resource @local_source
+  @local_runtime File.read!(@local_source)
   @draft_source Path.expand("../../../assets/js/live_lift/form_drafts.js", __DIR__)
   @external_resource @draft_source
   @draft_runtime File.read!(@draft_source)
@@ -618,7 +621,9 @@ defmodule LiveLift.Client.Compiler do
         entry =
           "  #{Jason.encode!(name)}: {actions: {#{Enum.join(actions, ", ")}}, " <>
             "template: #{Jason.encode!(template)}, component: #{function_exported?(module, :__live_lift_component__, 0)}" <>
-            registry_timers(module) <> registry_prepare(module, template, drafts?) <> "}"
+            registry_timers(module) <>
+            registry_prepare(module, template, drafts?) <>
+            registry_local_actions(module) <> "}"
 
         {entry, drafts?}
       end)
@@ -637,6 +642,10 @@ defmodule LiveLift.Client.Compiler do
         else: ""
       ) <>
       if(Enum.any?(draft_flags), do: @draft_runtime, else: "") <>
+      if(Enum.any?(entries, &String.contains?(&1, "__liveLiftLocalActions(hook,")),
+        do: @local_runtime,
+        else: ""
+      ) <>
       "export const views = {\n" <>
       Enum.join(entries, ",\n") <> "\n};\n"
   end
@@ -703,6 +712,15 @@ defmodule LiveLift.Client.Compiler do
       end)
 
     uses?
+  end
+
+  defp registry_local_actions(module) do
+    with true <- function_exported?(module, :__live_lift_local_actions__, 0),
+         actions when map_size(actions) > 0 <- module.__live_lift_local_actions__() do
+      ", setup: (hook, validate, validateParams) => __liveLiftLocalActions(hook, #{Jason.encode!(actions)}, validate, validateParams)"
+    else
+      _ -> ""
+    end
   end
 
   defp registry_timers(module) do

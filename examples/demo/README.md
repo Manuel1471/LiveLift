@@ -20,7 +20,12 @@ event” updates its count and event-history chart. “Sync score” sends the
 current local score through a LiveView event and displays it in the server
 panel. Updating the server leaves the local score intact.
 
-The third panel demonstrates a user-defined component inside a keyed list.
+Open <http://localhost:4000/local-actions> for the native API. Reversing the
+list stays in the browser. The shared counter is optimistic and confirmed by
+LiveView. Selecting a row sends its ID to a normal server handler that
+validates it. Reload the page to reset the preview.
+
+The third panel on the home page demonstrates a user-defined component inside a keyed list.
 Add, rename, remove, and reorder tasks. The list updates in the browser; task
 inputs retain focus during edits. The tasks are local demo state and reset on
 reload.

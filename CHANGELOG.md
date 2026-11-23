@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Run transient native LiveView actions without a server event using `@client :local`.
+
 - Add typed browser assets and reject mismatched generated registries and runtimes during bundling.
 
 - Install LiveLift assets with Igniter previews and preserve existing Phoenix asset tasks.

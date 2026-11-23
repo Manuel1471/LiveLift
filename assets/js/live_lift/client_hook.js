@@ -975,6 +975,7 @@ export function createClientHook(views) {
       };
 
       if (this.optimistic) {
+        view.setup?.(this, validateState, validateEventParams);
         this.el.addEventListener("click", this.onOptimisticClick, true);
         this.el.addEventListener("input", this.onOptimisticChange, true);
         this.el.addEventListener("change", this.onOptimisticChange, true);

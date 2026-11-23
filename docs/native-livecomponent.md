@@ -40,6 +40,41 @@ on its own socket and replies with its authoritative assigns. Unmarked
 handlers continue through LiveView normally. After reconnect, the browser
 reconciles its predictions with the server snapshot.
 
+## Local actions
+
+Use `@client :local` before a synchronous handler when its changes should
+stay in the browser. Keep your HEEx, event name, and handler body.
+
+```elixir
+@client :local
+def handle_event("reverse_preview", _params, socket) do
+  {:noreply, update(socket, :rows, &Enum.reverse(&1))}
+end
+```
+
+| Handler | After the hook mounts |
+| --- | --- |
+| `@client :local` | Updates display assigns in this island. Sends zero LiveView events and uses no sequence numbers. |
+| `@client true` | Renders a prediction and sends the event and its parameters to LiveView for confirmation. |
+| Unmarked | Uses regular LiveView event handling. Use this for persistence, permissions, and other server effects. |
+
+All three modes use normal LiveView event bindings such as `phx-click` and
+`phx-value-*`. Local actions use the same supported parameters and synchronous
+Elixir subset as optimistic actions. They can read the island's current
+shared fields. Assigns written by a local action must be separate from all
+assigns read or written by optimistic handlers and their derived timers.
+Initialize those assigns on the server as usual. After a local edit, browser
+values for edited fields take precedence for rendering that mounted instance.
+A full remount starts from the server's seed.
+
+Before LiveLift mounts, or when it is disabled, Phoenix can still run the
+original Elixir handler. Keep local handlers pure. Send a chosen value via a
+normal form or `phx-value-*` to an unmarked handler and validate the submitted
+value on the server. Run the demo at `/local-actions` to see the local preview
+order survive both a shared counter confirmation and a server save.
+
+## Synchronization and timers
+
 After mount, changes to client-rendered fields from `update/2` or
 `update_many/1` also reach the browser as authoritative snapshots. For example,
 an unmarked handler can call

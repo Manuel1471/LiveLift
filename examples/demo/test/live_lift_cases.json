@@ -1,4 +1,6 @@
 [
+  {"module":"LiveLiftDemoWeb.LocalActionsLive","event":"reverse_preview","state":{"rows":[{"id":"one","label":"One"},{"id":"two","label":"Two"}],"count":0,"saved_first":"None"}},
+  {"module":"LiveLiftDemoWeb.LocalActionsLive","event":"increase_count","state":{"rows":[{"id":"two","label":"Two"},{"id":"one","label":"One"}],"count":0,"saved_first":"None"}},
   {"module":"LiveLiftDemoWeb.NativeTimerLive","event":"inc","state":{"count":0}},
   {"module":"LiveLiftDemoWeb.NativeTimerLive","event":"double","state":{"count":5}},
   {"module":"LiveLiftDemoWeb.NativeTimerLive","event":"predict","state":{"count":-10}},

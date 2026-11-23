@@ -26,6 +26,7 @@ defmodule LiveLiftDemoWeb.Router do
     live "/native-optional", NativeOptionalLive
     live "/native-float", NativeFloatLive
     live "/native-list", NativeListLive
+    live "/local-actions", LocalActionsLive
     live "/many-islands", ManyIslandsLive
   end
 
