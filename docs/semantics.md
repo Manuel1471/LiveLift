@@ -21,6 +21,10 @@ form outside this table is unsupported even if it is valid Elixir.
 | Server sync | Browser actions own every field except `server_fields`. Server patches must have increasing revisions. On reconnect, a newer server snapshot updates only server-owned fields. |
 | Native component predictions | At most 100 marked actions may be pending. Server replies carry a revision, an acknowledged action sequence, and authoritative state. Reconnect resets the local prediction from the server snapshot. |
 
+For unary `+`, the asset compiler checks how its BEAM handles a dynamic
+negative zero. The generated action follows that behavior and preserves
+recognized folded constant results. See the [signed-zero probe](unary-plus-spike.md).
+
 Invalid state, missing fields, arithmetic overflow and unsupported syntax fail
 explicitly. The compiler must reject unsupported source at build time; runtime
 value errors leave the previous client state intact. The client is not a trust

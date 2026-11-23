@@ -2,6 +2,8 @@
 
 ## 0.1.0-rc.1
 
+- Match unary plus on BEAM builds that turn dynamic negative zero into positive zero, and install the JavaScript test dependencies in the compatibility matrix.
+
 - Skip decoding unchanged authoritative snapshots during LiveView hook updates.
 
 - Run transient native LiveView actions without a server event using `@client :local`.

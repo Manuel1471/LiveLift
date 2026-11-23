@@ -13,6 +13,9 @@ defmodule LiveLift.FloatParityTest do
         product: state.left * state.right,
         negative: -state.left,
         positive: +state.left,
+        positive_literal: +(-0.0),
+        positive_sum: +(-0.0 + -0.0),
+        positive_if: +if(true, do: -0.0, else: 0.0),
         less: state.left < state.right,
         equal: state.left == state.right,
         nested_equal: state.items == state.other

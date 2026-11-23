@@ -960,9 +960,20 @@ defmodule LiveLift.Client.Compiler do
     "#{helper}(#{compile_expr(left, arg)}, () => #{compile_expr(right, arg)})"
   end
 
-  defp compile_expr({op, _, [value]}, arg) when op in [:+, :-] do
-    "__liveLiftUnary(#{compile_expr(value, arg)}, #{Jason.encode!(Atom.to_string(op))})"
+  defp compile_expr({:+, _, [value]}, arg) do
+    expression = compile_expr(value, arg)
+    zero = LiveLift.FloatWire.decode(%{"$live_lift_float" => "-0.0"})
+
+    # Some BEAM JITs implement dynamic unary plus as addition with zero.
+    if Float.to_string(+zero) == "0.0" and not folded_number?(value) do
+      ~s|__liveLiftArithmetic(0, #{expression}, "+")|
+    else
+      ~s|__liveLiftUnary(#{expression}, "+")|
+    end
   end
+
+  defp compile_expr({:-, _, [value]}, arg),
+    do: ~s|__liveLiftUnary(#{compile_expr(value, arg)}, "-")|
 
   defp compile_expr({:!, _, [value]}, arg), do: "(!__liveLiftTruthy(#{compile_expr(value, arg)}))"
 
@@ -1484,6 +1495,28 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftReduce(#{compile_expr(list, args)}, #{compile_expr(initial, args)}, " <>
       "(#{item_name}, #{acc_name}) => #{expression}, #{seeded})"
   end
+
+  # BEAM can fold plus applied to a constant expression. Elixir handles a
+  # signed number token through its own unary operator path.
+  defp folded_number?({op, _, [left, right]}) when op in [:+, :-, :*],
+    do: constant_number?(left) and constant_number?(right)
+
+  defp folded_number?({op, _, [value]}) when op in [:+, :-], do: folded_number?(value)
+
+  defp folded_number?({:__live_lift_if__, _, [condition, yes, no]})
+       when is_boolean(condition) or is_nil(condition) or is_number(condition) or
+              is_binary(condition),
+       do: constant_number?(if(condition, do: yes, else: no))
+
+  defp folded_number?({:case, _, [value, [do: clauses]]})
+       when is_number(value) or is_binary(value) or is_boolean(value) or is_nil(value),
+       do: Enum.all?(clauses, fn {:->, _, [_, result]} -> constant_number?(result) end)
+
+  defp folded_number?(_), do: false
+
+  defp constant_number?(value) when is_number(value), do: true
+  defp constant_number?({op, _, [value]}) when op in [:+, :-], do: constant_number?(value)
+  defp constant_number?(expression), do: folded_number?(expression)
 
   defp compile_case_pattern(pattern) do
     {descriptor, names} = case_pattern(pattern)
