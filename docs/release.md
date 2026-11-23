@@ -19,6 +19,10 @@ mix hex.publish --dry-run
 The npm command creates `assets/live-lift-assets-0.1.0-rc.1.tgz`. Use that
 reviewed tarball for the npm release.
 
+Build both artifacts from the same commit. A change to the browser hook
+changes the compatibility binding, even while the unpublished version
+number stays the same.
+
 ## Publish with the maintainer accounts
 
 From the repository root, run each command under the corresponding

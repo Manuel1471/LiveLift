@@ -7,6 +7,12 @@ updates, so the server cost is not zero.
 
 ## Measurements
 
+The [row-edit profile](state-validation-profile-spike.md) separates the
+optimistic edit, confirmation, and browser samples for 100 and 1,000 rows.
+The [paired validation report](progress/state-validation-optimization.md)
+measures the validation optimization on BEAM and Chromium and records the
+shared hook size after the change.
+
 Run `bench/phoenix_bundle.sh` to generate two fresh Phoenix apps from the same
 template, add one tiny LiveLift view to the second, and compare minified bundles.
 On an Apple M4 Mac with Elixir 1.20.2 / OTP 29 on 2026-11-06:

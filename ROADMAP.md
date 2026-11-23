@@ -19,6 +19,13 @@ un paquete local también están verificados. Los tipos TypeScript, el paquete
 npm y la compatibilidad de assets pasaron con artefactos locales. Falta probar
 la instalación desde Hex y npm tras la publicación humana.
 
+La revisión de rendimiento (`aacf2ff`) midió una edición nativa en listas de 100 y
+1.000 filas y redujo el costo de validar el estado en BEAM y Chromium.
+El formato de las respuestas sigue siendo el mismo. El
+[spike](docs/state-validation-profile-spike.md) y la
+[evidencia comparativa](docs/progress/state-validation-optimization.md)
+registran la mejora y el trabajo pendiente sobre el costo de las respuestas.
+
 La revisión de pruebas del 22 de noviembre de 2026 reforzó la cobertura
 de reconexión, debounce, instalación y mapas de origen. Los
 [resultados de regresión](docs/progress/test-refresh.md) y
