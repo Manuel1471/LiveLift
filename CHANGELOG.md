@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Report view loading failures through the browser's standard error
+  event and omit exception details from loading and offline replay reports.
+
 ## 0.1.0-rc.1
 
 First LiveLift release candidate for Hex. Supports Phoenix LiveView 1.2.x.

@@ -53,12 +53,51 @@ test("a click during loading reaches LiveView and initializes the latest snapsho
 });
 
 test("an unavailable view signals the error and leaves native events connected", async ({page}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
   await page.route(counterChunk, (route) => route.abort());
   await page.goto("/native-counter");
   const root = page.locator("#native-counter");
   await expect(root).toHaveAttribute("data-live-lift-load", "error");
   await expect(root.getByRole("status").filter({hasText: "Local updates could not load"})).toBeVisible();
+  await expect.poll(() => errors).toEqual(["LiveLift view failed to load"]);
   await root.getByRole("button", {name: "Add one"}).click();
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "0");
+});
+
+test("view load reports omit the underlying exception", async ({page}) => {
+  await page.addInitScript(() => {
+    window.liveLiftErrors = [];
+    window.addEventListener("error", ({message, error}) => {
+      window.liveLiftErrors.push({message, cause: error?.cause?.message ?? null});
+    });
+  });
+  await page.route(counterChunk, (route) => route.fulfill({
+    contentType: "text/javascript",
+    body: 'throw new Error("private loader detail");',
+  }));
+  await page.goto("/native-counter");
+  await expect(page.locator("#native-counter")).toHaveAttribute("data-live-lift-load", "error");
+  await expect.poll(() => page.evaluate(() => window.liveLiftErrors)).toEqual([
+    {message: expect.stringMatching(/^(?:Uncaught Error: |Error: )?LiveLift view failed to load$/), cause: null},
+  ]);
+});
+
+test("view load reports fall back to the console without reportError", async ({page}) => {
+  await page.addInitScript(() => {
+    window.reportError = undefined;
+    window.liveLiftErrors = [];
+    const logError = console.error.bind(console);
+    console.error = (...args) => {
+      window.liveLiftErrors.push(args.map((arg) => arg?.message ?? String(arg)));
+      logError(...args);
+    };
+  });
+  await page.route(counterChunk, (route) => route.abort());
+  await page.goto("/native-counter");
+  await expect(page.locator("#native-counter")).toHaveAttribute("data-live-lift-load", "error");
+  await expect.poll(() => page.evaluate(() => window.liveLiftErrors)).toEqual([
+    ["LiveLift view failed to load"],
+  ]);
 });

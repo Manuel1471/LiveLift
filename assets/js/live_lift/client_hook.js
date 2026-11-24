@@ -590,7 +590,7 @@ export function createClientHook(views) {
         this.loading = null;
         if (loading.disconnected) this.disconnected();
         this.el.dataset.liveLiftLoad = "ready";
-      }).catch((error) => {
+      }).catch(() => {
         if (this.loading !== loading) return;
         this.el.dataset.liveLiftLoad = "error";
         const status = this.el.ownerDocument?.createElement("span");
@@ -599,7 +599,9 @@ export function createClientHook(views) {
           status.textContent = "Local updates could not load. Reload the page to try again.";
           this.el.append(status);
         }
-        console.error(`Could not load LiveLift view: ${name}`, error);
+        const error = new Error("LiveLift view failed to load");
+        if (typeof reportError === "function") reportError(error);
+        else console.error(error);
       });
     },
 
@@ -671,11 +673,11 @@ export function createClientHook(views) {
 
           this.timers?.resume(keepBase, ack);
           let replayed;
-          let replayError = null;
+          let replayFailed = false;
           try {
             replayed = replay(view.actions, snapshot, retry, this.timers);
-          } catch (error) {
-            replayError = error;
+          } catch {
+            replayFailed = true;
             retry.length = 0;
             replayed = snapshot;
             nextSequence = ack + 1;
@@ -683,7 +685,7 @@ export function createClientHook(views) {
           this.render(replayed);
           this.pending = retry;
           this.recovery = retry.length ? {sent: null} : null;
-          this.recoveryBlocked = sameInstance && (this.recoveryBlocked || Boolean(replayError && hadUnacknowledged));
+          this.recoveryBlocked = sameInstance && (this.recoveryBlocked || replayFailed && hadUnacknowledged);
           this.instance = instance;
           this.ackSequence = ack;
           this.authoritativeState = snapshot;
@@ -693,8 +695,8 @@ export function createClientHook(views) {
           this.reconnectPending = false;
           this.offline = false;
           this.offlineQueue = [];
-          if (replayError) {
-            throw new Error(`LiveLift offline replay conflict; queued actions were dropped: ${replayError.message}`);
+          if (replayFailed) {
+            throw new Error("LiveLift offline replay conflict; queued actions were dropped");
           }
           this.recoverPending();
         };

@@ -912,7 +912,7 @@ test("an offline replay conflict restores the server snapshot and clears the que
   hook.sendOptimistic(el.controls.advance, "advance", {});
   el.dataset.liveLiftState = JSON.stringify({count: 7, step: 1});
   el.dataset.liveLiftServerRevision = "3";
-  assert.throws(() => hook.updated(), /offline replay conflict/);
+  assert.throws(() => hook.updated(), {message: "LiveLift offline replay conflict; queued actions were dropped"});
   assert.equal(hook.state.count, 7);
   assert.equal(hook.offline, false);
   assert.equal(hook.offlineQueue.length, 0);

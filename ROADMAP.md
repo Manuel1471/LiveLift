@@ -661,7 +661,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
 - **Previo:** Auditoría interna de XSS y de los usos de `innerHTML` en el runtime.
 - **Previo:** Pruebas de prototype pollution y fuzzing del compilador para el subconjunto
   actual (1,000 expresiones generadas con semilla y comprobación sintáctica en Node).
-- **Falta:** Telemetría (`:telemetry` en servidor, reporte de errores del cliente).
+- **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
+  El navegador informa fallos de carga de vistas con un mensaje fijo y
+  conserva los eventos de LiveView. Los conflictos de repetición también
+  omiten la excepción original. [Evidencia](docs/progress/7-client-error-reporting.md).
 - **Previo:** **Interruptor de emergencia** por componente y global: vuelve al servidor
   en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
 - **Previo:** Accesibilidad: foco al re-renderizar y axe WCAG A/AA del demo en Chromium,

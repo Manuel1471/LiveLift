@@ -1,4 +1,4 @@
-# Measuring native events before and after migration
+# LiveLift telemetry and browser errors
 
 ## Existing LiveLift wrapper
 
@@ -101,3 +101,24 @@ of the application runtime.
 Use the server event counts to choose a frequent, supported candidate.
 Compare the server duration, DOM update and acknowledgment under the
 same workload before deciding whether the local prediction is worthwhile.
+
+## Client error reporting
+
+When a lazy view fails to load or initialize, LiveLift shows a status
+message and reports `LiveLift view failed to load` through the browser's
+`reportError` API. An application can observe the standard window `error`
+event with its existing error collector. Extract the application-controlled
+message and choose which fields to forward. Browsers without `reportError`
+receive the same diagnostic in the console.
+
+The reported error omits the original exception and its cause. LiveLift keeps
+ordinary LiveView events connected if the view chunk is unavailable. When
+replay after reconnection fails, the hook restores the authoritative snapshot,
+drops the conflicting queue and raises the fixed error
+`LiveLift offline replay conflict; queued actions were dropped`.
+LiveLift sends no client reports over the network. Applications choose whether
+to collect them and where to send them.
+
+The [browser test](https://github.com/Manuel1471/LiveLift/blob/main/bench/e2e/island_loading.spec.mjs)
+captures the standard window event and checks its payload after an import
+rejects with a private error message.
