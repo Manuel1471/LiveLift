@@ -9,26 +9,11 @@ test("local and optimistic actions work under an enforced script CSP", async ({p
     });
   });
 
-  await page.route("**/local-actions", async (route) => {
-    const response = await route.fetch({
-      headers: {...route.request().headers(), "accept-encoding": "identity"},
-    });
-    const socket = new URL(route.request().url());
-    socket.protocol = socket.protocol === "https:" ? "wss:" : "ws:";
-    await route.fulfill({
-      response,
-      headers: {
-        ...response.headers(),
-        "content-security-policy": `script-src 'self'; connect-src 'self' ${socket.origin}; object-src 'none'; base-uri 'none'`,
-      },
-    });
-  });
-
   await Promise.all([
     page.waitForResponse((response) =>
       response.ok() && /\/chunks\/LiveLiftDemoWeb\.LocalActionsLive-/.test(new URL(response.url()).pathname)
     ),
-    gotoLiveLift(page, "/local-actions"),
+    gotoLiveLift(page, "/local-actions-csp"),
   ]);
 
   const root = page.locator('[data-live-lift-module="LiveLiftDemoWeb.LocalActionsLive"]');

@@ -1,8 +1,9 @@
 # Phase 7 — Enforced script CSP
 
-The browser test serves the demo's unchanged HTML with an enforced
-`Content-Security-Policy` response header. Scripts come from the app's
-origin, and the policy also allows the app's LiveView WebSocket.
+The demo route `/local-actions-csp` serves the same LiveView under an
+enforced `Content-Security-Policy` response header set by Phoenix. Scripts
+come from the app's origin, and the policy also allows the app's
+LiveView WebSocket.
 The policy omits `unsafe-inline` and `unsafe-eval`.
 
 The test checks that the split view chunk loads, the local preview
@@ -40,3 +41,8 @@ Firefox 159.0, and WebKit 27.2. The baseline was `da2835f` on macOS 26.5.2
 The deployed build uses digested assets. The focused Elixir suite passed
 68 tests, and the JavaScript runtime passed 34. Style policies, Trusted
 Types, and an independent review remain outside this test.
+
+A later clean-checkout run found a Firefox timeout while Playwright
+intercepted and re-fetched the document. The route now sets the header
+in Phoenix. Three repetitions per browser passed in each asset mode
+after this change, for 18 checks.

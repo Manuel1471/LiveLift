@@ -14,6 +14,10 @@ defmodule LiveLiftDemoWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :script_csp do
+    plug :put_script_csp
+  end
+
   scope "/", LiveLiftDemoWeb do
     pipe_through :browser
 
@@ -28,6 +32,24 @@ defmodule LiveLiftDemoWeb.Router do
     live "/native-list", NativeListLive
     live "/local-actions", LocalActionsLive
     live "/many-islands", ManyIslandsLive
+  end
+
+  scope "/", LiveLiftDemoWeb do
+    pipe_through [:browser, :script_csp]
+
+    live "/local-actions-csp", LocalActionsLive
+  end
+
+  defp put_script_csp(conn, _opts) do
+    url = conn |> request_url() |> URI.new!()
+    scheme = if url.scheme == "https", do: "wss", else: "ws"
+    socket = %URI{scheme: scheme, host: url.host, port: url.port}
+
+    put_resp_header(
+      conn,
+      "content-security-policy",
+      "script-src 'self'; connect-src 'self' #{socket}; object-src 'none'; base-uri 'none'"
+    )
   end
 
   # Other scopes may use custom stacks.
