@@ -651,7 +651,9 @@ compartido quedó en 8,179 bytes gzip.
 - **Verificado en Hex:** La app consumidora resolvió `live_lift 0.1.0-rc.1`
   desde el registro público y pasó migración, paridad y los builds de assets.
   También comprobó que el runtime npm empaquetado localmente coincide con el
-  runtime de Hex. [Evidencia](docs/progress/6-public-registry.md).
+  runtime de Hex. En Chromium, Firefox y WebKit, ambos runtimes mostraron
+  el cambio local antes de la confirmación y LiveView guardó el resultado.
+  [Evidencia](docs/progress/6-public-registry.md).
 - **En espera:** Publicar `live-lift-assets 0.1.0-rc.1` y verificar ambos
   registros en la misma app consumidora. [Procedimiento de publicación](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md).
 

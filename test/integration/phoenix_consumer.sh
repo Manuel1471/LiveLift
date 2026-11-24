@@ -342,6 +342,9 @@ PYTHON
   mix assets.build
   grep -Fq "function __liveLiftLocalActions" assets/js/generated_views.js
   mix assets.deploy
+  if [ -n "${LIVE_LIFT_CONSUMER_BROWSER_PORT:-}" ]; then
+    sh "$repo_dir/test/integration/phoenix_consumer_browser.sh" "$repo_dir" copied
+  fi
   if [ "$igniter_mode" = "1" ] || [ -n "$registry_version" ]; then
     sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets" "$npm_registry_version"
   fi

@@ -31,3 +31,31 @@ esbuild enforces the runtime link when the generated registry re-exports it.
 The mixed run reproduced that check against the compiler from the public
 Hex package and a local npm tarball. Phase 6 closes after the same consumer
 installs the matching runtime from public npm and passes.
+
+## Browser verification in the fresh consumer
+
+On 2026-11-24, the browser check ran on macOS 26.5.2 (arm64) with
+Elixir 1.20.2, OTP 29, Node 26.5.0, Playwright 1.65.0 and the Phoenix 1.8.16
+generator. The Hex dependency came from release commit `ac48734`. The
+local npm packing step used the same runtime sources as that commit.
+
+```sh
+LIVE_LIFT_CONSUMER_BROWSER_PORT=4047 \
+  LIVE_LIFT_REGISTRY_VERSION=0.1.0-rc.1 LIVE_LIFT_NPM_REGISTRY_VERSION= \
+  sh test/integration/phoenix_consumer.sh
+```
+
+The new consumer used `mix assets.deploy` for each mode and served those
+assets with development watchers disabled.
+
+| Runtime | Chromium 158.0.8127.18 | Firefox 159.0 | WebKit 27.2 |
+| --- | --- | --- | --- |
+| Copied from public Hex | Pass | Pass | Pass |
+| Local npm tarball with split registry | Pass | Pass | Pass |
+
+Both modes rendered `3` in the initial HTML. The click changed it to `4`
+in the same JavaScript turn with server acknowledgment still at `0`.
+The acknowledgment advanced to `1`, and the unmarked save used the
+authoritative count and displayed `Saved 4`. The split mode also
+verified that the generated view loaded before the click. npm still
+returned HTTP 404 for the version; the browser run used a local tarball.

@@ -72,6 +72,13 @@ asset build and deploy checks without a dependency path to the checkout.
 The [versioned asset guide](versioned-assets.md) describes the TypeScript
 entry point and build-time compatibility check.
 
+For a browser check of both runtime builds, install Playwright and its
+browsers with `cd bench && npm ci && npx playwright install chromium firefox webkit`.
+From the repository root, add `LIVE_LIFT_CONSUMER_BROWSER_PORT=4047` to either
+consumer command and use a free local port. The check serves the assets from
+`mix assets.deploy` and verifies the initial HTML, the predicted DOM update,
+the server acknowledgment, and a server-only save.
+
 To exercise the public Hex release with a locally packed npm runtime while
 the matching npm release is pending, run this from a checkout whose
 `assets/` match the Hex release.

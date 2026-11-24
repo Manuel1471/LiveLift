@@ -68,6 +68,9 @@ mix assets.build
 mix assets.deploy
 test ! -e assets/js/live_lift_runtime.js
 test ! -e assets/js/live_lift_runtime.d.ts
+if [ -n "${LIVE_LIFT_CONSUMER_BROWSER_PORT:-}" ]; then
+  sh "$repo_dir/test/integration/phoenix_consumer_browser.sh" "$repo_dir" npm-split
+fi
 sed '/fromCopy/d' assets/js/check_types.mts > assets/js/check_npm_types.mts
 assets/node_modules/.bin/tsc --strict --noEmit --module NodeNext   --lib es2022,dom assets/js/check_npm_types.mts
 
