@@ -26,18 +26,34 @@ number stays the same. Run
 `LIVE_LIFT_INTEGRATION_IGNITER=1 sh test/integration/phoenix_consumer.sh` to
 verify both local artifacts in a fresh Phoenix app before publishing.
 
-## Publish with the maintainer accounts
+## Publish Hex from GitHub Actions
 
-From the repository root, run each command under the corresponding
-maintainer account. Complete any authentication prompts directly in the CLI.
+A push to `main` submits a new version from `mix.exs` to Hex after the
+stable test matrix, browser checks, and pinned LiveView compatibility jobs
+pass. The job skips versions already available on Hex. The experimental
+LiveView `main` check continues to run as an advisory job.
+
+Set `HEX_API_KEY_2` in the repository's Actions secrets using a Hex key
+with permission to publish. The job provides that secret to Hex as
+`HEX_API_KEY`. New public packages use staged publishing by default, so
+check the Hex dashboard for a pending approval after CI succeeds.
+See the [Hex publishing guide](https://hex.pm/docs/publish#staged-publishing).
+
+## Publish the matching npm package
+
+Build the npm tarball from the same commit CI used to submit the Hex
+release. Publish from the repository root using the npm maintainer account.
 
 ```sh
-mix hex.publish
 npm publish ./assets/live-lift-assets-0.1.0-rc.1.tgz --tag next
 ```
 
 The npm command assigns the prerelease to the `next` distribution tag.
 See the [npm distribution-tag documentation](https://docs.npmjs.com/adding-dist-tags-to-packages/).
+
+For a manual Hex release, run `mix hex.publish` and complete authentication
+in the CLI. If only the documentation upload needs to be retried, run
+`mix hex.publish docs` from the same release commit.
 
 ## Verify the public consumer
 

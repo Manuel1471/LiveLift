@@ -93,6 +93,59 @@ jobs:
         env:
           LIVE_LIFT_TEST_DEPLOY: '1'
 
+  compatibility:
+    name: Compatibility
+    uses: ./.github/workflows/compatibility.yml
+
+  publish-hex:
+    name: Publish to Hex
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, browser, compatibility]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: publish-live-lift-hex
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '29'
+          elixir-version: '1.20'
+      - name: Check whether this version is available on Hex
+        id: release
+        run: |
+          version=$(elixir -e 'Mix.start(); Mix.Project.in_project(:live_lift, ".", fn _ -> IO.puts(Mix.Project.config()[:version]) end)')
+          status=$(curl --silent --show-error --retry 3 --max-time 20 \
+            --output /dev/null --write-out '%{http_code}' \
+            "https://hex.pm/api/packages/live_lift/releases/$version")
+          case "$status" in
+            200) echo "LiveLift $version is already available on Hex." ;;
+            404) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::Hex returned HTTP $status while checking LiveLift $version."
+              exit 1
+              ;;
+          esac
+      - name: Build documentation
+        if: steps.release.outputs.publish == 'true'
+        run: |
+          mix deps.get
+          mix docs --warnings-as-errors
+      - name: Publish package and documentation
+        if: steps.release.outputs.publish == 'true'
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY_2 }}
+        run: |
+          if [ -z "$HEX_API_KEY" ]; then
+            echo "::error::Set the HEX_API_KEY_2 repository secret to publish LiveLift."
+            exit 1
+          fi
+          mix hex.publish --yes
+
   liveview-main:
     runs-on: ubuntu-latest
     continue-on-error: true
