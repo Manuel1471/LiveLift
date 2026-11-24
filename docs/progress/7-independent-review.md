@@ -75,8 +75,9 @@ Firefox timeout in the CSP test's response interception. Commit
 `cc4f26e` moves that header to Phoenix. The updated test passed 18
 repetitions across the three browsers and two asset modes. The targeted
 deployed-asset run at `cc4f26e` passed 24 checks, with 12 development
-inspector cases skipped by design. The full browser suite has not been
-rerun on that commit.
+inspector cases skipped by design. A fresh extraction of `cc4f26e`
+then passed the full browser suite with 255 passes, zero failures and
+30 opt-in skips. The Firefox CSP test passed in that run.
 
 The Hex archive rebuilt from `cc4f26e` matched the original review
 artifact byte for byte. Its SHA-256 is

@@ -32,6 +32,13 @@ with the synchronized package. The regression test verifies the
 version and notes before and after preparation. The version bump and
 the locally packed assets are confined to the rehearsal.
 
+The fresh Phoenix consumer passed with Igniter on the prepared
+`0.1.0-rc.2` source. Both asset aliases, strict TypeScript, and rejection
+of mismatched runtime bytes and versions were exercised. The local rerun
+preloaded the same Tailwind 4.3.3 and esbuild 0.25.4 binaries after the
+tool download stalled. The release-tooling test passed with Node 22 and
+26.
+
 ## Signed package workflow
 
 A local probe compared `mix hex.build` with the bytes returned by Hex's
