@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        live_view: ["== 1.2.0", "== 1.2.13"]
+        live_view: ["== 1.2.0", "== 1.2.15"]
     env:
       LIVE_LIFT_LIVE_VIEW_VERSION: ${{ matrix.live_view }}
     steps:
@@ -25,3 +25,12 @@ jobs:
       - run: rm mix.lock && mix deps.get
       - run: mix test
       - run: node --test assets/js/live_lift/client_hook.test.js
+      - name: Install Phoenix generator
+        run: mix archive.install hex phx_new 1.8.16 --force
+      - name: Install browsers
+        run: npx playwright install chromium firefox webkit --with-deps
+        working-directory: bench
+      - name: Verify the pinned LiveView in a fresh Phoenix app
+        env:
+          LIVE_LIFT_CONSUMER_BROWSER_PORT: '4047'
+        run: sh test/integration/phoenix_consumer.sh

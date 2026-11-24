@@ -666,8 +666,13 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
 - **Previo:** Accesibilidad: foco al re-renderizar y axe WCAG A/AA del demo en Chromium,
   Firefox y WebKit. No equivale a una auditoría con lector de pantalla.
-- **Falta:** Política de versiones: rango de LiveView soportado, deprecaciones, changelog
-  automatizado, publicación firmada en Hex.
+- **Verificado:** El rango LiveView 1.2.x conserva su prueba en 1.2.0, y
+  la matriz ahora usa 1.2.15 como referencia actual. La app consumidora
+  verifica migración, paridad y confirmación de LiveView en tres
+  navegadores. Se actualizaron los lockfiles tras auditar con Hex.
+  [Evidencia de compatibilidad](docs/progress/7-liveview-compatibility.md).
+- **Falta:** Completar la política de deprecaciones, el changelog
+  automatizado y la publicación firmada en Hex.
 - **Previo:** Pruebas de carga con 100 islas por página: eventos independientes en
   Chromium, Firefox y WebKit, más benchmark reproducible de montaje en Chromium.
 

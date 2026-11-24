@@ -19,6 +19,7 @@ fi
 python3 - "$consumer_dir/consumer_lift" "$live_lift_dep" "$igniter_mode" "$registry_version" <<'PY'
 from pathlib import Path
 import json
+import os
 import re
 import sys
 
@@ -31,6 +32,16 @@ source = mix.read_text()
 assert "      {:phoenix," in source
 # Phoenix 1.8.16 generates a DNSCluster requirement that predates the Elixir 1.20 fix.
 source = source.replace('{:dns_cluster, "~> 0.2.0"}', '{:dns_cluster, "~> 0.3.1"}')
+live_view_version = os.environ.get("LIVE_LIFT_LIVE_VIEW_VERSION")
+if live_view_version:
+    if not re.fullmatch(r"== \d+\.\d+\.\d+", live_view_version):
+        raise SystemExit("The Phoenix consumer expects an exact LiveView requirement (== x.y.z)")
+    source, changed = re.subn(
+        r'({:phoenix_live_view, )"[^"]+"',
+        lambda match: match[1] + json.dumps(live_view_version),
+        source,
+    )
+    assert changed == 1
 options = ", override: true" if igniter else ""
 if version:
     assert re.fullmatch(r"[0-9A-Za-z.+-]+", version)

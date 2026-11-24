@@ -33,12 +33,18 @@
 
 CI is configured for Elixir 1.18 with OTP 27 and Elixir 1.20 with OTP 29,
 using Node 22. Both stable lanes run against the repository lockfiles, which
-pin Phoenix LiveView 1.2.13. A separate non-blocking lane targets LiveView
-`main`. The dependency requirement `~> 1.2.0` declares the intended
-1.2.x range. The library suite also passed locally with LiveView 1.2.0
-on Elixir 1.20.2 and OTP 29, using both parser paths. See the
-[regression report](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/test-refresh.md). The published subset uses a
-bounded fallback when the internal LiveView template parser is unavailable.
+pin Phoenix LiveView 1.2.15. The compatibility workflow covers 1.2.0 and
+1.2.15 with the library tests and a fresh Phoenix app. The app verifies both
+asset builds and the client/server round trip in Chromium, Firefox, and
+WebKit. A separate advisory lane targets LiveView `main`.
+
+The dependency requirement `~> 1.2.0` declares the LiveView 1.2.x range. For
+deployment, use a patched release in that range and check the application's
+own lockfile with `mix hex.audit`. LiveView 1.2.0 is a compatibility test
+target and is affected by published security advisories. The published
+subset uses a bounded fallback when the internal LiveView template parser
+is unavailable. See the
+[compatibility evidence](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-liveview-compatibility.md).
 
 ## Pending
 
