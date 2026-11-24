@@ -713,6 +713,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
 - **Verificado localmente:** El control que ejecuta CI mide el hook
   compartido con esbuild y gzip y falla al superar el límite vigente
   de 8 KiB. [Evidencia y comando](docs/progress/7-runtime-budget.md).
+- **Verificado localmente:** El demo conserva los mapas del compilador
+  para desarrollo y limpia los mapas de los assets públicos antes de
+  que Phoenix genere el manifiesto de producción.
+  [Evidencia](docs/progress/7-deployed-source-maps.md).
 
 La revisión interna bloquea esquemas de URL codificados con entidades y
 `xlink:href`; las pruebas cubren las tres claves de prototype pollution,

@@ -86,10 +86,12 @@ Elixir source and map each generated view entry to its `~H` sigil. The consumer 
 split native mapping through Node's source-map API. Mapping individual
 action expressions remains pending.
 
-The demo's `assets.build` emits external bundle maps. Use a clean workspace
-for `assets.deploy`. A previous `assets.build` can leave maps in the static
-output directory, and Phoenix can digest those files on the next deploy. Custom bundlers
-must explicitly configure consumption of the generated maps.
+The demo's `assets.build` emits external bundle maps for development.
+`assets.deploy` removes those maps and bundles left by the dev watcher
+that embed inline maps before Phoenix builds the public manifest. The
+compiler's private maps stay under `assets/js`. Custom bundlers control
+which maps they consume and publish. See the
+[deployment check](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-deployed-source-maps.md).
 
 ## Benchmarks
 

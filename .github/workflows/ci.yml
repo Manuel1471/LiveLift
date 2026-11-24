@@ -52,7 +52,8 @@ jobs:
         run: |
           esbuild=$(mix run --no-start --no-compile -e 'IO.write(Esbuild.bin_path())')
           python3 ../../bench/runtime_budget.py "$esbuild"
-      - run: mix assets.build
+      - name: Verify development maps stay out of deployed assets
+        run: sh ../../test/integration/demo_source_maps.sh
         working-directory: examples/demo
       - run: mix compile --force && mix test && mix assets.build
         working-directory: examples/demo

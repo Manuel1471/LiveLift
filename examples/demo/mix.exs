@@ -59,6 +59,22 @@ defmodule LiveLiftDemo.MixProject do
     if Mix.env() == :dev, do: " --define:LIVE_LIFT_INSPECT=true", else: ""
   end
 
+  defp remove_development_maps(_args) do
+    # This directory is owned by the demo's esbuild output.
+    output = "priv/static/assets/js"
+    external = Path.wildcard("#{output}/**/*.{map,map.gz,map.br}")
+
+    inline =
+      "#{output}/**/*.{js,css}"
+      |> Path.wildcard()
+      |> Enum.filter(fn path ->
+        Regex.match?(~r/^(?:\/\/|\/\*)# sourceMappingURL=data:/m, File.read!(path))
+      end)
+      |> Enum.flat_map(fn path -> [path | Path.wildcard("#{path}.{gz,br}")] end)
+
+    Enum.each(external ++ inline, &File.rm!/1)
+  end
+
   # Aliases are shortcuts or tasks specific to the current project.
   # For example, to install project dependencies and perform other setup tasks, run:
   #
@@ -77,6 +93,7 @@ defmodule LiveLiftDemo.MixProject do
       "assets.deploy": [
         "live_lift.compile --split --output assets/js/generated_views.js",
         "esbuild live_lift_demo --minify",
+        &remove_development_maps/1,
         "phx.digest"
       ],
       precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
