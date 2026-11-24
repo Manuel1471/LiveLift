@@ -217,23 +217,33 @@ test("benchmark navigation and mount with 100 islands", async ({page, browserNam
   test.skip(process.env.LIVE_LIFT_BENCH !== "1" || browserName !== "chromium", "Run with LIVE_LIFT_BENCH=1 in Chromium");
   test.setTimeout(120_000);
 
+  const warmups = 5;
+  const samples = 25;
+  const durations = {server: [], client: []};
   const measure = async (mode) => {
-    const durations = [];
-    for (let index = 0; index < 9; index += 1) {
-      const started = performance.now();
-      await gotoLiveLift(page, `/many-islands?count=100&mode=${mode}`);
-      await page.waitForFunction(() => window.liveSocket.isConnected());
-      await expect(page.locator("#many-islands > div")).toHaveCount(100);
-      if (index >= 2) durations.push(performance.now() - started);
-    }
-    durations.sort((left, right) => left - right);
-    return {medianMs: durations[3], p95Ms: durations[6]};
+    const started = performance.now();
+    await page.goto(`/many-islands?count=100&mode=${mode}`, {waitUntil: "domcontentloaded"});
+    await page.waitForFunction((mode) => {
+      const list = document.querySelector(".phx-connected #many-islands");
+      if (list?.children.length !== 100) return false;
+      const islands = list.querySelectorAll('[phx-hook="LiveLift"]');
+      return mode === "server"
+        ? islands.length === 0
+        : islands.length === 100 && [...islands].every((island) => island.dataset.liveLiftLoad === "ready");
+    }, mode);
+    return performance.now() - started;
   };
 
-  const server = await measure("server");
-  const client = await measure("client");
-  console.log(JSON.stringify({browser: "Chromium", islands: 100, samples: 7,
-    navigationAndMount: {server, client}}, null, 2));
+  for (let round = 0; round < warmups + samples; round += 1) {
+    const order = round % 2 === 0 ? ["server", "client"] : ["client", "server"];
+    for (const mode of order) {
+      const elapsed = await measure(mode);
+      if (round >= warmups) durations[mode].push(elapsed);
+    }
+  }
+
+  console.log(JSON.stringify({browser: "Chromium", islands: 100, warmups, samples,
+    navigationAndMountMs: {server: summarize(durations.server), client: summarize(durations.client)}}, null, 2));
 });
 
 test("benchmark editing a row in a 1,000-row native LiveComponent list", async ({page, browserName}) => {

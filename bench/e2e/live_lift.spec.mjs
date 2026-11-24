@@ -859,16 +859,18 @@ test("100 opted-in islands keep their state and events isolated", async ({page})
   await gotoLiveLift(page, "/many-islands?count=100");
   await expect(page.locator('#many-islands [data-live-lift-mode="component"]')).toHaveCount(100);
 
-  for (const index of [1, 50, 100]) {
+  const selected = [1, 50, 100];
+  for (const index of selected) {
     const island = page.locator(`#island-${index}`);
     await island.getByRole("button", {name: "Add one"}).click();
     await expect(island.locator("output")).toHaveText("1");
     await expect(island).toHaveAttribute("data-live-lift-server-revision", "1");
   }
 
-  for (const index of [2, 49, 51, 99]) {
-    const island = page.locator(`#island-${index}`);
-    await expect(island.locator("output")).toHaveText("0");
-    await expect(island).toHaveAttribute("data-live-lift-server-revision", "0");
-  }
+  const islands = page.locator('#many-islands [data-live-lift-mode="component"]');
+  const expected = Array.from({length: 100}, (_, index) => selected.includes(index + 1) ? "1" : "0");
+  await expect(islands.locator("output")).toHaveText(expected);
+  await expect.poll(() => islands.evaluateAll((elements) =>
+    elements.map((element) => element.dataset.liveLiftServerRevision)
+  )).toEqual(expected);
 });

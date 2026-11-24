@@ -126,15 +126,13 @@ select an event based on its frequency and measure the server and browser
 parts separately.
 
 The demo route `/many-islands?count=100` mounts 100 independent opted-in
-components; `mode=server` uses the same component in server mode. Run
-`cd bench && LIVE_LIFT_BENCH=1 npm run e2e -- --project=chromium --grep
-"benchmark navigation and mount"` to compare them. Seven samples after two
-warmups on the same machine gave 37.9 ms median / 39.1 ms p95 for server mode
-and 41.4 ms median / 53.2 ms p95 for client mode. This includes navigation,
-server render, LiveView connection and browser mount; it is a small local
-sample, not an isolated hook cost or a production latency promise. The regular
-browser suite verifies that first, middle and last islands update without
-changing neighboring islands in Chromium, Firefox and WebKit.
+components. `mode=server` uses the server-only variant. An interleaved run
+with 25 samples per mode measured 49.8 ms median / 56.1 ms p95 for server
+mode and 63.4 ms median / 81.0 ms p95 for client mode. The measurement
+includes navigation, server rendering, the LiveView join and client mount.
+The three-browser suite verifies the output and the server revision of all
+100 components after an event on the first, middle, and last components.
+See the [method and commands](progress/7-browser-operability.md).
 
 ## Learning and integration
 

@@ -667,8 +667,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   omiten la excepción original. [Evidencia](docs/progress/7-client-error-reporting.md).
 - **Previo:** **Interruptor de emergencia** por componente y global: vuelve al servidor
   en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
-- **Previo:** Accesibilidad: foco al re-renderizar y axe WCAG A/AA del demo en Chromium,
-  Firefox y WebKit. No equivale a una auditoría con lector de pantalla.
+- **Verificado:** El foco se conserva al reordenar filas y axe no detectó
+  infracciones WCAG A/AA en la página principal del demo en Chromium,
+  Firefox y WebKit. La revisión con lector de pantalla sigue pendiente.
+  [Evidencia de accesibilidad](docs/progress/7-browser-operability.md).
 - **Verificado:** El rango LiveView 1.2.x conserva su prueba en 1.2.0, y
   la matriz ahora usa 1.2.15 como referencia actual. La app consumidora
   verifica migración, paridad y confirmación de LiveView en tres
@@ -681,8 +683,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
 - **En curso:** CI atestigua el SHA-256 del paquete que Hex recibe para
   aprobación. Falta verificar la firma contra el archivo de una nueva
   publicación pública. [Evidencia](docs/progress/7-hex-release-policy.md).
-- **Previo:** Pruebas de carga con 100 islas por página: eventos independientes en
-  Chromium, Firefox y WebKit, más benchmark reproducible de montaje en Chromium.
+- **Verificado:** El caso de 100 componentes comprueba todos los valores y
+  revisiones en Chromium, Firefox y WebKit. El benchmark de Chromium mide
+  ambas variantes con cargas intercaladas y espera al montaje.
+  [Evidencia y medición](docs/progress/7-browser-operability.md).
 
 La revisión interna bloquea esquemas de URL codificados con entidades y
 `xlink:href`; las pruebas cubren las tres claves de prototype pollution,
