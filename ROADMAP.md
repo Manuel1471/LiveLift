@@ -718,6 +718,10 @@ generadas. El corpus HEEx prueba formas admitidas y rechazos seleccionados.
 La cobertura de todas las formas HEEx y una revisión de seguridad externa
 siguen pendientes.
 
+La [guía de revisión independiente](docs/progress/7-independent-review.md)
+identifica el commit, los límites de confianza, el artefacto de Hex y los
+comandos que debe ejecutar la persona revisora.
+
 ## Criterios para 1.0
 
 - API congelada durante al menos un ciclo de LiveView.
