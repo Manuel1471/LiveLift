@@ -46,6 +46,12 @@ jobs:
         working-directory: examples/demo
       - run: mix assets.setup
         working-directory: examples/demo
+      - name: Check the shared runtime size budget
+        if: matrix.otp == '29'
+        working-directory: examples/demo
+        run: |
+          esbuild=$(mix run --no-start --no-compile -e 'IO.write(Esbuild.bin_path())')
+          python3 ../../bench/runtime_budget.py "$esbuild"
       - run: mix assets.build
         working-directory: examples/demo
       - run: mix compile --force && mix test && mix assets.build

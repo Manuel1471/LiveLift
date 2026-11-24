@@ -22,8 +22,10 @@
   restore server-only rendering for new mounts. Active clients reload after
   their next synchronized marked event receives the disabled reply. The [security model](security.md) documents the trust
   boundary and internal XSS review.
-- **Performance.** The shared hook measured 8,189 bytes gzip against an
-  8 KiB budget. The [native event measurements](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/6-event-telemetry.md)
+- **Performance.** CI checks the shared hook against the 8 KiB budget.
+  It measured 8,189 bytes gzip on macOS and Linux. The
+  [runtime size check](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-runtime-budget.md)
+  records the toolchain and reproduction command. The [native event measurements](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/6-event-telemetry.md)
   record server cost and browser latency for the measured fixture.
   The [snapshot measurement](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/unchanged-snapshot-optimization.md)
   covers browser CPU for duplicate revisions. The local-action demo checks
