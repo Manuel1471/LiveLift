@@ -11,9 +11,8 @@ mix phx.new "$consumer_dir/consumer_lift" --module ConsumerLift \
 live_lift_dep="$repo_dir"
 igniter_mode="${LIVE_LIFT_INTEGRATION_IGNITER:-0}"
 registry_version="${LIVE_LIFT_REGISTRY_VERSION:-}"
-if [ -n "$registry_version" ]; then
-  igniter_mode=0
-elif [ "$igniter_mode" = "1" ]; then
+npm_registry_version="${LIVE_LIFT_NPM_REGISTRY_VERSION-$registry_version}"
+if [ -z "$registry_version" ] && [ "$igniter_mode" = "1" ]; then
   live_lift_dep="$consumer_dir/live_lift_package"
   (cd "$repo_dir" && mix hex.build --unpack --output "$live_lift_dep" >/dev/null)
 fi
@@ -181,7 +180,11 @@ EOF
     cp assets/js/app.js original-app.js
     cp mix.exs original-mix.exs
     cp .gitignore original-gitignore
-    install_spec="live_lift@path:$live_lift_dep"
+    if [ -n "$registry_version" ]; then
+      install_spec="live_lift@$registry_version"
+    else
+      install_spec="live_lift@path:$live_lift_dep"
+    fi
     mix igniter.install "$install_spec" --dry-run --yes >igniter-preview.log
     grep -Fq 'live_lift.install' igniter-preview.log
     mix run --no-start -e '
@@ -256,7 +259,7 @@ PYTHON
     cmp installed-app.js assets/js/app.js
     cmp installed-mix.exs mix.exs
     cmp installed-gitignore .gitignore
-    printf '%s\n' 'Verified Igniter preview, idempotence, custom steps, and unsupported layouts using an unpacked Hex package.'
+    printf '%s\n' 'Verified Igniter preview, idempotence, custom steps, and unsupported layouts.'
   else
     mix live_lift.install >/dev/null
   fi
@@ -340,6 +343,6 @@ PYTHON
   grep -Fq "function __liveLiftLocalActions" assets/js/generated_views.js
   mix assets.deploy
   if [ "$igniter_mode" = "1" ] || [ -n "$registry_version" ]; then
-    sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets" "$registry_version"
+    sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets" "$npm_registry_version"
   fi
 )

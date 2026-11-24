@@ -1,6 +1,6 @@
 # Experimental production limits
 
-## Verified locally
+## Verified
 
 - **Native adoption.** Ordinary LiveComponents and routed LiveViews can opt in
   supported handlers. The migration diff, compiler diagnostics, audit task,
@@ -9,8 +9,10 @@
   timer, and form support.
 - **Installation and assets.** The Mix and Igniter routes, TypeScript
   declarations, copied and npm runtime builds, and version mismatch rejection
-  passed in a generated app using local artifacts. The [asset verification](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/6-versioned-assets.md)
-  records the commands.
+  passed in a generated app using local artifacts. The public Hex release
+  also passed in a fresh Phoenix app with both the copied runtime and a
+  matching local npm tarball. The [registry verification](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/6-public-registry.md)
+  records the commands and remaining npm check.
 - **Browser behavior.** The suite exercises reordering, duplicates,
   reconnects, native form events, keyed focus, selected field drafts,
   and the development inspector in Chromium, Firefox, and WebKit. The
@@ -41,8 +43,8 @@ bounded fallback when the internal LiveView template parser is unavailable.
 
 ## Pending
 
-- Publish the matching Hex and npm releases, then verify an installation
-  from both public registries. This is the remaining phase 6 gate.
+- Publish the matching npm release and verify an installation from both
+  public registries. This is the remaining phase 6 gate.
 - Verify the phase 7 security and compatibility criteria, including a
   cross-review or external audit and the full HEEx fuzzing work.
 - Complete client error reporting and the release and deprecation policy.

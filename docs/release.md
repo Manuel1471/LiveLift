@@ -71,3 +71,15 @@ the npm release by version. It runs the documented migration, parity and
 asset build and deploy checks without a dependency path to the checkout.
 The [versioned asset guide](versioned-assets.md) describes the TypeScript
 entry point and build-time compatibility check.
+
+To exercise the public Hex release with a locally packed npm runtime while
+the matching npm release is pending, run this from a checkout whose
+`assets/` match the Hex release.
+
+```sh
+LIVE_LIFT_REGISTRY_VERSION=0.1.0-rc.1 LIVE_LIFT_NPM_REGISTRY_VERSION= \
+  sh test/integration/phoenix_consumer.sh
+```
+
+Add `LIVE_LIFT_INTEGRATION_IGNITER=1` to exercise Igniter from the same
+registry. Run the two-registry check above after the npm release is public.

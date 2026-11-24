@@ -70,9 +70,10 @@ for more examples.
 | Keep my own JavaScript build or LiveSocket hooks | [Manual asset integration](docs/phoenix-integration.md#manual-asset-integration) |
 | Check whether my Elixir and HEEx are supported | [Language reference](docs/language.md) |
 
-LiveLift `0.1.0-rc.1` is an experimental first release candidate for Hex and
-targets Phoenix LiveView 1.2.x. The [installation guide](docs/phoenix-integration.md#add-the-dependency)
-covers trying it from a local package and installing from Hex once available.
+LiveLift `0.1.0-rc.1` is an experimental release for Phoenix LiveView 1.2.x.
+Use the [Hex package](https://hex.pm/packages/live_lift/0.1.0-rc.1)
+with the standard copied runtime. The [installation guide](docs/phoenix-integration.md#add-the-dependency)
+also covers working from a local build.
 See the [release instructions](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md)
 for publication and public verification.
 
