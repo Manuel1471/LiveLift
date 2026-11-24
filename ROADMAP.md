@@ -9,17 +9,15 @@ Orden de magnitud hasta 1.0: 7 a 10 meses.
 
 ## Estado de ejecución
 
-**La fase 5 está cerrada y la fase 6 espera el paquete npm público.** La persistencia
+**Las fases 5 y 6 están cerradas. La fase 7 está en curso.** La persistencia
 restaura borradores de campos elegidos por la app. La auditoría de
 handlers y temporizadores y la medición de frecuencia y latencia
 ya están verificadas. La paridad de migración pasó en una app Phoenix
 nueva. La guía en formato diff y los diagnósticos accionables ya están
 verificados. El inspector de desarrollo y la instalación con Igniter desde
-un paquete local también están verificados. Los tipos TypeScript, el paquete
-npm y la compatibilidad de assets pasaron con artefactos locales. El candidato
-`0.1.0-rc.1` ya está disponible en Hex y HexDocs. Una app Phoenix nueva lo
-instaló desde Hex y verificó ambos runtimes con el paquete npm local.
-Falta repetir la prueba con el paquete npm del registro público.
+un paquete de Hex también están verificados. El candidato `0.1.0-rc.1`
+está disponible en Hex y HexDocs. La verificación en una app Phoenix nueva
+cubrió la instalación, la migración y el runtime incluido en Hex.
 [Verificación de la fase 6](docs/progress/6-public-registry.md).
 
 La revisión de rendimiento (`aacf2ff`) midió una edición nativa en listas de 100 y
@@ -52,8 +50,9 @@ evidencia local y las comprobaciones pendientes.
 | 3 | Cerrada | Convergencia ante reordenamiento, duplicados y reconexión. Ver evidencia en fase 3 |
 | 4 | Cerrada | Carga por isla y presupuestos de runtime y 1,000 filas verificados. Ver evidencia en fase 4 |
 | 5 | Cerrada | 5.1 a 5.4 verificadas y 225 pruebas en la regresión integral |
-| 6 | **Hex verificado, npm pendiente** | Migración, diagnóstico e instalación desde ambos registros verificados en otra app |
-| 7 y 1.0 | En espera de 6 | Compatibilidad, seguridad y operación verificadas, con revisión cruzada y dos apps reales |
+| 6 | Cerrada | Migración, diagnóstico e instalación desde Hex verificados en otra app |
+| 7 | En curso | Compatibilidad, seguridad y operación verificadas |
+| 1.0 | En espera de 7 | API congelada, paridad, revisión cruzada y dos apps reales |
 | 8 | Opcional, posterior a 1.0 | Decidir con datos de las apps piloto |
 
 ### Cola de la fase 5
@@ -644,22 +643,18 @@ compartido quedó en 8,179 bytes gzip.
   y el rechazo sin cambios parciales. [Spike](docs/igniter-install-spike.md)
   y [evidencia](docs/progress/6-igniter-install.md). La instalación con
   Igniter también pasó usando el [registro público de Hex](docs/progress/6-public-registry.md).
-- **Verificado:** `2127494` añade tipos TypeScript y el paquete npm
-  versionado. Una app Phoenix nueva instaló los artefactos locales, compiló
-  con ambos runtimes y rechazó dos paquetes incompatibles. [Spike](docs/asset-compatibility-spike.md)
+- **Verificado:** `2127494` añade tipos TypeScript y comprueba en el build
+  que el runtime corresponde al código generado. [Spike](docs/asset-compatibility-spike.md)
   y [evidencia](docs/progress/6-versioned-assets.md).
 - **Verificado en Hex:** La app consumidora resolvió `live_lift 0.1.0-rc.1`
   desde el registro público y pasó migración, paridad y los builds de assets.
-  También comprobó que el runtime npm empaquetado localmente coincide con el
-  runtime de Hex. En Chromium, Firefox y WebKit, ambos runtimes mostraron
-  el cambio local antes de la confirmación y LiveView guardó el resultado.
+  En Chromium, Firefox y WebKit, el runtime incluido mostró el cambio
+  local antes de la confirmación y LiveView guardó el resultado.
   [Evidencia](docs/progress/6-public-registry.md).
-- **En espera:** Publicar `live-lift-assets 0.1.0-rc.1` y verificar ambos
-  registros en la misma app consumidora. [Procedimiento de publicación](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md).
 
 ## Fase 7: Seguridad y operación (4 semanas, v0.9)
 
-Inventario de trabajo previo para verificar cuando se active la fase.
+Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la fase.
 
 - **Previo:** Modelo de amenazas escrito: el estado va visible en el HTML (sin secretos), el
   estado del cliente no es de fiar, compatibilidad con CSP sin `eval`.
@@ -672,7 +667,7 @@ Inventario de trabajo previo para verificar cuando se active la fase.
 - **Previo:** Accesibilidad: foco al re-renderizar y axe WCAG A/AA del demo en Chromium,
   Firefox y WebKit. No equivale a una auditoría con lector de pantalla.
 - **Falta:** Política de versiones: rango de LiveView soportado, deprecaciones, changelog
-  automatizado, publicación firmada en Hex y npm.
+  automatizado, publicación firmada en Hex.
 - **Previo:** Pruebas de carga con 100 islas por página: eventos independientes en
   Chromium, Firefox y WebKit, más benchmark reproducible de montaje en Chromium.
 

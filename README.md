@@ -81,7 +81,7 @@ for publication and public verification.
 
 - [Event flow and state ownership](docs/sync.md) traces a prediction through server confirmation.
 - [Adoption practices](docs/best-practices.md) covers state boundaries, parity tests, and measuring user feedback.
-- [Development inspector](docs/state-inspector.md) shows browser snapshots. [Versioned assets](docs/versioned-assets.md) covers the optional npm runtime and TypeScript.
+- [Development inspector](docs/state-inspector.md) shows browser snapshots. [Versioned assets](docs/versioned-assets.md) covers the runtime shipped in Hex and TypeScript.
 - [Production limits](docs/production-readiness.md) and the [security model](docs/security.md) explain the tested boundaries.
 
 ## Development

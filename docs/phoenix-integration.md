@@ -159,8 +159,8 @@ For custom asset pipelines, wire the same two pieces by hand.
    ```
 
 3. Run `mix assets.build` locally and `mix assets.deploy` for deployment.
-   Apps using npm to provide the runtime can follow the
-   [versioned asset guide](versioned-assets.md).
+   See the [versioned asset guide](versioned-assets.md) for TypeScript and
+   runtime compatibility.
 
 ## Install with Igniter
 

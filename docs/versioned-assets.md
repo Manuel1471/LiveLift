@@ -6,17 +6,17 @@ The standard installer copies the matching runtime and its TypeScript
 declaration. It also generates a typed entry registry. Existing Phoenix
 build and deploy commands use these files automatically.
 
-## Use the npm runtime
+## Test a locally packed runtime
 
-Use the npm artifact when your Phoenix assets already use npm. Install the
-version matching your Hex dependency after both packages are published.
+The public distribution is on Hex. The following workflow is for developing
+LiveLift or testing the package format from a source checkout whose assets
+match the installed Hex version.
 
 ```sh
-npm install --prefix assets --save-exact live-lift-assets@0.1.0-rc.1
+(cd /path/to/LiveLift/assets && npm pack)
+npm install --prefix assets --save-exact /path/to/LiveLift/assets/live-lift-assets-0.1.0-rc.1.tgz
 ```
 
-For a local package, substitute its `.tgz` file for the registry package
-reference. Create one with `npm pack` in the repository's `assets/` directory.
 In both `assets.build` and `assets.deploy`, use this generator command before
 esbuild.
 
@@ -40,6 +40,6 @@ supports `--split` with either runtime. For the copied runtime, import
 
 A bundler message about a missing `__liveLiftRuntime_` export identifies a
 runtime and registry built from different releases or different source
-bytes. Install the npm version that matches Hex, then regenerate and rebuild
+bytes. Use a local artifact that matches Hex, then regenerate and rebuild
 the assets. For copied assets, rerun the generator and deploy the rebuilt
 assets together.

@@ -11,7 +11,6 @@ mix phx.new "$consumer_dir/consumer_lift" --module ConsumerLift \
 live_lift_dep="$repo_dir"
 igniter_mode="${LIVE_LIFT_INTEGRATION_IGNITER:-0}"
 registry_version="${LIVE_LIFT_REGISTRY_VERSION:-}"
-npm_registry_version="${LIVE_LIFT_NPM_REGISTRY_VERSION-$registry_version}"
 if [ -z "$registry_version" ] && [ "$igniter_mode" = "1" ]; then
   live_lift_dep="$consumer_dir/live_lift_package"
   (cd "$repo_dir" && mix hex.build --unpack --output "$live_lift_dep" >/dev/null)
@@ -345,7 +344,7 @@ PYTHON
   if [ -n "${LIVE_LIFT_CONSUMER_BROWSER_PORT:-}" ]; then
     sh "$repo_dir/test/integration/phoenix_consumer_browser.sh" "$repo_dir" copied
   fi
-  if [ "$igniter_mode" = "1" ] || [ -n "$registry_version" ]; then
-    sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets" "$npm_registry_version"
+  if [ -z "$registry_version" ] && [ "$igniter_mode" = "1" ]; then
+    sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets"
   fi
 )

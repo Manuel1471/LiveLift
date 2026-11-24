@@ -1,4 +1,4 @@
-# Phase 6 — Verify installation from public registries
+# Phase 6 — Verify installation from public Hex
 
 ## Registry and artifact evidence
 
@@ -10,12 +10,39 @@ the SHA-256 returned by the release API.
 See the [publication job](https://github.com/Manuel1471/LiveLift/actions/runs/45337238691/job/138254788731)
 and [published documentation](https://live-lift.hexdocs.pm/0.1.0-rc.1/).
 
+## Phase 6 acceptance
+
+On 2026-11-24, both commands passed on macOS 26.5.2 (arm64), Elixir 1.20.2,
+OTP 29, Node 26.5.0, Phoenix generator 1.8.16 and Playwright 1.65.0.
+
+```sh
+LIVE_LIFT_REGISTRY_VERSION=0.1.0-rc.1 LIVE_LIFT_CONSUMER_BROWSER_PORT=4047 \
+  sh test/integration/phoenix_consumer.sh
+LIVE_LIFT_REGISTRY_VERSION=0.1.0-rc.1 LIVE_LIFT_INTEGRATION_IGNITER=1 \
+  LIVE_LIFT_CONSUMER_BROWSER_PORT=4048 sh test/integration/phoenix_consumer.sh
+```
+
+Two independent Phoenix apps installed release commit `ac48734` via Hex.
+Both passed the documented migration, four parity cases, compiler
+diagnostics, and asset build and deploy. In Chromium, Firefox and WebKit,
+the runtime shipped in Hex applied the predicted update before the reply
+and the server-only save used the correct count. Igniter also exercised
+preview, idempotence and unsupported layout handling.
+`mix docs --warnings-as-errors` and `mix hex.publish --dry-run --yes` passed
+from the repository checkout. Hex is the sole public release channel.
+
+## Earlier artifact comparison
+
 Packing `assets/` at `ac48734` produced a `live-lift-assets 0.1.0-rc.1`
 tarball with SHA-256 `7541392a5324ec3701939d752b9df2a89460211a9c0256d4a6a3cd9cd12ed253`.
 Its hook matches the bytes in the public Hex package. The generated runtime
 binding matches SHA-256 of the version, a NUL byte, and the hook bytes.
 
-## Consumer verification
+## Earlier compatibility experiments
+
+These commands describe the two-package experiment before Hex became the sole
+public distribution channel. The local npm artifact remains useful for
+regression tests of the runtime binding.
 
 Run from the repository root with the Phoenix 1.8.16 generator, Elixir
 1.20.2, OTP 29 and Node 22.15.0.
@@ -29,10 +56,9 @@ Run from the repository root with the Phoenix 1.8.16 generator, Elixir
 The [asset compatibility spike](../asset-compatibility-spike.md) found that
 esbuild enforces the runtime link when the generated registry re-exports it.
 The mixed run reproduced that check against the compiler from the public
-Hex package and a local npm tarball. Phase 6 closes after the same consumer
-installs the matching runtime from public npm and passes.
+Hex package and a local npm tarball.
 
-## Browser verification in the fresh consumer
+## Earlier browser verification in the fresh consumer
 
 On 2026-11-24, the browser check ran on macOS 26.5.2 (arm64) with
 Elixir 1.20.2, OTP 29, Node 26.5.0, Playwright 1.65.0 and the Phoenix 1.8.16

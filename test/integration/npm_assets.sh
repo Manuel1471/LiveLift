@@ -4,24 +4,18 @@ set -eu
 # Run from the generated Phoenix project's directory after building the copied runtime.
 repo_dir=$1
 stage=$2
-registry_version=${3:-}
 mkdir -p "$stage/repo/assets"
 cp -R "$repo_dir/assets/js" "$repo_dir/assets/scripts" "$repo_dir/assets/package.json" "$stage/repo/assets/"
 cp "$repo_dir/LICENSE" "$stage/repo/LICENSE"
 npm_version=$(node -p 'require(process.argv[1]).version' "$stage/repo/assets/package.json")
 tarball="$stage/live-lift-assets-$npm_version.tgz"
-package="$tarball"
-if [ -n "$registry_version" ]; then
-  package="live-lift-assets@$registry_version"
-else
-  (cd "$stage/repo/assets" && npm pack --pack-destination "$stage" >/dev/null)
-fi
+(cd "$stage/repo/assets" && npm pack --pack-destination "$stage" >/dev/null)
 
 cd assets
 printf '%s\n' '{"private":true}' >package.json
 # Mark the application modules as ESM for NodeNext without changing the vendor directory.
 printf '%s\n' '{"type":"module"}' >js/package.json
-npm install --ignore-scripts --no-audit --no-fund --no-save "$package" typescript@5.9.3 >/dev/null
+npm install --ignore-scripts --no-audit --no-fund --no-save "$tarball" typescript@5.9.3 >/dev/null
 cd ..
 
 # The copied runtime and the npm entry must match the same generated registry binding.

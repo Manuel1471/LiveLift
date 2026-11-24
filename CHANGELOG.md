@@ -17,7 +17,7 @@ layout.
   row identity. Support selected Phoenix JS commands, bounded timers, and
   opt-in draft recovery for text fields.
 - Install with Mix or Igniter. Generate source maps and support optional
-  split view chunks, TypeScript declarations, and a matching npm runtime.
+  split view chunks and TypeScript declarations. The browser runtime ships in Hex.
 - Audit candidates, compare Elixir and JavaScript handler results, inspect
   state in development, and measure event traffic and latency.
 

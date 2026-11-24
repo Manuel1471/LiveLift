@@ -1,30 +1,18 @@
 # Publish the experimental release
 
-Release `0.1.0-rc.1` ships as a matching pair of packages. The Hex package
-`live_lift` contains the compiler and the default copied runtime. The npm
-package `live-lift-assets` supplies the same hook and TypeScript declarations
-for apps that use npm. A fresh Phoenix app passed both local package paths.
-See the [phase 6 verification](progress/6-versioned-assets.md).
+Publish LiveLift to Hex. The `live_lift` package includes the compiler,
+browser runtime, and TypeScript declarations. The Phoenix installer copies
+the browser assets from the installed dependency.
 
-## Review the packages
+## Review the package
 
-From the verified LiveLift checkout, confirm that `mix.exs` and
-`assets/package.json` use the same version, then run the local checks.
+From the verified LiveLift checkout, run the documentation and package checks.
 
 ```sh
 mix docs --warnings-as-errors
 mix hex.publish --dry-run --yes
-(cd assets && npm pack)
+sh test/integration/phoenix_consumer.sh
 ```
-
-The npm command creates `assets/live-lift-assets-0.1.0-rc.1.tgz`. Use that
-reviewed tarball for the npm release.
-
-Build both artifacts from the same reviewed commit. A change to the browser hook
-changes the compatibility binding, even while the unpublished version
-number stays the same. Run
-`LIVE_LIFT_INTEGRATION_IGNITER=1 sh test/integration/phoenix_consumer.sh` to
-verify both local artifacts in a fresh Phoenix app before publishing.
 
 ## Publish Hex from GitHub Actions
 
@@ -39,54 +27,27 @@ with permission to publish. The job provides that secret to Hex as
 check the Hex dashboard for a pending approval after CI succeeds.
 See the [Hex publishing guide](https://hex.pm/docs/publish#staged-publishing).
 
-## Publish the matching npm package
-
-Build the npm tarball from the same commit CI used to submit the Hex
-release. Publish from the repository root using the npm maintainer account.
-
-```sh
-npm publish ./assets/live-lift-assets-0.1.0-rc.1.tgz --tag next
-```
-
-The npm command assigns the prerelease to the `next` distribution tag.
-See the [npm distribution-tag documentation](https://docs.npmjs.com/adding-dist-tags-to-packages/).
-
-For a manual Hex release, run `mix hex.publish` and complete authentication
-in the CLI. If only the documentation upload needs to be retried, run
+For a manual release, run `mix hex.publish` and complete authentication in
+the CLI. If only the documentation upload needs to be retried, run
 `mix hex.publish docs` from the same release commit.
 
-## Verify the public consumer
+## Verify the public Hex installation
 
-Confirm that both registries serve the release, then run the consumer check
-from the same checkout.
+Install the Phoenix 1.8.16 generator if it is unavailable locally.
 
 ```sh
+mix archive.install hex phx_new 1.8.16
 mix hex.info live_lift 0.1.0-rc.1
-npm view live-lift-assets@0.1.0-rc.1 version
 LIVE_LIFT_REGISTRY_VERSION=0.1.0-rc.1 sh test/integration/phoenix_consumer.sh
 ```
 
-The script generates a Phoenix app with an exact Hex requirement and installs
-the npm release by version. It runs the documented migration, parity and
-asset build and deploy checks without a dependency path to the checkout.
-The [versioned asset guide](versioned-assets.md) describes the TypeScript
-entry point and build-time compatibility check.
+The script creates a fresh Phoenix app with an exact Hex requirement and
+runs the documented migration, parity, asset build, and deploy checks. Add
+`LIVE_LIFT_INTEGRATION_IGNITER=1` to verify the Igniter installer.
 
-For a browser check of both runtime builds, install Playwright and its
-browsers with `cd bench && npm ci && npx playwright install chromium firefox webkit`.
-From the repository root, add `LIVE_LIFT_CONSUMER_BROWSER_PORT=4047` to either
-consumer command and use a free local port. The check serves the assets from
-`mix assets.deploy` and verifies the initial HTML, the predicted DOM update,
-the server acknowledgment, and a server-only save.
-
-To exercise the public Hex release with a locally packed npm runtime while
-the matching npm release is pending, run this from a checkout whose
-`assets/` match the Hex release.
-
-```sh
-LIVE_LIFT_REGISTRY_VERSION=0.1.0-rc.1 LIVE_LIFT_NPM_REGISTRY_VERSION= \
-  sh test/integration/phoenix_consumer.sh
-```
-
-Add `LIVE_LIFT_INTEGRATION_IGNITER=1` to exercise Igniter from the same
-registry. Run the two-registry check above after the npm release is public.
+For browser coverage, install Playwright and its browsers with
+`cd bench && npm ci && npx playwright install chromium firefox webkit`.
+From the repository root, add `LIVE_LIFT_CONSUMER_BROWSER_PORT=4047` to
+the consumer command and use a free local port. The check serves the assets
+from `mix assets.deploy` and verifies the initial HTML, the predicted DOM
+update, the server acknowledgment, and a server-only save.
