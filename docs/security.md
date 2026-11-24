@@ -24,7 +24,16 @@ UI, that value enters the regular LiveView handler as untrusted input.
 App-owned template literals supply the static markup. Dynamic text is
 written through text nodes or `textContent`. The generated actions use
 ordinary JavaScript functions and are compatible with a CSP that disallows
-`unsafe-eval`. Configure CSP and asset loading in the host application.
+`unsafe-eval` and inline scripts. The demo verified this with same-origin
+scripts and an allowed LiveView WebSocket in Chromium, Firefox, and WebKit.
+Configure CSP and asset loading in the host application. See the
+[browser results](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-script-csp.md).
+
+The runtime uses `innerHTML` to decode entities in compiled literals and to
+initialize legacy string templates from the app's template registry. Native
+state bindings use DOM text and attribute operations. The test exercises
+script CSP. Trusted Types and policies for other resource types are outside
+its scope.
 
 Static `href`, `xlink:href`, `src`, `action`, and `formaction` values may be relative or use
 an allowed scheme. Both `href` forms also accept `mailto:` and `tel:`. Schemes hidden

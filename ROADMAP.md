@@ -656,9 +656,11 @@ compartido quedó en 8,179 bytes gzip.
 
 Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la fase.
 
-- **Previo:** Modelo de amenazas escrito: el estado va visible en el HTML (sin secretos), el
-  estado del cliente no es de fiar, compatibilidad con CSP sin `eval`.
-- **Previo:** Auditoría interna de XSS y de los usos de `innerHTML` en el runtime.
+- **Verificado:** Modelo de amenazas y revisión interna de los dos usos de
+  `innerHTML`. Chromium, Firefox y WebKit cargaron los módulos bajo una CSP
+  sin `unsafe-eval` ni scripts inline. Pasaron las acciones locales, las
+  confirmaciones optimistas y el guardado por LiveView.
+  [Evidencia de CSP y del modelo de amenazas](docs/progress/7-script-csp.md).
 - **Previo:** Pruebas de prototype pollution y fuzzing del compilador para el subconjunto
   actual (1,000 expresiones generadas con semilla y comprobación sintáctica en Node).
 - **Verificado:** Corpus HEEx nativo con 1,040 casos de paridad de DOM y
