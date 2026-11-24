@@ -61,7 +61,16 @@ mix.write_text(source.replace("      {:phoenix,", dependency + "      {:phoenix,
 router = app / "lib/consumer_lift_web/router.ex"
 source = router.read_text()
 assert '    get "/", PageController, :home' in source
-router.write_text(source.replace('    get "/", PageController, :home', '    get "/", PageController, :home\n    live "/counter", CounterLive'))
+source = source.replace('    get "/", PageController, :home', '    get "/", PageController, :home\n    live "/counter", CounterLive')
+if os.environ.get("LIVE_LIFT_CONSUMER_BROWSER_PORT"):
+    body, end = source.rsplit("\nend", 1)
+    source = body + '''
+
+  scope "/", ConsumerLiftWeb do
+    post "/__consumer_switch/:mode", BrowserSwitchController, :update
+  end
+end''' + end
+router.write_text(source)
 PY
 
 mkdir -p "$consumer_dir/consumer_lift/lib/consumer_lift_web/live"
@@ -83,6 +92,11 @@ EOF
 
 cp "$repo_dir/test/integration/fixtures/counter_component.ex" \
   "$consumer_dir/consumer_lift/lib/consumer_lift_web/live/counter_component.ex"
+
+if [ -n "${LIVE_LIFT_CONSUMER_BROWSER_PORT:-}" ]; then
+  cp "$repo_dir/test/integration/fixtures/browser_switch_controller.ex" \
+    "$consumer_dir/consumer_lift/lib/consumer_lift_web/controllers/browser_switch_controller.ex"
+fi
 
 cat > "$consumer_dir/consumer_lift/lib/consumer_lift_web/live/mailbox_live.ex" <<'EOF'
 defmodule ConsumerLiftWeb.MailboxLive do

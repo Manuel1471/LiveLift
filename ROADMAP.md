@@ -665,8 +665,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también
   omiten la excepción original. [Evidencia](docs/progress/7-client-error-reporting.md).
-- **Previo:** **Interruptor de emergencia** por componente y global: vuelve al servidor
-  en nuevas cargas; clientes ya montados recargan al siguiente evento marcado.
+- **Verificado:** El interruptor global y por componente devuelve las
+  cargas nuevas a LiveView. En Chromium, Firefox y WebKit, las pestañas
+  abiertas recargan al siguiente evento marcado y siguen respondiendo.
+  [Evidencia del interruptor](docs/progress/7-emergency-switch.md).
 - **Verificado:** El foco se conserva al reordenar filas y axe no detectó
   infracciones WCAG A/AA en la página principal del demo en Chromium,
   Firefox y WebKit. La revisión con lector de pantalla sigue pendiente.

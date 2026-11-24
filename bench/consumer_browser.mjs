@@ -38,6 +38,37 @@ for (const [name, engine] of Object.entries({chromium, firefox, webkit})) {
     assert.deepEqual(pageErrors, []);
 
     console.log(`${mode} ${name} ${browser.version()}: SSR 3, local 4 before ack, ack 1, Saved 4`);
+
+    for (const scope of ["global", "component"]) {
+      await page.goto(url);
+      await page.locator(`.phx-connected [${ack}="0"]`).waitFor({state: "attached"});
+      if (mode === "npm-split") {
+        await page.locator('[data-live-lift-load="ready"]').waitFor({state: "attached"});
+      }
+      const switchURL = new URL(`/__consumer_switch/${scope}`, url);
+      assert.equal((await page.request.post(switchURL.href)).status(), 204);
+
+      const fresh = await fetch(url);
+      assert.ok(fresh.ok);
+      assert.doesNotMatch(await fresh.text(), /phx-hook="LiveLift"/);
+
+      const navigation = page.waitForEvent("framenavigated", {
+        predicate: (frame) => frame === page.mainFrame(),
+      });
+      await page.locator("#inc").click();
+      await navigation;
+      await page.locator(".phx-connected #inc").waitFor({state: "attached"});
+      assert.equal(await page.locator(`[${ack}]`).count(), 0);
+      assert.equal(await page.locator("#count").textContent(), "3");
+
+      await page.locator("#inc").click();
+      await page.waitForFunction(() => document.querySelector("#count").textContent === "4");
+      assert.deepEqual(pageErrors, []);
+
+      const reset = new URL("/__consumer_switch/enabled", url);
+      assert.equal((await page.request.post(reset.href)).status(), 204);
+      console.log(`${mode} ${name}: ${scope} switch reloads the mounted client to LiveView`);
+    }
   } finally {
     await browser.close();
   }
