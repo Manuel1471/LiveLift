@@ -18,6 +18,20 @@ The publishing job writes the checked release notes to the GitHub Actions
 summary and only attempts a publication after that step succeeds.
 Verification through a hosted release run remains pending.
 
+## Prerelease rehearsal
+
+On 2026-11-24, a temporary bump to `0.1.0-rc.2` exposed an outdated
+version in the local asset manifest. The generated views asked esbuild
+for a runtime binding derived from the new Mix version. Packing the
+unchanged manifest produced a different binding and esbuild rejected it.
+
+Release preparation now aligns the local asset manifest and writes the
+changelog section. The check rejects a manifest that differs from Mix.
+In the same prerelease rehearsal, esbuild bundled the generated views
+with the synchronized package. The regression test verifies the
+version and notes before and after preparation. The version bump and
+the locally packed assets are confined to the rehearsal.
+
 ## Signed package workflow
 
 A local probe compared `mix hex.build` with the bytes returned by Hex's

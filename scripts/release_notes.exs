@@ -6,6 +6,8 @@ version =
   end)
 
 path = "CHANGELOG.md"
+asset_manifest = "assets/package.json"
+asset_version = asset_manifest |> File.read!() |> :json.decode() |> Map.fetch!("version")
 [title | raw_sections] = Regex.split(~r/^## /m, File.read!(path))
 
 sections =
@@ -24,11 +26,28 @@ case {System.argv(), sections} do
       Mix.raise("Bump the Mix version and add release notes under Unreleased before preparing")
     end
 
+    if asset_version != version do
+      npm =
+        System.find_executable("npm") ||
+          Mix.raise("Install npm to update the local asset manifest")
+
+      case System.cmd(npm, ["pkg", "set", "--prefix", "assets", "version=#{version}"],
+             stderr_to_stdout: true
+           ) do
+        {_, 0} -> :ok
+        {output, _} -> Mix.raise("Could not update #{asset_manifest}\n#{output}")
+      end
+    end
+
     history = Enum.map(tl(raw_sections), &["## ", &1])
     File.write!(path, [title, "## Unreleased\n\n## ", version, "\n", notes, history])
-    IO.puts("Prepared CHANGELOG.md for LiveLift #{version}")
+    IO.puts("Prepared CHANGELOG.md and #{asset_manifest} for LiveLift #{version}")
 
   {["check"], _} ->
+    unless asset_version == version do
+      Mix.raise("Expected version #{version} in #{asset_manifest}; found #{asset_version}")
+    end
+
     released = Enum.reject(sections, &match?({"Unreleased", _}, &1))
 
     case released do

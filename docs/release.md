@@ -34,9 +34,12 @@ elixir scripts/release_notes.exs prepare
 elixir scripts/release_notes.exs check
 ```
 
-Review and commit the generated section along with the version bump.
-CI checks that the newest released section matches `mix.exs` and adds it
-to the publishing job summary before contacting Hex to publish.
+The preparation command also updates `assets/package.json` with npm so
+the local asset package continues to match the version embedded in the
+Hex runtime. Use OTP 27 or newer and the project's Node toolchain.
+Review and commit those changes with the version bump. CI checks the
+manifest and the newest changelog section against `mix.exs`, then adds
+the notes to the publishing job summary before submitting to Hex.
 
 ## Review the package
 
