@@ -81,3 +81,26 @@ cd bench
 LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- e2e/live_lift.spec.mjs \
   --grep 'focused keyed input|100 opted-in islands|server HTML and client render'
 ```
+
+## Comparison with Phoenix HEEx
+
+Five templates each run over 64 states from seed `20261127`. The test
+compiles the same source through Phoenix's `~H` macro and the LiveLift
+template compiler, with identical local component definitions. It mounts
+the hook on HTML produced by Phoenix and compares the rebuilt DOM to
+Phoenix's render. A second state changes text, Boolean attributes,
+visibility and list order, and the hook reconciles the existing DOM.
+The test compares that result to a new Phoenix render of the second state.
+
+All 640 comparisons preserve visible text, application attributes,
+LiveView event bindings, IDs and node order. The Phoenix comparison
+excludes five LiveLift bookkeeping attributes. A separate comparison
+checks those attributes against the LiveLift Elixir renderer. The cases
+include keyed lists, props and default slots, escaping, conditional class
+lists, nested form fields, draft scopes, and native JS commands.
+
+On 2026-11-24, using baseline `676da96` and the same local toolchain,
+`mix test` passed 152 tests on LiveView 1.2.15. The five property tests
+also passed with the fallback forced and in a temporary checkout pinned
+to LiveView 1.2.0. The deployed-asset run for JS commands and form drafts
+passed 21 checks across Chromium, Firefox, and WebKit.

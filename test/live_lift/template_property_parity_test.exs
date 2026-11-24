@@ -271,13 +271,96 @@ defmodule LiveLift.TemplatePropertyParityTest do
         }
       end
 
-    assert_dom_parity(cases, 1_024)
+    assert_dom_parity(cases, updates: 1_024)
+  end
+
+  test "native bindings match independent Phoenix HEEx renders" do
+    templates = [
+      ~S(<main><p :if={@visible} class={["base", @active && "active"]} title={@title}>{@label}</p><input value={@label} /></main>),
+      ~S(<ul><li :for={item <- @items} :key={item.id} id={item.id}><.badge label={item.label} /></li></ul>),
+      ~S(<.card title={@title}><label for="note">Note</label><textarea id="note">{@label}</textarea></.card>),
+      ~S(<form id="prefs" phx-submit="save" phx-change="validate" phx-auto-recover="ignore"><input name="profile[note]" value={@label} data-live-lift-draft={@scope} phx-debounce="blur" /><button type="submit">Save</button></form>),
+      ~S'<div><button phx-click={Phoenix.LiveView.JS.focus(to: {:inner, "#entry"})}>Focus</button><button phx-click="open" phx-value-id={@scope}>Open</button><input id="entry" type="checkbox" checked={@active} /></div>'
+    ]
+
+    badge = ~S(<strong>{@label}</strong>)
+    card = ~S'<article title={@title}>{render_slot(@inner_block)}</article>'
+    file = "native_oracle.ex"
+
+    components = %{
+      "badge" => %{file: file, line: 1, source: badge},
+      "card" => %{file: file, line: 1, source: card}
+    }
+
+    samples =
+      StreamData.fixed_map(%{
+        label: StreamData.member_of(["", ~s(<hello "there">), "R&D", "É", "🚀"]),
+        title: StreamData.member_of([nil, false, "A & B"]),
+        visible: StreamData.member_of([nil, false, true, 0]),
+        active: StreamData.member_of([nil, false, true]),
+        scope: StreamData.member_of(["record-a", "record-b"]),
+        items: StreamData.list_of(StreamData.member_of(["Tea", "É", "R&D"]), max_length: 4)
+      })
+      |> StreamData.seeded(20_261_127)
+      |> Enum.take(64)
+
+    cases =
+      Enum.flat_map(Enum.with_index(templates), fn {source, index} ->
+        module = Module.concat(__MODULE__, "NativeOracle#{index}")
+
+        Module.create(
+          module,
+          quote do
+            use Phoenix.Component
+
+            def render(var!(assigns)), do: sigil_H(unquote({:<<>>, [], [source]}), [])
+            defp badge(var!(assigns)), do: sigil_H(unquote({:<<>>, [], [badge]}), [])
+            defp card(var!(assigns)), do: sigil_H(unquote({:<<>>, [], [card]}), [])
+          end,
+          Macro.Env.location(__ENV__)
+        )
+
+        tree = Template.compile_liveview(source, file, ["open", "save", "validate"], components)
+
+        Enum.map(samples, fn state ->
+          state =
+            Map.update!(state, :items, fn items ->
+              Enum.map(Enum.with_index(items, 1), fn {label, index} ->
+                %{id: "item-#{index}", label: label}
+              end)
+            end)
+
+          updated = %{
+            state
+            | label: "#{state.label}!",
+              active: state.active != true,
+              visible: state.visible in [nil, false],
+              items: Enum.reverse(state.items)
+          }
+
+          first_render = independent_render(tree, state, module)
+
+          Map.merge(first_render, %{
+            tree: tree,
+            updates: [independent_render(tree, updated, module)]
+          })
+        end)
+      end)
+
+    assert_dom_parity(cases, updates: 320, phoenix_renders: 640)
+  end
+
+  defp independent_render(tree, state, module) do
+    phoenix_html =
+      state |> module.render() |> Phoenix.HTML.Safe.to_iodata() |> IO.iodata_to_binary()
+
+    %{state: state, html: render_html(tree, state), phoenixHTML: phoenix_html}
   end
 
   defp render_html(tree, state),
     do: tree |> Template.render_server(state) |> Phoenix.HTML.safe_to_string()
 
-  defp assert_dom_parity(cases, updates \\ 0) do
+  defp assert_dom_parity(cases, expected \\ []) do
     file =
       Path.join(
         System.tmp_dir!(),
@@ -290,7 +373,10 @@ defmodule LiveLift.TemplatePropertyParityTest do
       {output, status} = System.cmd("node", [script, file], stderr_to_stdout: true)
       assert status == 0, output
       assert output =~ "#{length(cases)} template cases matched"
-      if updates > 0, do: assert(output =~ "#{updates} template updates matched")
+      if updates = expected[:updates], do: assert(output =~ "#{updates} template updates matched")
+
+      if phoenix_renders = expected[:phoenix_renders],
+        do: assert(output =~ "#{phoenix_renders} Phoenix HEEx renders matched")
     after
       File.rm(file)
     end

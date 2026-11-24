@@ -671,6 +671,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   combinan listas anidadas y hermanas, slots, formularios y comandos.
   El DOM actualizado coincide con un render completo del mismo estado.
   [Evidencia de reconciliación](docs/progress/7-heex-fuzzing.md#composed-templates-and-state-transitions).
+- **Verificado:** 640 comparaciones directas con el HTML que genera
+  Phoenix para las mismas plantillas y estados, antes y después de
+  actualizar el DOM desde LiveLift.
+  [Evidencia de paridad con Phoenix](docs/progress/7-heex-fuzzing.md#comparison-with-phoenix-heex).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también
