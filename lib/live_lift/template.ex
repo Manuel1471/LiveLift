@@ -1132,8 +1132,10 @@ defmodule LiveLift.Template do
   defp render_attr(%{name: "data-live-lift-show", value: value}, _scope),
     do: " data-live-lift-show=\"#{value}\""
 
-  defp render_attr(%{name: name, type: "static", value: value}, _scope),
-    do: " #{name}=\"#{value}\""
+  defp render_attr(%{name: name, type: "static", value: value}, _scope) do
+    # Keep existing HTML entities and escape quotes introduced by compiled bindings.
+    " #{name}=\"#{String.replace(value, "\"", "&quot;")}\""
+  end
 
   defp render_attr(%{name: name, type: "dynamic", value: expr}, scope) do
     value = expr |> Expression.eval(scope) |> display_value() |> escape()

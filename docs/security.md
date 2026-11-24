@@ -48,5 +48,8 @@ limits, rate limits, or application-level authorization.
 This is an internal review of the current subset, not an external security
 audit. A seeded corpus compiles 1,000 varied action expressions, checks that
 unsupported forms raise an explicit compiler error, and syntax-checks every
-generated action in Node. It does not cover arbitrary HEEx or all Elixir ASTs.
+generated action in Node. The native HEEx corpus compares both parser paths
+and the Elixir and JavaScript renderers over selected template forms. It also
+checks the diagnostics for rejected forms under generated nesting. See the
+[tested forms and commands](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-heex-fuzzing.md).
 The [production limits](production-readiness.md) describe the verification completed for this release candidate.

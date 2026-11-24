@@ -661,6 +661,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
 - **Previo:** Auditoría interna de XSS y de los usos de `innerHTML` en el runtime.
 - **Previo:** Pruebas de prototype pollution y fuzzing del compilador para el subconjunto
   actual (1,000 expresiones generadas con semilla y comprobación sintáctica en Node).
+- **Verificado:** Corpus HEEx nativo con 1,040 casos de paridad de DOM y
+  128 casos rechazados comprobados por ambos parsers. Cubre condiciones,
+  listas, componentes, slots, comandos JS, eventos y formularios.
+  [Evidencia del corpus](docs/progress/7-heex-fuzzing.md).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también
@@ -693,8 +697,9 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
 La revisión interna bloquea esquemas de URL codificados con entidades y
 `xlink:href`; las pruebas cubren las tres claves de prototype pollution,
 1,000 variantes generadas de `javascript:` y 1,000 expresiones de acción
-generadas. El fuzzing de todas las formas HEEx y una revisión de seguridad
-externa siguen pendientes.
+generadas. El corpus HEEx prueba formas admitidas y rechazos seleccionados.
+La cobertura de todas las formas HEEx y una revisión de seguridad externa
+siguen pendientes.
 
 ## Criterios para 1.0
 

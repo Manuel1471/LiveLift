@@ -4,6 +4,8 @@
 
 - Report view loading failures through the browser's standard error
   event and omit exception details from loading and offline replay reports.
+- Escape quotes in static template attributes emitted by the Elixir renderer,
+  including compiled LiveView JS commands.
 
 ## 0.1.0-rc.1
 
