@@ -678,7 +678,9 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   deprecaciones. Una herramienta prepara el changelog para la versión de
   Mix y CI valida y muestra esas notas antes de publicar.
   [Evidencia de preparación](docs/progress/7-hex-release-policy.md).
-- **Falta:** Verificar la publicación firmada en Hex.
+- **En curso:** CI atestigua el SHA-256 del paquete que Hex recibe para
+  aprobación. Falta verificar la firma contra el archivo de una nueva
+  publicación pública. [Evidencia](docs/progress/7-hex-release-policy.md).
 - **Previo:** Pruebas de carga con 100 islas por página: eventos independientes en
   Chromium, Firefox y WebKit, más benchmark reproducible de montaje en Chromium.
 

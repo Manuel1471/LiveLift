@@ -17,3 +17,23 @@ changelog intact.
 The publishing job writes the checked release notes to the GitHub Actions
 summary and only attempts a publication after that step succeeds.
 Verification through a hosted release run remains pending.
+
+## Signed package workflow
+
+A local probe compared `mix hex.build` with the bytes returned by Hex's
+tar builder during `mix hex.publish --dry-run --yes`. The contents archive
+matched, while a different metadata key order changed the outer SHA-256.
+The workflow therefore uses the checksum emitted for the accepted staged
+package, instead of signing a separately built archive.
+
+The checksum extractor accepted a staged package receipt alongside a docs
+receipt and rejected missing, malformed, and duplicate package checksums
+using local fixtures. The workflow grants attestation permissions to the
+existing main-only Hex job and uses a pinned GitHub action to attest the
+selected digest. The maintainer checks the staged checksum before approving.
+
+The currently published `0.1.0-rc.1` predates this workflow. The remaining
+verification is a hosted run on a new release and a successful
+`gh attestation verify` on the package downloaded from the public Hex
+registry after approval. The [release guide](../release.md#verify-a-signed-release)
+records the verification command.

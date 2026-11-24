@@ -57,13 +57,33 @@ LiveView `main` check continues to run as an advisory job.
 
 Set `HEX_API_KEY_2` in the repository's Actions secrets using a Hex key
 with permission to publish. The job provides that secret to Hex as
-`HEX_API_KEY`. New public packages use staged publishing by default, so
-check the Hex dashboard for a pending approval after CI succeeds.
+`HEX_API_KEY`. Keep staged publishing enabled for `live_lift`. The job
+signs a GitHub build provenance attestation for the exact package SHA-256
+that Mix reports after staging. Approve the pending release in Hex after
+the GitHub job succeeds and the package SHA-256 matches the job output.
 See the [Hex publishing guide](https://hex.pm/docs/publish#staged-publishing).
 
 For a manual release, run `mix hex.publish` and complete authentication in
 the CLI. If only the documentation upload needs to be retried, run
 `mix hex.publish docs` from the same release commit.
+
+## Verify a signed release
+
+Set `version` to a release staged and attested by the GitHub workflow.
+Download the package that Hex serves and verify the attestation against
+LiveLift's release workflow:
+
+```sh
+archive="live_lift-$version.tar"
+curl --fail --silent --show-error --output "$archive" \
+  "https://repo.hex.pm/tarballs/$archive"
+gh attestation verify "$archive" --repo Manuel1471/LiveLift \
+  --signer-workflow Manuel1471/LiveLift/.github/workflows/ci.yml \
+  --source-ref refs/heads/main
+```
+
+The attestation covers the Hex package archive. HexDocs is submitted by
+the same staging command. See the [GitHub CLI verification guide](https://cli.github.com/manual/gh_attestation_verify).
 
 ## Verify the public Hex installation
 

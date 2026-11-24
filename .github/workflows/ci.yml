@@ -104,6 +104,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
+      attestations: write
     concurrency:
       group: publish-live-lift-hex
       cancel-in-progress: false
@@ -124,7 +126,10 @@ jobs:
             "https://hex.pm/api/packages/live_lift/releases/$version")
           case "$status" in
             200) echo "LiveLift $version is already available on Hex." ;;
-            404) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
+            404)
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              echo "version=$version" >> "$GITHUB_OUTPUT"
+              ;;
             *)
               echo "::error::Hex returned HTTP $status while checking LiveLift $version."
               exit 1
@@ -138,16 +143,28 @@ jobs:
         run: |
           mix deps.get
           mix docs --warnings-as-errors
-      - name: Publish package and documentation
+      - name: Stage package and documentation
         if: steps.release.outputs.publish == 'true'
+        id: staged
+        shell: bash
         env:
+          NO_COLOR: '1'
           HEX_API_KEY: ${{ secrets.HEX_API_KEY_2 }}
         run: |
           if [ -z "$HEX_API_KEY" ]; then
             echo "::error::Set the HEX_API_KEY_2 repository secret to publish LiveLift."
             exit 1
           fi
-          mix hex.publish --yes
+          log="$RUNNER_TEMP/hex-publish.log"
+          mix hex.publish --yes | tee "$log"
+          checksum=$(sh scripts/hex_staged_checksum.sh "$log")
+          echo "digest=sha256:$checksum" >> "$GITHUB_OUTPUT"
+      - name: Attest the staged Hex package
+        if: steps.release.outputs.publish == 'true'
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-name: live_lift-${{ steps.release.outputs.version }}.tar
+          subject-digest: ${{ steps.staged.outputs.digest }}
 
   liveview-main:
     runs-on: ubuntu-latest
