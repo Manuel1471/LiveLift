@@ -7,6 +7,8 @@ defmodule LiveLift.Template.Parser do
   alias LiveLift.Diagnostic
   alias LiveLift.Template.FallbackParser
 
+  @document_prefixes ["<!doctype", "<!DOCTYPE"]
+
   @spec parse!(String.t(), String.t(), pos_integer()) :: list()
   def parse!(source, file, line \\ 1) do
     if System.get_env("LIVE_LIFT_FORCE_TEMPLATE_FALLBACK") == "1" do
@@ -41,7 +43,9 @@ defmodule LiveLift.Template.Parser do
 
   defp compatible_nodes?(nodes), do: Enum.all?(nodes, &compatible_node?/1)
 
-  defp compatible_node?({:text, value, meta}), do: is_binary(value) and is_map(meta)
+  defp compatible_node?({:text, value, meta}),
+    do: is_binary(value) and is_map(meta) and not document_declaration?(value)
+
   defp compatible_node?({:body_expr, value, meta}), do: is_binary(value) and location?(meta)
 
   defp compatible_node?({:self_close, type, tag, attrs, meta}),
@@ -56,6 +60,12 @@ defmodule LiveLift.Template.Parser do
         location?(meta) and location?(close) and compatible_nodes?(children)
 
   defp compatible_node?(_), do: false
+
+  defp document_declaration?(text) do
+    # Phoenix includes doctypes in text tokens without the original location.
+    String.contains?(text, @document_prefixes) and
+      text |> String.replace(~r/<!--.*?-->/s, " ") |> String.contains?(@document_prefixes)
+  end
 
   defp compatible_attr?({name, nil, meta}),
     do: (is_binary(name) or name == :root) and location?(meta)

@@ -276,7 +276,7 @@ defmodule LiveLift.TemplatePropertyParityTest do
 
   test "native bindings match independent Phoenix HEEx renders" do
     templates = [
-      ~S(<main><p :if={@visible} class={["base", @active && "active"]} title={@title}>{@label}</p><input required value={@label} /></main>),
+      ~S(<main><p :if={@visible} class={["base", @active && "active"]} title={@title}><!-- note <!doctype html> {@ignored} -->&#123;label&#125; {@label}</p><input required value={@label} /></main>),
       ~S(<ul><li :for={item <- @items} :key={item.id} id={item.id}><.badge label={item.label} /></li></ul>),
       ~S(<.card title={@title}><label for="note">Note</label><textarea id="note">{@label}</textarea></.card>),
       ~S(<form id="prefs" phx-submit="save" phx-change="validate" phx-auto-recover="ignore"><input name="profile[note]" value={@label} data-live-lift-draft={@scope} phx-debounce="blur" /><button type="submit">Save</button></form>),

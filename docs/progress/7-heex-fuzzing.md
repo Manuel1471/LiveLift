@@ -124,7 +124,7 @@ brace and the escaping of the resulting title. Five rejected forms are
 checked through both parsers for the expected code and source line.
 The Phoenix HEEx comparison also includes a static `required` field.
 The probe also observed different handling of document declarations such
-as `<!doctype html>`. That case remains outside this attribute comparison.
+as `<!doctype html>`. The next check addressed that case.
 
 ```sh
 mix test test/live_lift/parser_test.exs test/live_lift/template_property_parity_test.exs
@@ -140,3 +140,25 @@ demo passed its nine tests and 56 handler parity cases with the
 fallback forced. The fresh consumer passed migration, asset builds,
 and browser checks in Chromium, Firefox, and WebKit with the fallback
 forced. This used the same local toolchain as the prior runs.
+
+## Document declarations and literal markup
+
+A Phoenix layout owns the document declaration. The Phoenix tokenizer
+returns a doctype as text without its location, whereas the fallback
+previously rejected it as a tag name. Both parser paths now report
+`E061` at the start of the declaration and point to the root layout.
+The adapter uses the fallback to locate the declaration when it finds
+one in a Phoenix text token.
+
+The check covers lower- and upper-case declarations before markup, after
+a comment and CRLF, and within an element. An HTML comment containing
+the same words remains a comment. The independent Phoenix comparison
+also verifies that literal braces and text around an HTML comment have
+the same visible DOM after LiveLift renders.
+
+On 2026-11-24, baseline `208a770` plus this change passed all 155 tests
+with the default parser and with the fallback forced on LiveView 1.2.15.
+The 14 parser and template property tests passed in a checkout pinned to
+LiveView 1.2.0. The fresh Phoenix consumer again passed migration, both
+asset builds, and the Chromium, Firefox, and WebKit checks. See the
+preceding section for the consumer command and environment.

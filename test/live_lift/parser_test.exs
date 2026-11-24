@@ -149,6 +149,27 @@ defmodule LiveLift.ParserTest do
     end
   end
 
+  test "both parsers locate document declarations and ignore them inside HTML comments" do
+    for parser <- [PhoenixParser, MissingLiveViewParser],
+        doctype <- ["<!doctype html>", "<!DOCTYPE html>"],
+        {source, line, column} <- [
+          {doctype <> "<p>Hi</p>", 31, 1},
+          {"\n<!-- note -->\r\n" <> doctype <> "\n<p>Hi</p>", 33, 1},
+          {"<section>text\n  " <> doctype <> "</section>", 32, 3}
+        ] do
+      assert_raise ArgumentError,
+                   ~r/formatting\.ex:#{line}:#{column}:.*document declarations.*\(E061\)/,
+                   fn -> Parser.parse_with!(source, "formatting.ex", parser, 31) end
+    end
+
+    source = ~S(<p>A<!-- <!doctype html> {@ignored} -->&#123;literal&#125; {"text \} here"}</p>)
+    [native, fallback] = compile_variants(source)
+    assert fallback == native
+    html = native |> Template.render_server(%{}) |> Phoenix.HTML.safe_to_string()
+    assert html =~ ~S(<!-- <!doctype html> {@ignored} -->&#123;literal&#125;)
+    assert html =~ "text } here"
+  end
+
   defp compile_variants(source) do
     for parser <- [PhoenixParser, MissingLiveViewParser] do
       source

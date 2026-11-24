@@ -66,6 +66,16 @@ defmodule LiveLift.Template.FallbackParser do
     end
   end
 
+  defp nodes(%{rest: <<"<!", name::binary-size(7), _::binary>>} = state, _tag, _acc)
+       when name in ["doctype", "DOCTYPE"] do
+    Diagnostic.error!(
+      "E061",
+      state.file,
+      "#{state.line}:#{state.column}",
+      "document declarations belong in the Phoenix root layout"
+    )
+  end
+
   defp nodes(%{rest: "<" <> _} = state, tag, acc) do
     {node, state} = element(state)
     nodes(state, tag, [node | acc])

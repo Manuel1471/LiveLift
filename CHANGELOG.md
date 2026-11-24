@@ -9,6 +9,8 @@
 - Preserve bare HTML attributes such as `disabled`. Report unsupported
   spread attributes and align the fallback parser with Phoenix's attribute
   value and brace rules.
+- Point to the source location when a document declaration appears inside
+  a LiveLift template. Keep declarations in the Phoenix root layout.
 
 ## 0.1.0-rc.1
 
