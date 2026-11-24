@@ -128,6 +128,11 @@ defmodule LiveLift.Template.FallbackParser do
       state.rest == "" ->
         error!(state, "unexpected end of tag")
 
+      String.starts_with?(state.rest, "{") ->
+        meta = location(state)
+        {value, state} = attribute_value(state)
+        attributes(state, [{:root, value, meta} | acc], tag)
+
       true ->
         meta = location(state)
         {name, state} = take_while(state, &attr_char?/1)
@@ -164,40 +169,40 @@ defmodule LiveLift.Template.FallbackParser do
     {{:expr, expr, meta}, state}
   end
 
-  defp attribute_value(state) do
-    {value, state} = take_while(state, &(&1 not in [" ", "\t", "\r", "\n", ">", "/"]))
-    if value == "", do: error!(state, "expected an attribute value")
-    {{:string, value, %{delimiter: nil}}, state}
-  end
+  defp attribute_value(state),
+    do: error!(state, "expected a quoted attribute value or a braced expression")
 
+  # HEEx counts braces inside quoted values unless a backslash escapes them.
   defp balanced(%{rest: "{" <> _} = state) do
     state = advance(state, "{")
-    balanced(state, 1, nil, false, [])
+    balanced(state, 1, [])
   end
 
-  defp balanced(%{rest: ""} = state, _depth, _quote, _escaped, _acc),
+  defp balanced(%{rest: ""} = state, _depth, _acc),
     do: error!(state, "unterminated Elixir expression")
 
-  defp balanced(state, depth, quote, escaped, acc) do
+  defp balanced(%{rest: <<?\\, brace, _::binary>>} = state, depth, acc) when brace in [?{, ?}] do
+    escaped = <<?\\, brace>>
+    balanced(advance(state, escaped), depth, [escaped | acc])
+  end
+
+  defp balanced(state, depth, acc) do
     {char, state} = next(state)
 
-    cond do
-      escaped -> balanced(state, depth, quote, false, [char | acc])
-      quote && char == "\\" -> balanced(state, depth, quote, true, [char | acc])
-      quote && char == quote -> balanced(state, depth, nil, false, [char | acc])
-      quote -> balanced(state, depth, quote, false, [char | acc])
-      char in ["\"", "'"] -> balanced(state, depth, char, false, [char | acc])
-      char == "{" -> balanced(state, depth + 1, nil, false, [char | acc])
-      char == "}" and depth == 1 -> {acc |> Enum.reverse() |> IO.iodata_to_binary(), state}
-      char == "}" -> balanced(state, depth - 1, nil, false, [char | acc])
-      true -> balanced(state, depth, nil, false, [char | acc])
+    case char do
+      "{" -> balanced(state, depth + 1, [char | acc])
+      "}" when depth == 1 -> {acc |> Enum.reverse() |> IO.iodata_to_binary(), state}
+      "}" -> balanced(state, depth - 1, [char | acc])
+      _ -> balanced(state, depth, [char | acc])
     end
   end
 
-  defp skip_space(state) do
-    {_space, state} = take_while(state, &(&1 in [" ", "\t", "\r", "\n"]))
-    state
-  end
+  defp skip_space(%{rest: "\r\n" <> _} = state), do: state |> advance("\r\n") |> skip_space()
+
+  defp skip_space(%{rest: <<char, _::binary>>} = state) when char in [?\s, ?\t, ?\n],
+    do: state |> advance(<<char>>) |> skip_space()
+
+  defp skip_space(state), do: state
 
   defp take_while(state, predicate), do: take_while(state, predicate, [])
 

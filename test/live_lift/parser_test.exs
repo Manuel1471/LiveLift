@@ -4,6 +4,7 @@ defmodule LiveLift.ParserTest do
   alias LiveLift.Template.Parser
   alias LiveLift.Template
   alias LiveLift.Template.FallbackParser
+  alias Phoenix.LiveView.TagEngine.Parser, as: PhoenixParser
 
   defmodule ChangedParser do
     def parse!(_source, _opts), do: {:ok, []}
@@ -109,6 +110,50 @@ defmodule LiveLift.ParserTest do
 
       assert fallback |> Template.render_server(state) |> Phoenix.HTML.safe_to_string() ==
                current |> Template.render_server(state) |> Phoenix.HTML.safe_to_string()
+    end
+  end
+
+  test "attribute formatting and escaped braces compile the same with both parsers" do
+    for spacing <- [" ", "\t", "\n", "\r\n\t"],
+        equals <- ["=", " = ", "\t=\n\t"],
+        title <- [~s('A &amp; "B"'), ~s("A &amp; &quot;B&quot;")] do
+      source =
+        "<input#{spacing}disabled#{spacing}title#{equals}#{title}#{spacing}" <>
+          ~S(value={"literal \} brace"} />)
+
+      [native, fallback] = compile_variants(source)
+      assert fallback == native
+
+      html = native |> Template.render_server(%{}) |> Phoenix.HTML.safe_to_string()
+      assert html =~ ~s(disabled="")
+      assert html =~ ~s(title="A &amp; &quot;B&quot;")
+      assert html =~ ~s(value="literal } brace")
+    end
+  end
+
+  test "both parsers report unsupported attribute forms at the original line" do
+    cases = [
+      {~S(<input name=query />), "E065"},
+      {"<p\rtitle={@label}>Hi</p>", "E065"},
+      {~S(<input value={"left} right{"} />), "E065"},
+      {~S(<p {@attrs}>Hi</p>), "E061"},
+      {~S(<p phx-no-curly-interpolation>{@label}</p>), "E061"}
+    ]
+
+    for {source, code} <- cases, parser <- [PhoenixParser, MissingLiveViewParser] do
+      assert_raise ArgumentError, ~r/formatting\.ex:31(?::\d+)?:.*\(#{code}\)/, fn ->
+        source
+        |> Parser.parse_with!("formatting.ex", parser, 31)
+        |> Template.compile_parsed("formatting.ex", {:liveview, []})
+      end
+    end
+  end
+
+  defp compile_variants(source) do
+    for parser <- [PhoenixParser, MissingLiveViewParser] do
+      source
+      |> Parser.parse_with!("formatting.ex", parser, 31)
+      |> Template.compile_parsed("formatting.ex", {:liveview, []})
     end
   end
 

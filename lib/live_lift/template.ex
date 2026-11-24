@@ -917,6 +917,27 @@ defmodule LiveLift.Template do
   defp convert_attr({"phx-click", {:string, value, %{preserves_classes: true}}, _}, _file),
     do: %{name: "phx-click", value: value, type: "static", preserves_classes: true}
 
+  defp convert_attr({:root, _value, meta}, file) do
+    Diagnostic.error!(
+      "E061",
+      file,
+      meta.line,
+      "spread attributes are outside the client template subset; list the attributes explicitly"
+    )
+  end
+
+  defp convert_attr({"phx-no-curly-interpolation", _value, meta}, file) do
+    Diagnostic.error!(
+      "E061",
+      file,
+      meta.line,
+      "phx-no-curly-interpolation is outside the client template subset; use HTML entities for literal braces"
+    )
+  end
+
+  defp convert_attr({name, nil, meta}, file),
+    do: convert_attr({name, {:string, "", %{}}, meta}, file)
+
   defp convert_attr({name, {:string, value, _}, meta}, file) do
     validate_phx_value_name!(name, file, meta.line)
 

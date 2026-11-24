@@ -675,6 +675,9 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   Phoenix para las mismas plantillas y estados, antes y después de
   actualizar el DOM desde LiveLift.
   [Evidencia de paridad con Phoenix](docs/progress/7-heex-fuzzing.md#comparison-with-phoenix-heex).
+- **Verificado:** Ambos parsers compilan las mismas variantes de atributos
+  y reportan archivo, línea y diagnóstico para los casos inválidos
+  probados. [Evidencia de sintaxis](docs/progress/7-heex-fuzzing.md#attribute-syntax-and-diagnostics).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también

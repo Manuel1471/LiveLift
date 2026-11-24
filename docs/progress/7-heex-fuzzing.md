@@ -104,3 +104,39 @@ On 2026-11-24, using baseline `676da96` and the same local toolchain,
 also passed with the fallback forced and in a temporary checkout pinned
 to LiveView 1.2.0. The deployed-asset run for JS commands and form drafts
 passed 21 checks across Chromium, Firefox, and WebKit.
+
+## Attribute syntax and diagnostics
+
+The lexer probe found that the fallback accepted unquoted attribute values,
+a bare carriage return between attributes, and a closing brace in a quoted
+expression where the Phoenix tokenizer required an escape. It now uses the
+same whitespace and interpolation rules for these cases. Both paths also
+compile bare HTML attributes such as `disabled` and `required`.
+
+Previously, an attribute spread or the `phx-no-curly-interpolation`
+directive could raise a function-clause error in the compiler. They now
+produce `E061` with the original line and a correction. The fallback
+recognizes the spread token so it can report the same diagnostic.
+
+The regression tests compare 24 valid forms that vary quote style,
+whitespace, line endings and spacing around `=`. They verify the literal
+brace and the escaping of the resulting title. Five rejected forms are
+checked through both parsers for the expected code and source line.
+The Phoenix HEEx comparison also includes a static `required` field.
+The probe also observed different handling of document declarations such
+as `<!doctype html>`. That case remains outside this attribute comparison.
+
+```sh
+mix test test/live_lift/parser_test.exs test/live_lift/template_property_parity_test.exs
+LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix test
+LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 LIVE_LIFT_CONSUMER_BROWSER_PORT=4050 \
+  sh test/integration/phoenix_consumer.sh
+```
+
+On 2026-11-24, baseline `de42d17` plus this change passed 154 library
+tests on LiveView 1.2.15 with each parser. The 13 parser and template
+property tests passed in a separate checkout on LiveView 1.2.0. The
+demo passed its nine tests and 56 handler parity cases with the
+fallback forced. The fresh consumer passed migration, asset builds,
+and browser checks in Chromium, Firefox, and WebKit with the fallback
+forced. This used the same local toolchain as the prior runs.

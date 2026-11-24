@@ -6,6 +6,9 @@
   event and omit exception details from loading and offline replay reports.
 - Escape quotes in static template attributes emitted by the Elixir renderer,
   including compiled LiveView JS commands.
+- Preserve bare HTML attributes such as `disabled`. Report unsupported
+  spread attributes and align the fallback parser with Phoenix's attribute
+  value and brace rules.
 
 ## 0.1.0-rc.1
 
