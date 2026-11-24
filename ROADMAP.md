@@ -665,6 +665,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   128 casos rechazados comprobados por ambos parsers. Cubre condiciones,
   listas, componentes, slots, comandos JS, eventos y formularios.
   [Evidencia del corpus](docs/progress/7-heex-fuzzing.md).
+- **Verificado:** 1,024 cambios de estado generados para plantillas que
+  combinan listas anidadas y hermanas, slots, formularios y comandos.
+  El DOM actualizado coincide con un render completo del mismo estado.
+  [Evidencia de reconciliación](docs/progress/7-heex-fuzzing.md#composed-templates-and-state-transitions).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también

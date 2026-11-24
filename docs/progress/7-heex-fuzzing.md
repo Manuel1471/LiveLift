@@ -44,5 +44,40 @@ fallback forced. A temporary checkout pinned to LiveView 1.2.0 passed
 all three property tests. The 21 browser checks passed with deployed
 assets in Chromium 158.0.8127.18, Firefox 159.0 and WebKit 27.2.
 
-This adds coverage of the listed native forms. It leaves arbitrary HEEx,
-broader combinations of nested features, and external review open.
+This covers the listed native forms. Arbitrary HEEx and external review
+remain open.
+
+## Composed templates and state transitions
+
+The second corpus combines four templates with 64 samples from seed
+`20261126`. It covers nested keyed lists with conditions, local components
+and default slots inside rows, nested submitted field names and per-row
+draft scopes, sibling loops with the same keys, and marked clicks alongside
+native JS commands. Both parsers produce the same compiled tree.
+
+Each case starts from Elixir-rendered markup. The JavaScript hook then
+reorders and edits rows, hides content and removes rows, and restores
+previously removed content. All 1,024 DOM updates are compared with a
+fresh render for the corresponding state. These cases drive the DOM
+reconciler directly. Browser integration tests cover LiveView transport.
+
+The corpus exposed a test harness issue with textarea text. LinkeDOM
+leaves HTML character references literal there, so the harness decodes
+them once when reading server HTML. A separate probe confirmed the same
+single-decode behavior in Chromium, Firefox, and WebKit. The LiveLift
+runtime remains unchanged.
+
+On 2026-11-24, against baseline `e3b0207` with this corpus, the full
+suite passed 151 tests and all four property tests passed with the
+fallback forced. A focused deployed-assets run passed nine checks
+covering keyed focus, server/client DOM parity, and state isolation
+in Chromium 158.0.8127.18, Firefox 159.0, and WebKit 27.2. The local
+toolchain and machine matched the first run.
+
+```sh
+mix test
+LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix test test/live_lift/template_property_parity_test.exs
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- e2e/live_lift.spec.mjs \
+  --grep 'focused keyed input|100 opted-in islands|server HTML and client render'
+```

@@ -145,7 +145,139 @@ defmodule LiveLift.TemplatePropertyParityTest do
     end
   end
 
-  defp assert_dom_parity(cases) do
+  test "combined native templates match a fresh render after generated state changes" do
+    templates = [
+      ~S"""
+      <section :if={@visible}>
+        <article :for={group <- @groups} id={group.id} title={group.label}>
+          <.card title={group.label}>
+            <div :for={item <- group.items} :if={item.visible} id={item.id}>
+              <.badge label={item.label} />
+            </div>
+          </.card>
+        </article>
+      </section>
+      """,
+      ~S"""
+      <main>
+        <div :for={group <- @groups} id={group.id}>
+          <.card title={group.label}>
+            <form :for={item <- group.items} id={item.id} phx-submit="save"
+                  phx-target={@myself} phx-value-id={item.id}>
+              <input name="profile[note]" value={item.label} data-live-lift-draft={item.id} />
+              <textarea name="summary">{@label}</textarea>
+              <button type="submit">Save</button>
+            </form>
+          </.card>
+        </div>
+      </main>
+      """,
+      ~S"""
+      <div>
+        <article :for={item <- @left} id={item.id} :key={item.key}
+                 class={["left", item.visible && "active"]}><.badge label={item.label} /></article>
+        <article :for={item <- @right} id={item.id} :key={item.key}>
+          <p :if={item.visible} title={@label}>{item.label}</p>
+        </article>
+      </div>
+      """,
+      ~S"""
+      <aside>
+        <section :for={group <- @groups} id={group.id}>
+          <header><.card title={group.label}>{@label}</.card></header>
+          <ul>
+            <li :for={item <- group.items} id={item.id}>
+              <button phx-click="open" phx-value-id={item.id}>{item.label}</button>
+              <button :if={item.visible} phx-click={Phoenix.LiveView.JS.focus()}>Focus</button>
+            </li>
+          </ul>
+        </section>
+      </aside>
+      """
+    ]
+
+    components = %{
+      "badge" => %{file: "combined.ex", line: 1, source: ~S(<strong>{@label}</strong>)},
+      "card" => %{
+        file: "combined.ex",
+        line: 1,
+        source: ~S'<article title={@title}>{render_slot(@inner_block)}</article>'
+      }
+    }
+
+    samples =
+      StreamData.fixed_map(%{
+        count: StreamData.integer(2..5),
+        label: StreamData.member_of(["", "é", "< & >", ~s("quoted")]),
+        alternate: StreamData.member_of(["Changed", "A & B", "🚀"])
+      })
+      |> StreamData.seeded(20_261_126)
+      |> Enum.take(64)
+
+    cases =
+      for source <- templates,
+          %{count: count, label: label, alternate: alternate} <- samples do
+        file = "combined.ex"
+        mode = {:liveview, ["open", "save"], components}
+        tree = Parser.parse!(source, file) |> Template.compile_parsed(file, mode)
+        assert tree == FallbackParser.parse!(source, file) |> Template.compile_parsed(file, mode)
+
+        items = fn prefix ->
+          Enum.map(1..count, fn index ->
+            %{id: "#{prefix}-#{index}", key: index, label: label, visible: rem(index, 2) == 0}
+          end)
+        end
+
+        groups = Enum.map(1..2, &%{id: "group-#{&1}", label: label, items: items.("group-#{&1}")})
+
+        initial = %{
+          groups: groups,
+          left: items.("left"),
+          right: items.("right"),
+          label: label,
+          visible: true
+        }
+
+        reordered = %{
+          initial
+          | groups: Enum.reverse(groups),
+            left: Enum.reverse(initial.left),
+            right: tl(initial.right)
+        }
+
+        edited = %{
+          reordered
+          | groups:
+              Enum.map(reordered.groups, fn group ->
+                items = Enum.reverse(group.items)
+                changed = %{hd(items) | label: alternate, visible: !hd(items).visible}
+                %{group | items: [changed | tl(items)]}
+              end),
+            left: [%{hd(reordered.left) | label: alternate} | tl(reordered.left)],
+            label: alternate
+        }
+
+        hidden = %{edited | visible: false, groups: tl(edited.groups), left: []}
+        restored = %{edited | right: initial.right}
+
+        %{
+          tree: tree,
+          state: initial,
+          html: render_html(tree, initial),
+          updates:
+            Enum.map([reordered, edited, hidden, restored], fn state ->
+              %{state: state, html: render_html(tree, state)}
+            end)
+        }
+      end
+
+    assert_dom_parity(cases, 1_024)
+  end
+
+  defp render_html(tree, state),
+    do: tree |> Template.render_server(state) |> Phoenix.HTML.safe_to_string()
+
+  defp assert_dom_parity(cases, updates \\ 0) do
     file =
       Path.join(
         System.tmp_dir!(),
@@ -158,6 +290,7 @@ defmodule LiveLift.TemplatePropertyParityTest do
       {output, status} = System.cmd("node", [script, file], stderr_to_stdout: true)
       assert status == 0, output
       assert output =~ "#{length(cases)} template cases matched"
+      if updates > 0, do: assert(output =~ "#{updates} template updates matched")
     after
       File.rm(file)
     end
