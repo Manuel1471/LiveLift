@@ -4,6 +4,40 @@ Publish LiveLift to Hex. The `live_lift` package includes the compiler,
 browser runtime, and TypeScript declarations. The Phoenix installer copies
 the browser assets from the installed dependency.
 
+## Versioning and deprecations
+
+LiveLift uses semantic versioning. Before 1.0, bump the minor version for
+incompatible public API changes. After 1.0, use a major version. Patch
+releases fix existing behavior. Use a prerelease suffix such as `-rc.2`
+while evaluating a candidate. The [compatibility guide](production-readiness.md#compatibility)
+identifies the supported LiveView range and the versions exercised in CI.
+
+Document deprecations in the changelog with the first affected version,
+the replacement, and a migration link. Keep the old entry point callable
+and issue a compiler warning where possible. Announce removal in advance
+and schedule it for a release that permits incompatible changes.
+
+The legacy `use LiveLift.Client` API and `LiveLift.View.island/1` have
+issued deprecation warnings since `0.1.0-rc.1`. Migrate to `use LiveLift`
+in a Phoenix LiveComponent and mark eligible handlers. Follow the
+[migration guide](liveview-migration-diff.md) to opt in and verify behavior
+against LiveView. There is no scheduled removal version.
+
+## Prepare the release notes
+
+Add user-facing changes under `## Unreleased` in `CHANGELOG.md`. Use
+third-level headings to group those changes. After bumping the version in
+`mix.exs`, move the pending notes to that version with:
+
+```sh
+elixir scripts/release_notes.exs prepare
+elixir scripts/release_notes.exs check
+```
+
+Review and commit the generated section along with the version bump.
+CI checks that the newest released section matches `mix.exs` and adds it
+to the publishing job summary before contacting Hex to publish.
+
 ## Review the package
 
 From the verified LiveLift checkout, run the documentation and package checks.

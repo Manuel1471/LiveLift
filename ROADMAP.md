@@ -674,8 +674,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   verifica migración, paridad y confirmación de LiveView en tres
   navegadores. Se actualizaron los lockfiles tras auditar con Hex.
   [Evidencia de compatibilidad](docs/progress/7-liveview-compatibility.md).
-- **Falta:** Completar la política de deprecaciones, el changelog
-  automatizado y la publicación firmada en Hex.
+- **Verificado localmente:** La guía define el versionado y las
+  deprecaciones. Una herramienta prepara el changelog para la versión de
+  Mix y CI valida y muestra esas notas antes de publicar.
+  [Evidencia de preparación](docs/progress/7-hex-release-policy.md).
+- **Falta:** Verificar la publicación firmada en Hex.
 - **Previo:** Pruebas de carga con 100 islas por página: eventos independientes en
   Chromium, Firefox y WebKit, más benchmark reproducible de montaje en Chromium.
 

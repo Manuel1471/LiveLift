@@ -50,7 +50,9 @@ is unavailable. See the
 
 - Verify the phase 7 security and compatibility criteria, including a
   cross-review or external audit and the full HEEx fuzzing work.
-- Complete the release and deprecation policy.
+- Verify signed publication through a hosted Hex release. The
+  [release policy](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md)
+  covers versioning, deprecations, and preparing release notes.
 - Collect evidence from two real applications in production and at least one
   LiveView cycle with a frozen API before declaring 1.0.
 
