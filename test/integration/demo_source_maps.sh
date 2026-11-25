@@ -4,6 +4,25 @@ set -eu
 # Run from examples/demo after installing the dependencies and esbuild.
 mix assets.build
 test -s priv/static/assets/js/app.js.map
+node --input-type=module <<'NODE'
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {SourceMap} from "node:module";
+
+const assets = "priv/static/assets/js";
+const app = readFileSync(`${assets}/app.js`, "utf8");
+const chunk = /import\("\.\/(chunks\/LiveLiftDemoWeb\.NativeCounterComponent-[^"]+\.js)"\)/.exec(app)?.[1];
+assert.ok(chunk, "missing generated counter chunk");
+const generated = readFileSync(`${assets}/${chunk}`, "utf8").split("\n");
+const payload = JSON.parse(readFileSync(`${assets}/${chunk}.map`, "utf8"));
+const line = generated.findIndex((text) => text.includes("inc: (state) =>"));
+assert.ok(line >= 0, "missing generated inc action");
+const entry = new SourceMap(payload).findEntry(line, generated[line].indexOf("inc: (state) =>"));
+assert.match(entry.originalSource, /\/native_counter_component\.ex$/);
+const source = payload.sourcesContent[payload.sources.indexOf(entry.originalSource)];
+assert.match(source.split("\n")[entry.originalLine], /def handle_event\("inc"/);
+console.log("Verified that the esbuild development chunk maps inc to its Elixir handler.");
+NODE
 mix esbuild live_lift_demo --sourcemap=inline --define:LIVE_LIFT_INSPECT=true
 mix phx.digest
 

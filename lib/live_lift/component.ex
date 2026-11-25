@@ -212,6 +212,11 @@ defmodule LiveLift.Component do
         action
       end)
 
+    action_sources =
+      Map.new(actions, fn {event, _action, _timer, file, line, _mode} ->
+        {event, {file, line}}
+      end)
+
     callbacks = env.module |> Module.get_attribute(:live_lift_info_callbacks) |> Enum.reverse()
 
     timers =
@@ -256,6 +261,9 @@ defmodule LiveLift.Component do
 
       @doc false
       def __live_lift_client_actions__, do: unquote(Macro.escape(action_tuples))
+
+      @doc false
+      def __live_lift_action_sources__, do: unquote(Macro.escape(action_sources))
 
       @doc false
       def __live_lift_local_actions__, do: unquote(Macro.escape(local_actions))

@@ -82,9 +82,12 @@ technology and production deployment are not yet covered.
 
 `mix live_lift.compile` writes a registry source map in eager mode. Split
 mode writes a map for each generated view module. Both embed the original
-Elixir source and map each generated view entry to its `~H` sigil. The consumer test resolves the
-split native mapping through Node's source-map API. Mapping individual
-action expressions remains pending.
+Elixir source. View entries and templates point to their `~H` sigil.
+Generated native actions point to their `handle_event/3` definition and to
+the line of the action's outer expression when the compiler has that
+location. A timer's initiating handler has a mapping. Nested expressions,
+expanded helpers, and delayed callbacks have no individual segments.
+The tests resolve eager and split mappings using Node's source-map API.
 
 The demo's `assets.build` emits external bundle maps for development.
 `assets.deploy` removes those maps and bundles left by the dev watcher

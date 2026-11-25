@@ -11,6 +11,8 @@
   value and brace rules.
 - Point to the source location when a document declaration appears inside
   a LiveLift template. Keep declarations in the Phoenix root layout.
+- Map generated native actions to their Elixir handler definitions and
+  outer expression lines when available.
 
 ## 0.1.0-rc.1
 

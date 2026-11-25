@@ -39,6 +39,21 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  defmodule MappedLabel do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@label}{@local_label}</output>"
+
+    @client true
+    def handle_event("emoji", _params, socket), do: {:noreply, assign(socket, :label, "😀")}
+
+    @client :local
+    def handle_event("clear", _params, socket) do
+      {:noreply, assign(socket, :local_label, "")}
+    end
+  end
+
   defmodule ParamCounter do
     use Phoenix.LiveComponent
     use LiveLift
@@ -278,6 +293,50 @@ defmodule LiveLift.ComponentTest do
     assert javascript =~ "inc: (state)"
     assert javascript =~ ~s("data-live-lift-action")
     refute javascript =~ "function __liveLiftChangeset("
+  end
+
+  test "eager source maps resolve multiple handlers and template boundaries using UTF-16 columns" do
+    compiler = LiveLift.Client.Compiler
+    modules = [MappedLabel, AssignCounter]
+    {javascript, map} = compiler.compile_registry_with_map(modules, "generated_views.js")
+    assert javascript == compiler.compile_registry(modules)
+
+    script = """
+    import assert from "node:assert/strict";
+    import {SourceMap} from "node:module";
+
+    const [javascript, payload] = JSON.parse(process.argv[1]);
+    const map = new SourceMap(payload);
+    assert.equal(payload.sources.length, 1);
+    const source = payload.sourcesContent[0].split("\\n");
+    const registry = javascript.split("\\n");
+    const viewLine = registry.findIndex((line) =>
+      line.includes('"LiveLift.ComponentTest.MappedLabel": {actions:'));
+    assert.ok(viewLine > 0);
+    const view = registry[viewLine];
+    const emoji = view.indexOf("emoji: (");
+    const clear = view.indexOf("clear: (");
+    const body = view.indexOf(" => ", clear) + 4;
+    const template = view.indexOf("template: ");
+    assert.ok(emoji > 2 && clear > emoji && body > clear && template > body);
+    assert.ok(view.slice(emoji, clear).includes("😀"));
+
+    function check(column, expected) {
+      const entry = map.findEntry(viewLine, column);
+      assert.equal(entry.generatedColumn, column);
+      assert.equal(entry.originalSource, payload.sources[0]);
+      assert.match(source[entry.originalLine], expected);
+    }
+
+    check(2, /~H.*@label/);
+    check(emoji, /def handle_event\\("emoji"/);
+    check(clear, /def handle_event\\("clear"/);
+    check(body, /assign\\(socket, :local_label, ""\\)/);
+    check(template, /~H.*@label/);
+    """
+
+    input = Jason.encode!([javascript, Jason.decode!(map)])
+    assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", script, input])
   end
 
   test "an instance identifier is stable on the component socket and unique per mount" do

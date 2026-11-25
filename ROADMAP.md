@@ -697,6 +697,9 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   infracciones WCAG A/AA en la página principal del demo en Chromium,
   Firefox y WebKit. La revisión con lector de pantalla sigue pendiente.
   [Evidencia de accesibilidad](docs/progress/7-browser-operability.md).
+- **Verificado:** Los mapas de origen del registro completo y de los
+  chunks apuntan a la plantilla y al handler Elixir de cada acción
+  nativa. [Evidencia de mapas de handlers](docs/progress/7-action-source-maps.md).
 - **Verificado:** El rango LiveView 1.2.x conserva su prueba en 1.2.0, y
   la matriz ahora usa 1.2.15 como referencia actual. La app consumidora
   verifica migración, paridad y confirmación de LiveView en tres

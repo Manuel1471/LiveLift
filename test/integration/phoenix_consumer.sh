@@ -365,6 +365,36 @@ PYTHON
   printf '%s\n' 'Verified the same actionable diagnostic in audit and compilation.'
   mix assets.build
   grep -Fq "function __liveLiftLocalActions" assets/js/generated_views.js
+  if [ -z "$registry_version" ]; then
+    mix live_lift.compile --split --output "$consumer_dir/source_maps/views.js"
+    node --input-type=module - "$consumer_dir/source_maps/views_views/ConsumerLiftWeb.CounterComponent.js" <<'NODE'
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {SourceMap} from "node:module";
+
+const chunk = process.argv[2];
+const javascript = readFileSync(chunk, "utf8");
+assert.match(javascript, /\/\/# sourceMappingURL=ConsumerLiftWeb\.CounterComponent\.js\.map$/m);
+const payload = JSON.parse(readFileSync(`${chunk}.map`, "utf8"));
+const map = new SourceMap(payload);
+const sourceFile = "lib/consumer_lift_web/live/counter_component.ex";
+const original = readFileSync(sourceFile, "utf8");
+assert.equal(payload.sourcesContent[payload.sources.indexOf(sourceFile)], original);
+
+const generated = javascript.split("\n");
+const line = generated.findIndex((text) => text.includes('"ConsumerLiftWeb.CounterComponent": {actions:'));
+assert.ok(line >= 0);
+for (const event of ["inc", "preview"]) {
+  const column = generated[line].indexOf(`${event}: (`);
+  assert.ok(column > 2);
+  const entry = map.findEntry(line, column);
+  assert.equal(entry.generatedColumn, column);
+  assert.equal(entry.originalSource, sourceFile);
+  assert.ok(original.split("\n")[entry.originalLine].includes(`def handle_event("${event}"`));
+}
+NODE
+    printf '%s\n' 'Verified split source maps for an ordinary handler and a timed handler.'
+  fi
   mix assets.deploy
   if [ -n "${LIVE_LIFT_CONSUMER_BROWSER_PORT:-}" ]; then
     sh "$repo_dir/test/integration/phoenix_consumer_browser.sh" "$repo_dir" copied
