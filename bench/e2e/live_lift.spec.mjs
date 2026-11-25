@@ -680,6 +680,54 @@ test("offline clicks replay in order after the fresh LiveView snapshot", async (
   await expect(count).toHaveText("2");
 });
 
+test("offline action expiry drops stale clicks and replays fresh ones", async ({page}) => {
+  const sent = [];
+  await page.clock.install();
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const frame = typeof message === "string" ? JSON.parse(message) : null;
+      const sequence = frame?.[4]?.value?._live_lift_seq;
+      if (Number.isInteger(sequence)) sent.push([frame[4].event, sequence]);
+      server.send(message);
+    });
+  });
+
+  await gotoLiveLift(page, "/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("section > output");
+  const label = root.locator("section > span").first();
+  const notice = root.getByRole("status").filter({hasText: "Offline actions expired."});
+  const increment = root.getByRole("button", {name: "Add one"});
+  const instance = await root.getAttribute("data-live-lift-instance");
+
+  await page.evaluate(() => window.liveSocket.disconnect());
+  await page.waitForFunction(() => !window.liveSocket.isConnected());
+  await increment.click();
+  await expect(count).toHaveText("1");
+  await page.clock.fastForward(30_001);
+  await root.getByRole("button", {name: "Set label"}).click();
+  await expect(count).toHaveText("1");
+  await expect(label).toHaveText("ready");
+  await expect(notice).toHaveCount(0);
+  expect(sent).toEqual([]);
+
+  await page.evaluate(() => window.liveSocket.connect());
+  await expect(root).not.toHaveAttribute("data-live-lift-instance", instance);
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await expect(count).toHaveText("0");
+  await expect(label).toHaveText("ready");
+  await expect(root).toHaveAttribute("data-live-lift-state", /"count":0/);
+  await expect(root).toHaveAttribute("data-live-lift-state", /"label":"ready"/);
+  await expect(notice).toBeVisible();
+  expect(sent).toEqual([["label", 1]]);
+
+  await increment.click();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "2");
+  await expect(count).toHaveText("1");
+  expect(sent).toEqual([["label", 1], ["inc", 2]]);
+});
+
 test("the same LiveComponent without opt-in keeps normal server behavior", async ({page}) => {
   await gotoLiveLift(page, "/native-counter-server");
   const root = page.locator('section[aria-label="Native LiveComponent counter"]');

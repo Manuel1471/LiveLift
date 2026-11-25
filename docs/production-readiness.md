@@ -23,7 +23,9 @@
   their next synchronized marked event receives the disabled reply. The [security model](security.md) documents the trust
   boundary and internal XSS review.
 - **Performance.** CI checks the shared hook against the 8 KiB budget.
-  It measured 8,189 bytes gzip on macOS and Linux. The
+  With the offline expiry notice it measured 8,192 bytes gzip on macOS
+  and Linux. The [expiry check](https://github.com/Manuel1471/LiveLift/blob/main/docs/offline-expiry-browser-spike.md)
+  covers reconnect behavior and the size measurement. The
   [runtime size check](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-runtime-budget.md)
   records the toolchain and reproduction command. The [native event measurements](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/6-event-telemetry.md)
   record server cost and browser latency for the measured fixture.

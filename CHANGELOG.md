@@ -25,6 +25,7 @@
   values in nested bracket paths.
 - Include inline local function components when auditing a native
   LiveView or LiveComponent.
+- Show a status message when reconnecting discards expired offline actions.
 
 ## 0.1.0-rc.1
 

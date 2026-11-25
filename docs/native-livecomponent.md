@@ -213,7 +213,10 @@ reconciles with the authoritative reply.
 ### Reconnect and offline actions
 
 The browser shares a 100-action limit between sent and offline actions.
-Offline actions created during a disconnect expire after 30 seconds.
+Offline actions created during a disconnect expire after 30 seconds. On
+reconnect, LiveLift shows a status message if actions eligible for replay
+have expired. The browser rolls back those predictions to the confirmed
+state and reapplies fresh actions in order.
 
 On reconnect, the same mounted component resumes from its acknowledged
 sequence. The browser retries outstanding actions with their original

@@ -12,6 +12,18 @@ const FLOAT_TEXT = /^-?(?:0|[1-9]\d*)\.(?:\d+)(?:e-?\d+)?$/;
 const encoder = new TextEncoder();
 const decodedEntities = new Map();
 
+function assertSequence(value, name) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`Invalid LiveLift ${name}`);
+}
+
+function showStatus(element, message) {
+  const status = element.ownerDocument?.createElement("output");
+  if (status) {
+    status.textContent = message;
+    element.append(status);
+  }
+}
+
 function decodeEntities(value) {
   if (!decodedEntities.has(value)) {
     const decoder = document.createElement("span");
@@ -593,12 +605,7 @@ export function createClientHook(views) {
       }).catch(() => {
         if (this.loading !== loading) return;
         this.el.dataset.liveLiftLoad = "error";
-        const status = this.el.ownerDocument?.createElement("span");
-        if (status) {
-          status.setAttribute("role", "status");
-          status.textContent = "Local updates could not load. Reload the page to try again.";
-          this.el.append(status);
-        }
+        showStatus(this.el, "Local updates could not load. Reload.");
         const error = new Error("LiveLift view failed to load");
         if (typeof reportError === "function") reportError(error);
         else console.error(error);
@@ -617,9 +624,7 @@ export function createClientHook(views) {
         if (!Object.hasOwn(this.state, field)) throw new Error(`Missing server-owned field: ${field}`);
       }
       this.serverRevision = Number(this.el.dataset.liveLiftServerRevision || "0");
-      if (!Number.isSafeInteger(this.serverRevision) || this.serverRevision < 0) {
-        throw new Error("Invalid LiveLift server revision");
-      }
+      assertSequence(this.serverRevision, "server revision");
       this.optimistic = this.el.dataset.liveLiftMode === "component";
       if (serverRendered && this.optimistic) hydrateKeyedRows(this.view.template, {state: this.state}, this.el);
       if (this.optimistic) {
@@ -649,12 +654,8 @@ export function createClientHook(views) {
           const sameInstance = Boolean(instance) && instance === this.instance;
           const snapshotRevision = Number(this.el.dataset.liveLiftServerRevision || "0");
           const snapshotAck = Number(this.el.dataset.liveLiftAckSeq || "0");
-          if (!Number.isSafeInteger(snapshotRevision) || snapshotRevision < 0) {
-            throw new Error("Invalid LiveLift server revision");
-          }
-          if (!Number.isSafeInteger(snapshotAck) || snapshotAck < 0) {
-            throw new Error("Invalid LiveLift acknowledged sequence");
-          }
+          assertSequence(snapshotRevision, "server revision");
+          assertSequence(snapshotAck, "acknowledged sequence");
           const keepBase = sameInstance && snapshotRevision < this.serverRevision;
           const snapshot = keepBase ? this.authoritativeState : JSON.parse(this.el.dataset.liveLiftState);
           const revision = keepBase ? this.serverRevision : snapshotRevision;
@@ -662,11 +663,13 @@ export function createClientHook(views) {
           const retry = sameInstance ? this.pending.filter(({sequence}) => sequence > ack) : [];
           const hadUnacknowledged = retry.length > 0;
           const offline = sameInstance || this.el.dataset.liveLiftReconnectConflict !== "discard"
-            ? this.offlineQueue.filter(({createdAt}) => performance.now() - createdAt <= OFFLINE_ACTION_MAX_AGE_MS)
-            : [];
+            ? this.offlineQueue : [];
+          const now = performance.now();
           let nextSequence = (retry.at(-1)?.sequence ?? ack) + 1;
-          for (const {action, params, eventData} of offline) {
-            retry.push({sequence: nextSequence++, action, params, eventData});
+          let expired = false;
+          for (const {createdAt, ...action} of offline) {
+            if (now - createdAt <= OFFLINE_ACTION_MAX_AGE_MS) retry.push({...action, sequence: nextSequence++});
+            else expired = true;
           }
           if (!Number.isSafeInteger(nextSequence)) throw new Error("LiveLift event sequence overflow");
           validateState(snapshot);
@@ -695,18 +698,15 @@ export function createClientHook(views) {
           this.reconnectPending = false;
           this.offline = false;
           this.offlineQueue = [];
+          if (expired) showStatus(this.el, "Offline actions expired.");
           if (replayFailed) {
             throw new Error("LiveLift offline replay conflict; queued actions were dropped");
           }
           this.recoverPending();
         };
         this.applyAuthoritative = (revision, state, ackSequence, timers) => {
-          if (!Number.isSafeInteger(revision) || revision < 0) {
-            throw new Error("Invalid LiveLift server revision");
-          }
-          if (!Number.isSafeInteger(ackSequence) || ackSequence < 0) {
-            throw new Error("Invalid LiveLift acknowledged sequence");
-          }
+          assertSequence(revision, "server revision");
+          assertSequence(ackSequence, "acknowledged sequence");
           if (ackSequence >= this.nextSequence) {
             throw new Error("LiveLift acknowledged an unsent action");
           }

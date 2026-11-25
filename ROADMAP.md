@@ -757,6 +757,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   estado de la URL. Dos pestañas con la misma sesión conservan sus
   instancias y confirmaciones independientes.
   [Spike y pruebas de navegación](docs/root-liveview-navigation-spike.md).
+- **Verificado:** Al reconectar, LiveLift avisa cuando descarta acciones
+  offline de más de 30 segundos y aplica las acciones recientes una sola
+  vez. La prueba inspecciona las secuencias en Chromium, Firefox y WebKit.
+  [Spike y prueba de caducidad](docs/offline-expiry-browser-spike.md).
 - **Verificado localmente:** El control que ejecuta CI mide el hook
   compartido con esbuild y gzip y falla al superar el límite vigente
   de 8 KiB. [Evidencia y comando](docs/progress/7-runtime-budget.md).
