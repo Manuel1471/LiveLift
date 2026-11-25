@@ -20,6 +20,9 @@ está disponible en Hex y HexDocs. La verificación en una app Phoenix nueva
 cubrió la instalación, la migración y el runtime incluido en Hex.
 [Verificación de la fase 6](docs/progress/6-public-registry.md).
 
+Hex es el único canal de publicación. El paquete incluye el runtime JavaScript
+que consume la app Phoenix durante el build de assets.
+
 La revisión de rendimiento (`aacf2ff`) midió una edición nativa en listas de 100 y
 1.000 filas y redujo el costo de validar el estado en BEAM y Chromium.
 El formato de las respuestas sigue siendo el mismo. El
