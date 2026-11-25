@@ -211,6 +211,88 @@ defmodule LiveLift.ComponentTest do
       do: {:noreply, assign_new(socket, :draft, fn -> rem(1, 0) end)}
   end
 
+  defmodule BatchAssign do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@count}</output>"
+
+    @client true
+    def handle_event("set", params, socket) do
+      {:noreply,
+       socket
+       |> assign(:count, 100)
+       |> assign(count: socket.assigns.count + 1, added: params["value"])
+       |> assign(%{previous: socket.assigns.count, ready: false, cleared: nil})}
+    end
+  end
+
+  test "literal assign/2 matches Phoenix and projects newly assigned state" do
+    assert Enum.sort(BatchAssign.__live_lift_component_optional_fields__()) ==
+             [:added, :cleared, :count, :previous, :ready]
+
+    cases = [
+      {%{count: 2}, %{"value" => ""},
+       %{count: 3, added: "", previous: 2, ready: false, cleared: nil}},
+      {%{count: 4, previous: 1, added: true, cleared: false}, %{"value" => "new"},
+       %{count: 5, added: "new", previous: 4, ready: false, cleared: nil}}
+    ]
+
+    server =
+      for {state, params, expected} <- cases do
+        socket = %Phoenix.LiveView.Socket{
+          assigns: Map.merge(state, %{id: "batch", __changed__: %{}})
+        }
+
+        assert {:reply, %{state: ^expected}, _} =
+                 BatchAssign.handle_event(
+                   "set",
+                   Map.put(params, "_live_lift_seq", 1),
+                   socket
+                 )
+
+        expected
+      end
+
+    javascript = LiveLift.Client.Compiler.compile_module(BatchAssign)
+    input = Jason.encode!(Enum.map(cases, fn {state, params, _} -> [state, params] end))
+
+    script =
+      javascript <>
+        "\nconsole.log(JSON.stringify(#{input}.map(([state, params]) => actions.set(state, {params}))));"
+
+    assert {output, 0} = System.cmd("node", ["--input-type=module", "--eval", script])
+    assert Jason.decode!(output) == Jason.decode!(Jason.encode!(server))
+  end
+
+  test "literal assign/2 rejects dynamic collections, unsafe keys and duplicates" do
+    for {batch, index} <-
+          Enum.with_index([
+            ~S(params["values"]),
+            "fn _assigns -> %{label: 1} end",
+            ~S(%{"label" => 1}),
+            "[label: 1, label: 2]",
+            "[flash: 1]",
+            "%{__proto__: 1}"
+          ]) do
+      param = if index == 0, do: "params", else: "_params"
+
+      source = """
+      defmodule LiveLift.UnsupportedBatch#{index} do
+        use Phoenix.LiveComponent
+        use LiveLift
+        def render(assigns), do: ~H"<output>{@label}</output>"
+        @client true
+        def handle_event("set", #{param}, socket), do: {:noreply, assign(socket, #{batch})}
+      end
+      """
+
+      assert_raise ArgumentError, ~r/literal_batch\.ex:6:.*assign\/2.*\(E055\)/s, fn ->
+        Code.compile_string(source, "literal_batch.ex")
+      end
+    end
+  end
+
   test "assign_new adds an absent field and preserves existing nil or value" do
     assert OptionalDraft.__live_lift_component_optional_fields__() == [:draft]
     assert Enum.sort(OptionalDraft.__live_lift_component_fields__()) == [:draft, :prefix, :ready]
@@ -699,7 +781,8 @@ defmodule LiveLift.ComponentTest do
     for {shared_body, index} <-
           Enum.with_index([
             "assign(socket, :shared, socket.assigns.preview)",
-            "assign(socket, :preview, 0)"
+            "assign(socket, :preview, 0)",
+            "assign(socket, preview: 0, shared: 1)"
           ]) do
       source = """
       defmodule LiveLift.ComponentTest.LocalConflict#{index} do
@@ -731,7 +814,7 @@ defmodule LiveLift.ComponentTest do
     """
 
     assert_raise ArgumentError,
-                 ~r/unsupported.ex:6: @client currently supports assign\/3 and update\/3/,
+                 ~r/unsupported.ex:6: @client supports assign\/3, literal assign\/2 and update\/3/,
                  fn ->
                    Code.compile_string(source, "unsupported.ex")
                  end

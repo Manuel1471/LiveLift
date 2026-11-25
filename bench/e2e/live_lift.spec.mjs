@@ -791,18 +791,21 @@ test("native submit cancels a pending debounced form change", async ({page}) => 
   expect(markedEvents).toEqual(["save", "save"]);
 });
 
-test("native assign_new reveals an initially absent field and converges", async ({page}) => {
+test("native assign_new and batch assign reveal absent fields and converge", async ({page}) => {
   await gotoLiveLift(page, "/native-optional");
   const root = page.locator("#native-optional");
   await expect(root).toHaveAttribute("data-live-lift-state", /"prefix":"Fresh"/);
   await expect(root).not.toHaveAttribute("data-live-lift-state", /"draft":/);
+  await expect(root).not.toHaveAttribute("data-live-lift-state", /"status":/);
   await expect(root.locator("p")).toHaveCount(0);
   await page.evaluate(() => window.liveSocket.enableLatencySim(400));
 
   await root.getByRole("button", {name: "Initialize draft"}).click();
   await expect(root.locator("p")).toHaveText("Fresh draft", {timeout: 200});
+  await expect(root.locator("output")).toHaveText("Draft ready", {timeout: 200});
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "1");
   await expect(root).toHaveAttribute("data-live-lift-state", /"draft":"Fresh draft"/);
+  await expect(root).toHaveAttribute("data-live-lift-state", /"status":"Draft ready"/);
 });
 
 test("native floats preserve type and display through optimistic and authoritative updates", async ({page}) => {

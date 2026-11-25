@@ -7,6 +7,6 @@ defmodule LiveLiftDemoWeb.NativeOptionalComponent do
     {:noreply,
      socket
      |> assign_new(:draft, fn -> socket.assigns.prefix <> " draft" end)
-     |> assign(:ready, true)}
+     |> assign(ready: true, status: "Draft ready")}
   end
 end

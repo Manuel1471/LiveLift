@@ -32,7 +32,7 @@ defmodule LiveLift.AuditTaskTest do
 
       assert output =~ ~s|Demo.Counter.handle_event("inc"): compatible|
       assert output =~ ~s|Demo.Counter.handle_event("save"): blocked:|
-      assert output =~ "#{file}:11: @client currently supports assign/3 and update/3"
+      assert output =~ "#{file}:11: @client supports assign/3, literal assign/2 and update/3"
       assert output =~ "(E055)"
       assert output =~ "docs/errors/E055.md"
       assert output =~ "1/2 handlers compatible"

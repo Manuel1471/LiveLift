@@ -3,6 +3,8 @@ defmodule LiveLift.Component.Compiler do
 
   alias LiveLift.Diagnostic
 
+  @reserved_batch_keys ~w(__changed__ __proto__ constructor prototype flash uploads streams socket myself)a
+
   def action!(event, params, socket, [do: result], file, line)
       when is_binary(event) do
     action = action_unchecked!(event, params, socket, [do: result], file, line)
@@ -146,13 +148,51 @@ defmodule LiveLift.Component.Compiler do
     map_update(state, field, expression, meta)
   end
 
+  defp update_to_state!({:assign, meta, [source, batch]} = call, socket, file, line) do
+    fields =
+      case batch do
+        {:%{}, _, entries} -> entries
+        other -> other
+      end
+
+    with true <- Keyword.keyword?(fields),
+         keys = Keyword.keys(fields),
+         true <- Enum.uniq(keys) == keys and Enum.all?(keys, &batch_key?/1) do
+      state = state_source!(source, socket, file, line)
+
+      fields =
+        Enum.map(fields, fn {key, value} ->
+          {key, rewrite_original_socket_assigns(value, socket)}
+        end)
+
+      {:__live_lift_assign_many__, meta, [state, {:%{}, meta, fields}]}
+    else
+      false ->
+        Diagnostic.error!(
+          "E055",
+          file,
+          source_line(call, line),
+          "@client assign/2 requires a literal map or keyword list with distinct, safe atom keys"
+        )
+    end
+  end
+
   defp update_to_state!(update, _socket, file, line) do
     Diagnostic.error!(
       "E055",
       file,
       source_line(update, line),
-      "@client currently supports assign/3 and update/3; move other handlers to the server"
+      "@client supports assign/3, literal assign/2 and update/3; move other handlers to the server"
     )
+  end
+
+  defp batch_key?(key) when key in @reserved_batch_keys, do: false
+
+  defp batch_key?(key) do
+    name = Atom.to_string(key)
+
+    Regex.match?(~r/\A[a-zA-Z_][a-zA-Z0-9_]*\z/, name) and
+      not String.starts_with?(name, "__live_lift_")
   end
 
   defp state_source!({name, _, context}, {name, _, _}, _file, _line)

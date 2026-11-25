@@ -992,6 +992,10 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftAssignNew(#{compile_expr(map, arg)}, #{Jason.encode!(identifier!(field))}, () => #{compile_expr(fallback, arg)})"
   end
 
+  defp compile_expr({:__live_lift_assign_many__, _, [map, fields]}, arg) do
+    "__liveLiftMapMerge(#{compile_expr(map, arg)}, #{compile_expr(fields, arg)})"
+  end
+
   defp compile_expr({:%{}, _, fields}, arg) when is_list(fields) do
     entries =
       Enum.map(fields, fn

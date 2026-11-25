@@ -19,6 +19,8 @@
   the corresponding HEEx bindings or directives.
 - Compile Phoenix's automatically colocated `.html.heex` files and point
   the audit diagnostics and generated source maps to the template file.
+- Compile native `assign/2` with a literal map or keyword list and include
+  newly assigned fields in the authoritative snapshot.
 
 ## 0.1.0-rc.1
 

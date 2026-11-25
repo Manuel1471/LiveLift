@@ -149,7 +149,7 @@ LiveLift compiles the same source for the browser.
 
 For synchronous updates, write a marked
 `handle_event/3` whose body returns `{:noreply, socket}` after one or more
-`assign/3` or `update/3` operations. The expression must fit the
+`assign/3`, literal `assign/2` or `update/3` operations. The expression must fit the
 [client language subset](language.md). Marked handlers can read string
 keys with `params["name"]`, `Map.get(params, "name")`, or nested paths such as
 `params["profile"]["note"]`. They may call local `defp` functions with several

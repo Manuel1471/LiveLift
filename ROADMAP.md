@@ -725,6 +725,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   apuntan al archivo original. El demo ejercita esta ruta con assets de
   producción en Chromium, Firefox y WebKit.
   [Spike y resultados](docs/colocated-heex-spike.md).
+- **Verificado:** Un handler marcado puede conservar el `assign/2` nativo
+  con un mapa o una lista de palabras clave literales. El navegador y
+  LiveView coinciden cuando el lote introduce campos ausentes del estado
+  inicial. [Spike, paridad y medición](docs/native-batch-assign-spike.md).
 - **Verificado localmente:** La guía define el versionado y las
   deprecaciones. Una herramienta prepara el changelog para la versión de
   Mix y CI valida y muestra esas notas antes de publicar.

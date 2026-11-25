@@ -4,11 +4,20 @@ LiveLift compiles a bounded subset of Elixir in a routed LiveView or
 LiveComponent. Use a literal `~H` or Phoenix's colocated `.html.heex`
 template. Its native API accepts static `phx-click`,
 `phx-change`, `phx-submit`, `phx-value-*`, `phx-target={@myself}`, bounded
-nested `params["name"]` reads, and supported chains of `assign/3`,
+nested `params["name"]` reads, and supported chains of `assign/2`, `assign/3`,
 `update/3`, and `assign_new/3` in a marked `handle_event/3`. Use
 `@client true` for optimistic synchronization and `@client :local` for
 synchronous transient display state. Unsupported syntax raises an error
 with a source location. See [the component guide](native-livecomponent.md).
+
+Native `assign/2` takes a literal keyword list or map, for example
+`assign(socket, open: true, label: "Ready")`. Use distinct, safe atom
+keys and values from the supported expression subset. A batch can
+set a field absent from the initial snapshot. Guard template reads
+until that field has been initialized. These written fields participate
+in snapshot projection and local action isolation. Choose only
+assigns that may be sent to the browser. Dynamic maps, callbacks,
+duplicate keys and reserved assigns stay on the server.
 
 The exact native handler boundary is listed in the
 [handler matrix](native-handler-matrix.md); unmarked handlers stay on LiveView.

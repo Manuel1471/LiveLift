@@ -774,6 +774,9 @@ defmodule LiveLift.Component do
   defp written_fields({:__live_lift_assign_new__, _, [source, field, _]}),
     do: [field | written_fields(source)]
 
+  defp written_fields({:__live_lift_assign_many__, _, [source, {:%{}, _, fields}]}),
+    do: Keyword.keys(fields) ++ written_fields(source)
+
   defp written_fields(_), do: []
 
   defp optional_state_fields(actions) do
@@ -784,6 +787,9 @@ defmodule LiveLift.Component do
           {:__live_lift_assign_new__, _, [_source, field, _fallback]} = node, acc
           when is_atom(field) ->
             {node, [field | acc]}
+
+          {:__live_lift_assign_many__, _, [_source, {:%{}, _, fields}]} = node, acc ->
+            {node, Keyword.keys(fields) ++ acc}
 
           node, acc ->
             {node, acc}
