@@ -777,6 +777,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   offline de más de 30 segundos y aplica las acciones recientes una sola
   vez. La prueba inspecciona las secuencias en Chromium, Firefox y WebKit.
   [Spike y prueba de caducidad](docs/offline-expiry-browser-spike.md).
+- **Verificado:** Al reconectar con una instancia nueva, la política
+  `:discard` revierte las predicciones offline y la siguiente acción
+  conectada empieza en secuencia 1. La política predeterminada reenvía
+  las acciones en el orden original.
+  [Prueba de ambas políticas](docs/offline-expiry-browser-spike.md#configured-conflict-policy).
 - **Verificado:** Un borrador de 4.096 unidades UTF‑16 se restaura hasta
   30 minutos después de la última edición. Al vencer, recargar muestra
   el valor de Phoenix y elimina el registro. Los tres navegadores también

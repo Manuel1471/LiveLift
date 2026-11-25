@@ -59,3 +59,34 @@ still needs manual verification.
 Show the notice after recovering the authoritative snapshot when at least
 one action eligible for replay has expired. The existing queue lifetime,
 conflict policy and event sequence rules apply.
+
+## Configured conflict policy
+
+The demo can start with `LIVE_LIFT_DEMO_DISCARD_OFFLINE=1` to set the
+application's `reconnect_conflict: :discard` configuration. The browser
+test checks the policy present in Phoenix's markup, predicts an increment
+and a label change offline, then reconnects to a new server instance.
+
+With `:discard`, both predictions roll back and no offline event crosses
+the WebSocket. A new connected increment is accepted as sequence 1.
+With the default `:replay_offline`, the increment and label are sent in
+order as sequences 1 and 2. The next connected click advances to sequence
+3. The browser values agree with the authoritative snapshot in both runs.
+
+```sh
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- e2e/live_lift.spec.mjs --grep 'offline clicks follow'
+LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_DEMO_DISCARD_OFFLINE=1 npm run e2e -- \
+  e2e/live_lift.spec.mjs --grep 'offline clicks follow'
+```
+
+CI exercises both settings with digested assets. The test covers a fresh
+server instance. Same-instance retries have separate runtime tests.
+
+Against baseline `11c0f8c`, the discard path passed in Chromium, Firefox
+and WebKit with both parsers. The default CI selection passed 18 local
+checks with deployed assets. In a scratch build, forcing replay while
+the app still advertised `:discard` caused Chromium to report an
+acknowledged sequence of 2 where the test expected 0. Restoring the
+runtime restored the expected behavior. The shared hook remained at
+8,192 gzip bytes.

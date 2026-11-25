@@ -664,25 +664,8 @@ test("a pending prediction is discarded after a connection cut", async ({page}) 
   expect(sequences).toEqual([1, 1]);
 });
 
-test("offline clicks replay in order after the fresh LiveView snapshot", async ({page}) => {
-  await gotoLiveLift(page, "/native-counter");
-  const root = page.locator("#native-counter");
-  const count = root.locator("output");
-  await page.evaluate(() => window.liveSocket.disconnect());
-  await page.waitForFunction(() => !window.liveSocket.isConnected());
-  await root.getByRole("button", {name: "Add one"}).click();
-  await root.getByRole("button", {name: "Add one"}).click();
-  await expect(count).toHaveText("2");
-  await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
-  await page.evaluate(() => window.liveSocket.connect());
-  await page.waitForFunction(() => window.liveSocket.isConnected());
-  await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
-  await expect(count).toHaveText("2");
-});
-
-test("offline action expiry drops stale clicks and replays fresh ones", async ({page}) => {
+async function observeMarkedEvents(page) {
   const sent = [];
-  await page.clock.install();
   await page.routeWebSocket(/\/live\/websocket/, (browser) => {
     const server = browser.connectToServer();
     browser.onMessage((message) => {
@@ -692,6 +675,54 @@ test("offline action expiry drops stale clicks and replays fresh ones", async ({
       server.send(message);
     });
   });
+  return sent;
+}
+
+test("offline clicks follow the configured reconnect policy", async ({page}) => {
+  const discard = process.env.LIVE_LIFT_DEMO_DISCARD_OFFLINE === "1";
+  const sent = await observeMarkedEvents(page);
+  await gotoLiveLift(page, "/native-counter");
+  const root = page.locator("#native-counter");
+  const count = root.locator("section > output");
+  const label = root.locator("section > span").first();
+  const increment = root.getByRole("button", {name: "Add one"});
+  const instance = await root.getAttribute("data-live-lift-instance");
+  await expect(root).toHaveAttribute("data-live-lift-reconnect-conflict", discard ? "discard" : "replay_offline");
+
+  await page.evaluate(() => window.liveSocket.disconnect());
+  await page.waitForFunction(() => !window.liveSocket.isConnected());
+  await increment.click();
+  await root.getByRole("button", {name: "Set label"}).click();
+  await expect(count).toHaveText("1");
+  await expect(label).toHaveText("ready");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "0");
+  expect(sent).toEqual([]);
+
+  await page.evaluate(() => window.liveSocket.connect());
+  await expect(root).not.toHaveAttribute("data-live-lift-instance", instance);
+  const ack = discard ? 0 : 2;
+  const recoveredCount = discard ? 0 : 1;
+  const recoveredLabel = discard ? "" : "ready";
+  const replayed = discard ? [] : [["inc", 1], ["label", 2]];
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", String(ack));
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", String(ack));
+  await expect(count).toHaveText(String(recoveredCount));
+  await expect(label).toHaveText(recoveredLabel);
+  expect(sent).toEqual(replayed);
+
+  await increment.click();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", String(ack + 1));
+  await expect(count).toHaveText(String(recoveredCount + 1));
+  expect(JSON.parse(await root.getAttribute("data-live-lift-state"))).toMatchObject({
+    count: recoveredCount + 1,
+    label: recoveredLabel,
+  });
+  expect(sent).toEqual([...replayed, ["inc", ack + 1]]);
+});
+
+test("offline action expiry drops stale clicks and replays fresh ones", async ({page}) => {
+  await page.clock.install();
+  const sent = await observeMarkedEvents(page);
 
   await gotoLiveLift(page, "/native-counter");
   const root = page.locator("#native-counter");

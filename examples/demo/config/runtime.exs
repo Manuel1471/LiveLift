@@ -23,6 +23,10 @@ end
 config :live_lift_demo, LiveLiftDemoWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+if System.get_env("LIVE_LIFT_DEMO_DISCARD_OFFLINE") == "1" do
+  config :live_lift, reconnect_conflict: :discard
+end
+
 if config_env() == :dev do
   # Reload browser tabs when matching files change.
   config :live_lift_demo, LiveLiftDemoWeb.Endpoint,
