@@ -157,6 +157,59 @@ defmodule LiveLift.TemplatePropertyParityTest do
     end
   end
 
+  test "marked form constraints apply across local components and default slots" do
+    components = %{
+      "field" => %{file: "fields.ex", line: 1, source: ~S(<input name="profile[note]" />)},
+      "change" => %{
+        file: "fields.ex",
+        line: 5,
+        source: ~S(<textarea name="note" phx-change="edit"></textarea>)
+      },
+      "editor" => %{
+        file: "fields.ex",
+        line: 16,
+        template_line: 17,
+        source: ~S'<form phx-submit="save">{render_slot(@inner_block)}</form>'
+      }
+    }
+
+    rejected = [
+      {~S(<form phx-submit="save"><.field /><.field /></form>), "page.heex", 40,
+       "duplicate input names"},
+      {~S(<form phx-submit="save"><input name="profile" /><.field /></form>), "page.heex", 40,
+       "conflicting map input names"},
+      {~S(<form><.change /></form>), "page.heex", 40, "phx-change inside a form"},
+      {~S(<.editor><input type="radio" name="type" /></.editor>), "fields.ex", 17,
+       "checkbox, radio, file or multiple-select control"}
+    ]
+
+    for parser <- [Parser, FallbackParser] do
+      mode = {:liveview, ["save", "edit"], components}
+
+      for {source, file, line, detail} <- rejected do
+        error =
+          assert_raise ArgumentError, fn ->
+            parser.parse!(source, "page.heex", 40) |> Template.compile_parsed("page.heex", mode)
+          end
+
+        assert Exception.message(error) =~ "#{file}:#{line}:"
+        assert Exception.message(error) =~ detail
+        assert Exception.message(error) =~ "(E063)"
+      end
+
+      for source <- [
+            ~S(<.editor><.field /><input name="profile[summary]" /></.editor>),
+            ~S(<form phx-submit="save_on_server"><.field /><.field /></form>)
+          ] do
+        assert [%{tag: "form"} = form] =
+                 parser.parse!(source, "page.heex", 40)
+                 |> Template.compile_parsed("page.heex", mode)
+
+        refute Map.has_key?(form, :form_file)
+      end
+    end
+  end
+
   test "combined native templates match a fresh render after generated state changes" do
     templates = [
       ~S"""

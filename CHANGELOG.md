@@ -28,6 +28,8 @@
 - Show a status message when reconnecting discards expired offline actions.
 - Report `E063` for marked changes on multiple-select controls and on
   direct textareas or selects with unsupported field names.
+- Apply form field and event constraints across local HEEx components
+  and their default slots.
 
 ## 0.1.0-rc.1
 

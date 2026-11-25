@@ -239,3 +239,42 @@ Firefox 159.0 and WebKit 27.2. The runs used Elixir 1.20.2, OTP 29.0.3 and
 Node 26.5.0 on macOS arm64. A fresh Phoenix consumer passed migration and
 both asset builds with the fallback forced. The shared hook measured
 8,192 gzip bytes.
+
+## Forms after component expansion
+
+The spike asked whether a form gets the same validation when local
+components or slots supply its fields. A form with two calls to a field
+component compiled even though both calls rendered `profile[note]`.
+The original validation ran before expansion and could only inspect
+fields declared directly in the same template.
+
+Both parsers now reject duplicate names, conflicting map paths,
+unsupported controls and direct marked changes across these boundaries.
+The rejection tests cover a form inside a component and a component
+inside a form. They check the diagnostic against the source file and
+line of the form. The expanded client tree omits the source-file metadata
+used only for validation. Supported nested fields and unmarked form
+handlers still compile.
+
+The native form in the demo now renders its draft field through the
+default slot of a local component. The browser checks exercise validation,
+submission, and draft recovery on that path. The checks cover the
+documented static field names and local component subset.
+
+```sh
+mix test
+LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix test
+sh test/integration/phoenix_consumer.sh
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- e2e/live_lift.spec.mjs e2e/form_drafts.spec.mjs \
+  --grep 'phx-change and phx-submit|validates a nested field|opt-in draft'
+```
+
+Repeat the browser command with `LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1` to
+exercise the alternate parser. Against baseline `4a24cf3`, the library
+passed 166 tests per parser configuration on LiveView 1.2.15. The 17
+focused parser and template tests passed in a checkout locked to
+LiveView 1.2.0. The demo passed nine tests and 57 handler parity cases.
+The browser checks passed 18 times per parser across Chromium, Firefox
+and WebKit with deployed assets. A fresh Phoenix consumer passed migration
+and both asset builds. The shared browser hook measured 8,192 gzip bytes.

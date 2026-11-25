@@ -52,6 +52,7 @@ defmodule LiveLift.Template do
       |> Enum.map(&adapt_liveview_node(&1, file, events))
       |> Enum.map(&convert_node(&1, file))
       |> expand_local_components(local_components, file, events, [])
+      |> validate_expanded_forms!(events)
 
     if line = default_slot_line(tree) do
       Diagnostic.error!(
@@ -99,19 +100,6 @@ defmodule LiveLift.Template do
         meta.line,
         "remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
       )
-    end
-
-    if tag == "form" and marked_change_descendant?(children, events) do
-      Diagnostic.error!(
-        "E063",
-        file,
-        meta.line,
-        "@client input phx-change inside a form is not supported yet; put phx-change on the form or keep this event on the server"
-      )
-    end
-
-    if tag == "form" and marked_event?(attrs, events) do
-      validate_form!(children, file, meta.line)
     end
 
     {:block, type, tag,
@@ -228,26 +216,6 @@ defmodule LiveLift.Template do
     end)
   end
 
-  defp marked_change_descendant?(nodes, events) do
-    Enum.any?(nodes, fn
-      {:block, _, _, attrs, children, _, _} ->
-        marked_change_attr?(attrs, events) or marked_change_descendant?(children, events)
-
-      {:self_close, _, _, attrs, _} ->
-        marked_change_attr?(attrs, events)
-
-      _ ->
-        false
-    end)
-  end
-
-  defp marked_change_attr?(attrs, events) do
-    Enum.any?(attrs, fn
-      {"phx-change", {:string, event, _}, _} -> event in events
-      _ -> false
-    end)
-  end
-
   defp native_loop_key(attrs, file) do
     loop = Enum.find(attrs, fn {name, _, _} -> name == ":for" end)
     key = Enum.find(attrs, fn {name, _, _} -> name == ":key" end)
@@ -286,16 +254,6 @@ defmodule LiveLift.Template do
     end
   end
 
-  defp marked_event?(attrs, events) do
-    Enum.any?(attrs, fn
-      {name, {:string, event, _}, _} when name in ~w(phx-change phx-submit) ->
-        event in events
-
-      _ ->
-        false
-    end)
-  end
-
   defp validate_change_control!(tag, attrs, file, line, events)
        when tag in ~w(input select textarea) do
     if Enum.any?(attrs, fn
@@ -317,7 +275,7 @@ defmodule LiveLift.Template do
         )
       end
 
-      if tag == "select" and unsupported_control?(tag, attrs) do
+      if tag == "select" and Enum.any?(attrs, fn {name, _, _} -> name == "multiple" end) do
         Diagnostic.error!(
           "E063",
           file,
@@ -354,10 +312,52 @@ defmodule LiveLift.Template do
 
   defp validate_change_control!(_tag, _attrs, _file, _line, _events), do: :ok
 
-  defp validate_form!(children, file, line) do
-    names = form_names(children, file)
+  defp validate_expanded_forms!(nodes, events) do
+    Enum.map(nodes, fn
+      %{tag: "form", attrs: attrs, children: children, form_file: file, line: line} = node ->
+        descendants = form_elements(children)
 
-    if unsupported_form_control?(children) do
+        if Enum.any?(descendants, &marked_binding?(&1.attrs, ["phx-change"], events)) do
+          Diagnostic.error!(
+            "E063",
+            file,
+            line,
+            "@client input phx-change inside a form is not supported yet; put phx-change on the form or keep this event on the server"
+          )
+        end
+
+        if marked_binding?(attrs, ~w(phx-change phx-submit), events) do
+          validate_form!(descendants, file, line)
+        end
+
+        %{node | children: validate_expanded_forms!(children, events)} |> Map.delete(:form_file)
+
+      %{type: "element", children: children} = node ->
+        %{node | children: validate_expanded_forms!(children, events)}
+
+      node ->
+        node
+    end)
+  end
+
+  defp form_elements(nodes) do
+    Enum.flat_map(nodes, fn
+      %{type: "element", children: children} = node -> [node | form_elements(children)]
+      _ -> []
+    end)
+  end
+
+  defp marked_binding?(attrs, names, events) do
+    Enum.any?(attrs, fn
+      %{type: "static", name: name, value: event} -> name in names and event in events
+      _ -> false
+    end)
+  end
+
+  defp validate_form!(descendants, file, line) do
+    names = for node <- descendants, %{name: "name", value: name} <- node.attrs, do: name
+
+    if Enum.any?(descendants, &unsupported_form_control?/1) do
       Diagnostic.error!(
         "E063",
         file,
@@ -414,61 +414,17 @@ defmodule LiveLift.Template do
     end
   end
 
-  defp form_names(nodes, file) do
-    Enum.flat_map(nodes, fn
-      {:block, :tag, _tag, attrs, children, meta, _} ->
-        form_name(attrs, file, meta.line) ++ form_names(children, file)
-
-      {:self_close, :tag, _tag, attrs, meta} ->
-        form_name(attrs, file, meta.line)
-
-      _ ->
-        []
-    end)
-  end
-
-  defp unsupported_form_control?(nodes) do
-    Enum.any?(nodes, fn
-      {:block, :tag, tag, attrs, children, _, _} ->
-        unsupported_control?(tag, attrs) or unsupported_form_control?(children)
-
-      {:self_close, :tag, tag, attrs, _} ->
-        unsupported_control?(tag, attrs)
-
-      _ ->
-        false
-    end)
-  end
-
-  defp unsupported_control?("input", attrs) do
+  defp unsupported_form_control?(%{tag: "input", attrs: attrs}) do
     Enum.any?(attrs, fn
-      {"type", {:string, type, _}, _} -> type in ~w(checkbox radio file)
+      %{name: "type", type: "static", value: type} -> type in ~w(checkbox radio file)
       _ -> false
     end)
   end
 
-  defp unsupported_control?("select", attrs),
-    do: Enum.any?(attrs, fn {name, _, _} -> name == "multiple" end)
+  defp unsupported_form_control?(%{tag: "select", attrs: attrs}),
+    do: Enum.any?(attrs, &(&1.name == "multiple"))
 
-  defp unsupported_control?(_tag, _attrs), do: false
-
-  defp form_name(attrs, file, line) do
-    Enum.flat_map(attrs, fn
-      {"name", {:string, value, _}, _} ->
-        [value]
-
-      {"name", _, _} ->
-        Diagnostic.error!(
-          "E063",
-          file,
-          line,
-          "@client form requires static input names; move this event to the server"
-        )
-
-      _ ->
-        []
-    end)
-  end
+  defp unsupported_form_control?(_node), do: false
 
   defp adapt_liveview_attrs(attrs, file, events) do
     Enum.flat_map(attrs, fn
@@ -761,7 +717,9 @@ defmodule LiveLift.Template do
         |> flatten_slot_scopes()
 
       %{type: "element", children: children} = node ->
-        [%{node | children: expand_local_components(children, components, file, events, stack)}]
+        children = expand_local_components(children, components, file, events, stack)
+        node = if node.tag == "form", do: Map.put(node, :form_file, file), else: node
+        [%{node | children: children}]
 
       node ->
         [node]

@@ -696,6 +696,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   y 304 variantes rechazadas con ambos parsers. Los cambios marcados de
   un `select` múltiple y los nombres anidados en controles con binding
   directo ya producen `E063`. [Evidencia](docs/progress/7-heex-fuzzing.md#direct-form-controls-and-component-boundaries).
+- **Verificado:** La validación de formularios incluye los controles
+  que aportan los componentes locales y sus slots. El diagnóstico ubica
+  el formulario en su archivo de origen. El demo guarda un campo compuesto
+  y recupera su borrador. [Spike y pruebas](docs/progress/7-heex-fuzzing.md#forms-after-component-expansion).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también

@@ -20,14 +20,23 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
         phx-auto-recover="ignore"
         phx-target={@myself}
       >
-        <label>Note
-        <input name="profile[note]" value={@note_value} data-live-lift-draft={@draft_scope} /></label>
+        <.note_field>
+          <input name="profile[note]" value={@note_value} data-live-lift-draft={@draft_scope} />
+        </.note_field>
         <button type="submit">Save note</button>
         <button type="reset">Discard draft</button>
       </form>
       <.feedback title={@saved}><.validation_error invalid={@invalid} /></.feedback>
       <p>Saved: {@saved}</p>
     </section>
+    """
+  end
+
+  slot :inner_block, required: true
+
+  defp note_field(assigns) do
+    ~H"""
+    <label>Note {render_slot(@inner_block)}</label>
     """
   end
 
