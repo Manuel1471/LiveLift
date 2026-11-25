@@ -38,7 +38,7 @@ test("JS command spike measures sticky classes and focus after an island patch",
   const increment = root.locator("button[phx-click=inc]");
   await expect(increment).toBeFocused();
 
-  await root.locator('button[phx-click="label"]').evaluate((button) => button.click());
+  await root.getByRole("button", {name: "Set label"}).evaluate((button) => button.click());
   await expect(label).toHaveText("ready");
   await expect(label).not.toHaveClass("spike-active");
   await expect(increment).toBeFocused();
@@ -56,7 +56,7 @@ test("native focus commands retain their binding across an optimistic render", a
   await control.click();
   await expect(target).toBeFocused();
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "0");
-  await root.locator('button[phx-click="label"]').evaluate((button) => button.click());
+  await root.getByRole("button", {name: "Set label"}).evaluate((button) => button.click());
   await expect(root.locator("span")).toHaveText("ready");
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
   await expect(target).toBeFocused();
