@@ -1,7 +1,8 @@
 # Supported client language
 
 LiveLift compiles a bounded subset of Elixir in a routed LiveView or
-LiveComponent. Its native API accepts literal `~H`, static `phx-click`,
+LiveComponent. Use a literal `~H` or Phoenix's colocated `.html.heex`
+template. Its native API accepts static `phx-click`,
 `phx-change`, `phx-submit`, `phx-value-*`, `phx-target={@myself}`, bounded
 nested `params["name"]` reads, and supported chains of `assign/3`,
 `update/3`, and `assign_new/3` in a marked `handle_event/3`. Use

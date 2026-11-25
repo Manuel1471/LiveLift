@@ -141,7 +141,13 @@ prove parity for every input or replace browser tests.
 
 ## Supported handlers and templates
 
-This path accepts a literal `~H` render. For synchronous updates, write a marked
+Keep the literal `~H` in `render/1` or use the colocated `.html.heex` file
+Phoenix finds automatically. For example, `MyAppWeb.CounterComponent`
+uses `counter_component.html.heex` next to its Elixir module when it has
+no explicit `render/1`. Phoenix renders that file on the server, and
+LiveLift compiles the same source for the browser.
+
+For synchronous updates, write a marked
 `handle_event/3` whose body returns `{:noreply, socket}` after one or more
 `assign/3` or `update/3` operations. The expression must fit the
 [client language subset](language.md). Marked handlers can read string

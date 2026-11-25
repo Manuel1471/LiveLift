@@ -17,6 +17,8 @@
   unclosed comments at their source location with both parser paths.
 - Explain unsupported EEx body expressions with source coordinates and
   the corresponding HEEx bindings or directives.
+- Compile Phoenix's automatically colocated `.html.heex` files and point
+  the audit diagnostics and generated source maps to the template file.
 
 ## 0.1.0-rc.1
 

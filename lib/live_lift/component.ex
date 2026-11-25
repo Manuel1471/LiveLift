@@ -4,7 +4,7 @@ defmodule LiveLift.Component do
   alias LiveLift.Diagnostic
 
   alias LiveLift.FloatWire
-  alias LiveLift.Component.{ProcessTimer, Timer}
+  alias LiveLift.Component.{ProcessTimer, TemplateSource, Timer}
 
   def on_definition(env, :def, :render, [_assigns], _guards, body) do
     if Module.get_attribute(env.module, :client) in [true, :local] do
@@ -16,7 +16,7 @@ defmodule LiveLift.Component do
       )
     end
 
-    Module.put_attribute(env.module, :live_lift_render, {body, env.line})
+    Module.put_attribute(env.module, :live_lift_render, {body, env.file, env.line})
   end
 
   def on_definition(env, :def, :handle_event, [event, params, socket], guards, body) do
@@ -140,7 +140,7 @@ defmodule LiveLift.Component do
   defmacro __before_compile__(env) do
     actions = env.module |> Module.get_attribute(:live_lift_marked_actions) |> Enum.reverse()
     events = Enum.map(actions, &elem(&1, 0))
-    {render, render_line} = Module.get_attribute(env.module, :live_lift_render) || {nil, env.line}
+    render = Module.get_attribute(env.module, :live_lift_render)
 
     local_components =
       env.module
@@ -191,12 +191,12 @@ defmodule LiveLift.Component do
       )
     end
 
-    {source, line, template_line} = render_source!(render, env.file, render_line)
+    {source, template_file, line, template_line} = render_template!(render, env)
 
     template =
       LiveLift.Template.compile_liveview(
         source,
-        env.file,
+        template_file,
         events,
         local_components,
         template_line
@@ -275,7 +275,7 @@ defmodule LiveLift.Component do
       def __live_lift_client_template__, do: unquote(Macro.escape(template))
 
       @doc false
-      def __live_lift_template_source__, do: {unquote(env.file), unquote(line)}
+      def __live_lift_template_source__, do: {unquote(template_file), unquote(line)}
 
       @doc false
       def __live_lift_component_fields__, do: unquote(fields)
@@ -655,6 +655,27 @@ defmodule LiveLift.Component do
   end
 
   def disabled_reply(result, _event, _params, _events), do: result
+
+  defp render_template!(nil, env), do: render_template!({nil, env.file, env.line}, env)
+
+  defp render_template!({body, definition_file, line}, env) do
+    # Phoenix sets @file on its generated render and registers the same
+    # template as an external resource. Keep Phoenix's implementation via super.
+    with false <- definition_file == env.file,
+         template when is_binary(template) <-
+           TemplateSource.colocated_path(env.file, inspect(env.module)),
+         ^template <- Path.expand(definition_file),
+         true <-
+           Enum.any?(Module.get_attribute(env.module, :external_resource), fn path ->
+             Path.expand(path) == template
+           end) do
+      {File.read!(template), template, 1, 1}
+    else
+      _ ->
+        {source, line, template_line} = render_source!(body, env.file, line)
+        {source, env.file, line, template_line}
+    end
+  end
 
   defp render_source!([do: {:sigil_H, meta, [{:<<>>, _, parts}, []]}], file, definition_line)
        when is_list(parts) do

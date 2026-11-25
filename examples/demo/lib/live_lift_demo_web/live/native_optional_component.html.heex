@@ -1,0 +1,4 @@
+<section aria-label="Optional native state">
+  <button phx-click="initialize" phx-target={@myself}>Initialize draft</button>
+  <p :if={@ready}>{@draft}</p>
+</section>

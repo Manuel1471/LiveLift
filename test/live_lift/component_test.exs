@@ -339,6 +339,80 @@ defmodule LiveLift.ComponentTest do
     assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", script, input])
   end
 
+  test "compiles and maps the HEEx sibling rendered by Phoenix" do
+    directory =
+      Path.join(System.tmp_dir!(), "live_lift_colocated_#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(directory)
+    on_exit(fn -> File.rm_rf!(directory) end)
+
+    for {module, behaviour} <- [
+          {LiveLift.ColocatedComponent, Phoenix.LiveComponent},
+          {LiveLift.ColocatedView, Phoenix.LiveView}
+        ] do
+      basename = module |> Module.split() |> List.last() |> Macro.underscore()
+      file = Path.join(directory, basename <> ".ex")
+      template = Path.join(directory, basename <> ".html.heex")
+      target = if behaviour == Phoenix.LiveComponent, do: " phx-target={@myself}", else: ""
+      markup = "\n<button phx-click=\"inc\"#{target}>{@count}</button>\n"
+      File.write!(template, markup)
+
+      File.write!(file, """
+      defmodule #{inspect(module)} do
+        use #{inspect(behaviour)}
+        use LiveLift
+
+        @client true
+        def handle_event("inc", _params, socket),
+          do: {:noreply, update(socket, :count, &(&1 + 1))}
+      end
+      """)
+
+      Code.compile_file(file)
+      assert module.__live_lift_template_source__() == {template, 1}
+      assert module.__live_lift_component_fields__() == [:count]
+
+      assert Enum.any?(module.__info__(:attributes)[:external_resource], fn path ->
+               Path.expand(path) == template
+             end)
+
+      assert module.render(%{
+               __changed__: %{},
+               id: "counter",
+               count: 2,
+               myself: %Phoenix.LiveComponent.CID{cid: 1}
+             })
+             |> Phoenix.HTML.Safe.to_iodata()
+             |> IO.iodata_to_binary() =~ ">2</button>"
+
+      {javascript, map} =
+        LiveLift.Client.Compiler.compile_registry_with_map([module], "generated_views.js")
+
+      payload = Jason.decode!(map)
+      assert %{"sources" => sources, "sourcesContent" => [^markup, _]} = payload
+      assert sources == Enum.map([template, file], &Path.relative_to_cwd/1)
+
+      script = """
+      import assert from "node:assert/strict";
+      import {SourceMap} from "node:module";
+      const [javascript, payload] = JSON.parse(process.argv[1]);
+      const lines = javascript.split("\\n");
+      const line = lines.findIndex(text => text.includes("inc: (state) =>"));
+      assert.ok(line >= 0);
+      const map = new SourceMap(payload);
+      const view = map.findEntry(line, 2);
+      const action = map.findEntry(line, lines[line].indexOf("inc: (state) =>"));
+      assert.equal(view.originalSource, payload.sources[0]);
+      assert.equal(view.originalLine, 0);
+      assert.equal(action.originalSource, payload.sources[1]);
+      assert.equal(action.originalLine, 5);
+      """
+
+      input = Jason.encode!([javascript, payload])
+      assert {"", 0} = System.cmd("node", ["--input-type=module", "--eval", script, input])
+    end
+  end
+
   test "an instance identifier is stable on the component socket and unique per mount" do
     initial = %Phoenix.LiveView.Socket{assigns: %{count: 0, id: "counter", __changed__: %{}}}
 

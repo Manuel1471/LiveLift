@@ -11,7 +11,7 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
   use Mix.Task
 
-  alias LiveLift.Component.{Compiler, Helpers, ProcessTimer, Timer}
+  alias LiveLift.Component.{Compiler, Helpers, ProcessTimer, TemplateSource, Timer}
   alias LiveLift.Diagnostic
 
   @shortdoc "Reports client-compatible LiveView and LiveComponent handlers"
@@ -75,11 +75,7 @@ defmodule Mix.Tasks.LiveLift.Audit do
       kind ->
         definitions = source_definitions(expressions, file)
 
-        {template, render_line} =
-          Enum.find_value(definitions, {nil, 1}, fn
-            {:render, [_assigns], [], body, env} -> {render_source(body), env.line}
-            _ -> nil
-          end)
+        {template, render_line} = source_template(definitions, file, name)
 
         handlers =
           for {:handle_event, [event, params, socket], guards, body, env} <- definitions,
@@ -204,20 +200,33 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
   defp preserves_kernel_self?(_), do: true
 
-  defp render_source(do: body) do
+  defp source_template(definitions, file, name) do
+    case Enum.find(definitions, &match?({:render, [_], [], _, _}, &1)) do
+      {:render, [_], [], body, env} ->
+        {render_source(body, file), env.line}
+
+      nil ->
+        with false <- Enum.any?(definitions, &match?({:render, [_], _, _, _}, &1)),
+             template when is_binary(template) <- TemplateSource.colocated_path(file, name) do
+          {{File.read!(template), template, 1}, 1}
+        else
+          _ -> {nil, 1}
+        end
+    end
+  end
+
+  defp render_source([do: body], file) do
     case body do
       {:sigil_H, meta, [{:<<>>, _, parts}, []]} when is_list(parts) ->
         if Enum.all?(parts, &is_binary/1) do
           line = meta[:line] || 1
-          {Enum.join(parts), if(meta[:delimiter] == "\"\"\"", do: line + 1, else: line)}
+          {Enum.join(parts), file, if(meta[:delimiter] == "\"\"\"", do: line + 1, else: line)}
         end
 
       _ ->
         nil
     end
   end
-
-  defp render_source(_), do: nil
 
   defp helper_definition({:defp, meta, [{name, _, args}, [do: body]]}, file)
        when is_atom(name) and is_list(args),
@@ -232,7 +241,15 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
   defp helper_definition(_, _file), do: []
 
-  defp check_handler(env, event, params, socket, body, {template, render_line}, context) do
+  defp check_handler(
+         env,
+         event,
+         params,
+         socket,
+         body,
+         {template, template_file, render_line},
+         context
+       ) do
     try do
       timer =
         Timer.extract(body, params, socket, env) ||
@@ -260,7 +277,8 @@ defmodule Mix.Tasks.LiveLift.Audit do
           Compiler.validate_action!({name, args, expanded}, env.file, env.line)
       end
 
-      tree = LiveLift.Template.compile_liveview(template, env.file, [event], %{}, render_line)
+      tree =
+        LiveLift.Template.compile_liveview(template, template_file, [event], %{}, render_line)
 
       if match?({%{patch: _}, _}, timer) do
         {spec, timer_line} = timer

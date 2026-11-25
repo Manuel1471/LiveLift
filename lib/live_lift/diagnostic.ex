@@ -14,7 +14,7 @@ defmodule LiveLift.Diagnostic do
       "Use a bounded, unguarded private helper or remove the @client marker from the calling handler.",
     "E059" => "Remove the @client marker to keep scheduling on the server.",
     "E060" =>
-      "Use a literal ~H template with supported HEEx, or keep this rendering in a LiveView or LiveComponent without use LiveLift.",
+      "Use supported HEEx in a literal ~H template or Phoenix's colocated .html.heex file, or keep this rendering outside the LiveLift island.",
     "E061" =>
       "Use a supported binding or static attribute, or render this markup in LiveView outside the LiveLift island.",
     "E062" =>

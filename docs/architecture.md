@@ -7,8 +7,9 @@ outside that island. The boundary uses a LiveView hook and
 
 ## Compilation and rendering
 
-The native API uses a literal `~H` template and supported `handle_event/3`
-clauses. LiveView renders the initial HTML with HEEx. LiveLift compiles the
+The native API uses a literal `~H` or Phoenix's colocated `.html.heex`
+template and supported `handle_event/3` clauses. LiveView renders the
+initial HTML with HEEx. LiveLift compiles the
 bounded template into a validated tree and the action expressions into
 JavaScript. The browser hook retains the initial DOM, validates action state,
 and reconciles the nodes owned by the island. Stable keys let it move existing

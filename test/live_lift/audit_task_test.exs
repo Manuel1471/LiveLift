@@ -97,6 +97,39 @@ defmodule LiveLift.AuditTaskTest do
     end
   end
 
+  test "audits the colocated HEEx file only without an explicit render" do
+    directory = tmp_dir!()
+    file = Path.join(directory, "co_located.ex")
+    template = Path.join(directory, "co_located.html.heex")
+
+    source = """
+    defmodule Demo.CoLocated do
+      use Phoenix.LiveView
+      def handle_event("inc", _params, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
+    end
+    """
+
+    File.write!(file, source)
+    File.write!(template, "\n<output>{@count}</output>\n")
+    audit = fn -> capture_io(fn -> Mix.Tasks.LiveLift.Audit.run(["--path", file]) end) end
+
+    assert audit.() =~ ~s|Demo.CoLocated.handle_event("inc"): compatible|
+
+    File.write!(template, "\n<output data-custom={@count}>{@count}</output>\n")
+    assert audit.() =~ ~r/blocked: #{Regex.escape(template)}:2(?::\d+)?:.*\(E061\)/
+
+    File.write!(
+      file,
+      String.replace(
+        source,
+        "  def handle_event",
+        "  def render(assigns), do: Other.render(assigns)\n  def handle_event"
+      )
+    )
+
+    assert audit.() =~ "blocked: #{file}:3: render/1 must return a literal ~H template (E060)"
+  end
+
   test "reports the actual render line for unsafe templates" do
     directory =
       Path.join(System.tmp_dir!(), "live_lift_audit_#{System.unique_integer([:positive])}")

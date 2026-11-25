@@ -82,7 +82,8 @@ technology and production deployment are not yet covered.
 
 `mix live_lift.compile` writes a registry source map in eager mode. Split
 mode writes a map for each generated view module. Both embed the original
-Elixir source. View entries and templates point to their `~H` sigil.
+Elixir and HEEx sources. View entries and templates point to their `~H`
+sigil or the start of their colocated `.html.heex` file.
 Generated native actions point to their `handle_event/3` definition and to
 the line of the action's outer expression when the compiler has that
 location. A timer's initiating handler has a mapping. Nested expressions,

@@ -720,6 +720,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   conjunta con las plantillas siguió en cero. Ambos parsers ahora
   identifican las expresiones EEx rechazadas y sugieren el equivalente HEEx.
   [Spike y evidencia](docs/public-handler-shapes-spike.md).
+- **Verificado:** LiveLift usa el archivo `.html.heex` que Phoenix descubre
+  junto a un LiveView o LiveComponent. El auditor y los mapas de origen
+  apuntan al archivo original. El demo ejercita esta ruta con assets de
+  producción en Chromium, Firefox y WebKit.
+  [Spike y resultados](docs/colocated-heex-spike.md).
 - **Verificado localmente:** La guía define el versionado y las
   deprecaciones. Una herramienta prepara el changelog para la versión de
   Mix y CI valida y muestra esas notas antes de publicar.
