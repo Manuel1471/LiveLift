@@ -86,13 +86,14 @@ test("opt-in draft isolates scopes, supports empty text and ignores invalid reco
   await note.evaluate((field) => field.setAttribute("data-live-lift-draft", "demo-note"));
   await expect(note).toHaveValue("");
 
-  for (const invalid of ["expired", "json", "size", "version", "future"]) {
+  for (const invalid of ["expired", "json", "size", "version", "shape", "future"]) {
     await page.evaluate(({key, invalid}) => {
       const examples = {
         expired: JSON.stringify([1, Date.now() - 1000, "Expired"]),
         json: "[",
         size: JSON.stringify([1, Date.now() + 60_000, "x".repeat(4097)]),
         version: JSON.stringify([2, Date.now() + 60_000, "Wrong version"]),
+        shape: JSON.stringify({expires: Date.now() + 60_000, text: "Wrong format"}),
         future: JSON.stringify([1, Date.now() + 86_400_000, "Too far in the future"]),
       };
       sessionStorage.setItem(key, examples[invalid]);
@@ -108,6 +109,43 @@ test("opt-in draft isolates scopes, supports empty text and ignores invalid reco
   await expect(note).toHaveValue("Server note");
   await gotoLiveLift(page, "/native-form?record=other");
   await expect(note).toHaveValue("Other draft");
+});
+
+test("opt-in draft expires 30 minutes after the last edit", async ({page}) => {
+  const start = Date.UTC(2026, 0, 1);
+  const lifetime = 30 * 60_000;
+  const editTime = start + lifetime - 1;
+  const renewedExpiry = editTime + lifetime;
+  const textAtLimit = "🙂".repeat(2048);
+  const renewedText = "Renewed note";
+  const readDraft = () => page.evaluate((key) => JSON.parse(sessionStorage.getItem(key)), key);
+
+  await page.clock.setFixedTime(start);
+  await gotoLiveLift(page, path);
+  const island = page.locator("#native-form");
+  const note = island.getByRole("textbox", {name: "Note", exact: true});
+  await note.fill(textAtLimit);
+  await expect(island).toHaveAttribute(ack, "1");
+  expect(await readDraft()).toEqual([1, start + lifetime, textAtLimit]);
+
+  await page.clock.setFixedTime(editTime);
+  await gotoLiveLift(page, path);
+  await expect(note).toHaveValue(textAtLimit);
+  await expect(island).toHaveAttribute(ack, "0");
+  await note.fill(renewedText);
+  await expect(island).toHaveAttribute(ack, "1");
+  expect(await readDraft()).toEqual([1, renewedExpiry, renewedText]);
+
+  await page.clock.setFixedTime(start + lifetime);
+  await gotoLiveLift(page, path);
+  await expect(note).toHaveValue(renewedText);
+  expect(await readDraft()).toEqual([1, renewedExpiry, renewedText]);
+
+  await page.clock.setFixedTime(renewedExpiry);
+  await gotoLiveLift(page, path);
+  await expect(note).toHaveValue("Server note");
+  await expect(island).toHaveAttribute(ack, "0");
+  expect(await readDraft()).toBeNull();
 });
 
 test("opt-in draft tolerates browser storage write failures and keeps native submit", async ({page}) => {

@@ -773,6 +773,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   offline de más de 30 segundos y aplica las acciones recientes una sola
   vez. La prueba inspecciona las secuencias en Chromium, Firefox y WebKit.
   [Spike y prueba de caducidad](docs/offline-expiry-browser-spike.md).
+- **Verificado:** Un borrador de 4.096 unidades UTF‑16 se restaura hasta
+  30 minutos después de la última edición. Al vencer, recargar muestra
+  el valor de Phoenix y elimina el registro. Los tres navegadores también
+  descartan formatos de almacenamiento desconocidos.
+  [Evidencia de caducidad](docs/progress/5.4-draft-persistence.md#phase-7--expiry-and-record-format).
 - **Verificado localmente:** El control que ejecuta CI mide el hook
   compartido con esbuild y gzip y falla al superar el límite vigente
   de 8 KiB. [Evidencia y comando](docs/progress/7-runtime-budget.md).
