@@ -747,6 +747,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   revisiones en Chromium, Firefox y WebKit. El benchmark de Chromium mide
   ambas variantes con cargas intercaladas y espera al montaje.
   [Evidencia y medición](docs/progress/7-browser-operability.md).
+- **Verificado en Chromium:** Tras montar, reordenar y desmontar una
+  lista de 1.000 filas dentro del mismo documento, quedaron liberadas
+  las referencias muestreadas y el nodo desmontado tenía cero listeners.
+  [Spike, umbrales y reproducción](docs/native-list-retention-spike.md).
 - **Verificado localmente:** El control que ejecuta CI mide el hook
   compartido con esbuild y gzip y falla al superar el límite vigente
   de 8 KiB. [Evidencia y comando](docs/progress/7-runtime-budget.md).
