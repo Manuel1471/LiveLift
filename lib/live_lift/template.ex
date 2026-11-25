@@ -90,6 +90,7 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
+    attrs = normalize_control_attrs(tag, attrs)
     validate_native_debounce!(tag, attrs, file, meta.line)
     validate_change_control!(tag, attrs, file, meta.line, events)
 
@@ -111,6 +112,7 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node({:self_close, type, tag, attrs, meta}, file, events) do
+    attrs = normalize_control_attrs(tag, attrs)
     validate_native_debounce!(tag, attrs, file, meta.line)
 
     if type == :remote_component do
@@ -132,6 +134,21 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp normalize_control_attrs(tag, attrs) when tag in ~w(button input select textarea) do
+    Enum.map(attrs, fn
+      {name, value, meta} when is_binary(name) ->
+        case String.downcase(name, :ascii) do
+          canonical when canonical in ~w(multiple name type) -> {canonical, value, meta}
+          _ -> {name, value, meta}
+        end
+
+      attr ->
+        attr
+    end)
+  end
+
+  defp normalize_control_attrs(_tag, attrs), do: attrs
 
   defp validate_draft_forms!(nodes, file, inside_form?) do
     Enum.each(nodes, fn
@@ -266,12 +283,12 @@ defmodule LiveLift.Template do
           _ -> nil
         end)
 
-      if type in ~w(checkbox radio file) do
+      if tag == "input" and unsupported_input_type?(type) do
         Diagnostic.error!(
           "E063",
           file,
           line,
-          "@client phx-change does not support #{type} inputs yet; keep this event on the server"
+          "@client phx-change does not support input type #{inspect(type)}; use a supported literal input type or keep this event on the server"
         )
       end
 
@@ -362,7 +379,7 @@ defmodule LiveLift.Template do
         "E063",
         file,
         line,
-        "@client form has a checkbox, radio, file or multiple-select control; keep this event on the server"
+        "@client form has a checkbox, radio, file or multiple-select control, or an encoded input type; use supported literal controls or keep this event on the server"
       )
     end
 
@@ -416,7 +433,7 @@ defmodule LiveLift.Template do
 
   defp unsupported_form_control?(%{tag: "input", attrs: attrs}) do
     Enum.any?(attrs, fn
-      %{name: "type", type: "static", value: type} -> type in ~w(checkbox radio file)
+      %{name: "type", type: "static", value: type} -> unsupported_input_type?(type)
       _ -> false
     end)
   end
@@ -425,6 +442,11 @@ defmodule LiveLift.Template do
     do: Enum.any?(attrs, &(&1.name == "multiple"))
 
   defp unsupported_form_control?(_node), do: false
+
+  defp unsupported_input_type?(nil), do: false
+
+  defp unsupported_input_type?(type),
+    do: String.downcase(type, :ascii) in ~w(checkbox radio file) or String.contains?(type, "&")
 
   defp adapt_liveview_attrs(attrs, file, events) do
     Enum.flat_map(attrs, fn

@@ -127,8 +127,18 @@ defmodule LiveLift.TemplatePropertyParityTest do
       {~S(<form phx-submit="save"><input name="notes[]" /></form>), "E063"},
       {~S(<form phx-submit="save"><input name="note[constructor]" /></form>), "E064"},
       {~S(<input type="radio" name="kind" phx-change="open" />), "E063"},
+      {~S(<input TYPE="RADIO" NAME="kind" phx-change="open" />), "E063"},
+      {~S(<input type="f&#105;le" name="attachment" phx-change="open" />), "E063"},
+      {~S(<input NAME="draft[body]" phx-change="open" />), "E063"},
       {~S(<textarea name="draft[body]" phx-change="open"></textarea>), "E063"},
       {~S(<select multiple name="kind" phx-change="open"><option>A</option></select>), "E063"},
+      {~S(<select MULTIPLE name="kind" phx-change="open"><option>A</option></select>), "E063"},
+      {~S(<form phx-submit="save"><input type="check&#x62;ox" name="flag" /></form>), "E063"},
+      {~S(<form phx-submit="save"><input TYPE="ChEcKbOx" name="flag" /></form>), "E063"},
+      {~S(<form phx-submit="save"><select MULTIPLE name="kind"><option>A</option></select></form>),
+       "E063"},
+      {~S(<form phx-submit="save"><input name="note" /><input NAME="note" /></form>), "E063"},
+      {~S(<input name="first" NAME="second" phx-change="open" />), "E061"},
       {~S(<input name="note" data-live-lift-draft="draft" />), "E054"},
       {~S'<button phx-click={Phoenix.LiveView.JS.push("open")}>Open</button>', "E053"}
     ]
@@ -154,6 +164,32 @@ defmodule LiveLift.TemplatePropertyParityTest do
       assert Exception.message(error) =~
                ~r/^#{Regex.escape(file)}:#{index + length(tags)}(?::\d+)?:.*\(#{code}\)/,
              "#{inspect(parser)} returned #{Exception.message(error)} for #{source}"
+    end
+  end
+
+  test "HTML casing preserves supported marked controls and unmarked browser bindings" do
+    source = ~S'''
+    <input TYPE="TeXt" NAME="note" phx-change="edit" />
+    <form phx-submit="server">
+      <input type="check&#98;ox" NAME="flag" />
+      <select MULTIPLE NAME="kind"><option>A</option></select>
+    </form>
+    '''
+
+    for parser <- [Parser, FallbackParser] do
+      [input, form | _] =
+        parser.parse!(source, "form.heex")
+        |> Template.compile_parsed("form.heex", {:liveview, ["edit"]})
+        |> Enum.filter(&(&1.type == "element"))
+
+      assert %{"type" => "TeXt", "name" => "note", "data-live-lift-change" => "edit"} =
+               Map.new(input.attrs, &{&1.name, &1.value})
+
+      html = render_html([form], %{})
+      assert html =~ ~S(phx-submit="server")
+      assert html =~ ~S(type="check&#98;ox" name="flag")
+      assert html =~ ~S(multiple="" name="kind")
+      refute html =~ "data-live-lift-submit"
     end
   end
 

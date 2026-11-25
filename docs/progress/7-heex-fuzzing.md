@@ -278,3 +278,40 @@ LiveView 1.2.0. The demo passed nine tests and 57 handler parity cases.
 The browser checks passed 18 times per parser across Chromium, Firefox
 and WebKit with deployed assets. A fresh Phoenix consumer passed migration
 and both asset builds. The shared browser hook measured 8,192 gzip bytes.
+
+## HTML control attribute casing
+
+The spike compared the compiler and the browser with `TYPE="CHECKBOX"`,
+`type="check&#98;ox"`, and a `select` with `MULTIPLE`. Both parsers let
+these forms through before the change. In Chromium, Firefox and WebKit,
+both checkboxes reported `input.type === "checkbox"` and the select
+produced two entries under one name in `new FormData(form)`. The HTML
+tokenizer folds ASCII case in attribute names. [HTML parsing standard](https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state).
+
+The compiler now canonicalizes `type`, `name` and `multiple` on native
+controls. It checks input type keywords without regard to ASCII case and
+requires literal types in marked bindings. Unmarked bindings can still
+use the browser's character reference handling. The existing duplicate
+attribute diagnostic also applies to `name` and `NAME` on one control.
+
+The rejection corpus adds nine templates crossed with 16 generated
+nesting and line-offset variations. Both parsers check the source
+location and diagnostic for each of the resulting 448 cases in the full
+rejection corpus. A positive case checks that a mixed-case text control
+compiles and that an unmarked form retains its LiveView binding.
+
+```sh
+mix test
+LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix test
+sh test/integration/phoenix_consumer.sh
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- e2e/live_lift.spec.mjs e2e/form_drafts.spec.mjs \
+  --grep 'phx-change and phx-submit|validates a nested field|phx-debounce delays|persists through reload'
+```
+
+Against baseline `3992d53`, the 167 library tests passed per parser
+configuration on LiveView 1.2.15. The 18 focused parser and template tests
+passed in a checkout locked to LiveView 1.2.0. The demo passed nine tests,
+57 handler parity cases and 12 deployed browser checks. A fresh Phoenix
+app passed migration and both asset builds. The shared hook measured
+8,192 gzip bytes.

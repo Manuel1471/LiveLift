@@ -700,6 +700,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   que aportan los componentes locales y sus slots. El diagnóstico ubica
   el formulario en su archivo de origen. El demo guarda un campo compuesto
   y recupera su borrador. [Spike y pruebas](docs/progress/7-heex-fuzzing.md#forms-after-component-expansion).
+- **Verificado:** Los atributos HTML `type`, `name` y `multiple` de
+  los controles se validan sin distinguir mayúsculas. Los eventos
+  marcados requieren tipos de `input` escritos sin entidades HTML.
+  [Spike y corpus](docs/progress/7-heex-fuzzing.md#html-control-attribute-casing).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también

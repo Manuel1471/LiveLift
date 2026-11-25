@@ -30,6 +30,8 @@
   direct textareas or selects with unsupported field names.
 - Apply form field and event constraints across local HEEx components
   and their default slots.
+- Apply marked form restrictions to mixed-case control attributes and
+  report input types written with HTML character references.
 
 ## 0.1.0-rc.1
 

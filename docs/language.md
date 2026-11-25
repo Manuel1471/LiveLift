@@ -71,6 +71,9 @@ Arrays, repeated names, prefix conflicts, dynamic names, checkbox, radio,
 file, and multiple-select controls remain server only. At most 64 string
 leaves and 64 KiB of UTF-8 keys and values may cross the boundary. Put
 `phx-change` on the form to read nested fields.
+Use literal input types without HTML character references in marked
+bindings. The compiler checks control attribute names without regard to
+ASCII case.
 
 ## Template bindings
 
