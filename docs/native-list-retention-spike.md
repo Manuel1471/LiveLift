@@ -68,3 +68,37 @@ retention after repeated navigation on the 1,000-row demo, using CDP
 document, DOM and JavaScript counters. Browser process memory, Phoenix
 processes, other browser engines and different app workloads require
 their own measurements.
+
+## Cross-browser teardown
+
+The portable check uses the same 1,000-row list and five confirmed
+reversals per visit. It tracks persistent listener registrations on the
+list root through the DOM methods. Listener identity follows the event
+type, callback and capture flag. The tracker uses a `WeakMap` and holds
+each island only until its teardown assertion.
+[DOM event listener rules](https://dom.spec.whatwg.org/#concept-event-listener).
+
+One warmup visit supplies the mounted listener count and the number of
+connected elements under `main` on the server page. Six more visits in
+the same document must match both counts. Every detached island must
+have zero registrations. The check runs with digested assets in CI.
+The opt-in Chromium benchmark separately measures heap usage and weak
+references to detached rows. The portable check only measures listener
+teardown and connected elements in the app content.
+
+```sh
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- e2e/native_list_retention.spec.mjs --grep 'release listeners'
+LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 npm run e2e -- \
+  e2e/native_list_retention.spec.mjs --grep 'release listeners'
+```
+
+Against baseline `8442429`, the portable check passed with each parser
+configuration in Chromium, Firefox and WebKit. The repeated Chromium
+heap check again measured 129 DOM nodes, 72 listeners and zero retained
+sampled references at every collected point. The largest heap increase
+over warmup was 289,816 bytes.
+
+Omitting one click listener removal in a scratch build caused WebKit to
+report one registration on the detached island. The verified runtime
+removed it.

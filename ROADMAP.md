@@ -765,6 +765,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   lista de 1.000 filas dentro del mismo documento, quedaron liberadas
   las referencias muestreadas y el nodo desmontado tenía cero listeners.
   [Spike, umbrales y reproducción](docs/native-list-retention-spike.md).
+- **Verificado:** La misma lista libera sus listeners al desmontarse
+  en Chromium, Firefox y WebKit. Tras siete visitas en un documento,
+  tampoco aumenta el número de elementos conectados en el contenido.
+  [Comprobación en los tres navegadores](docs/native-list-retention-spike.md#cross-browser-teardown).
 - **Verificado:** Atrás, adelante y recarga vuelven a montar desde el
   estado de la URL. Dos pestañas con la misma sesión conservan sus
   instancias y confirmaciones independientes.

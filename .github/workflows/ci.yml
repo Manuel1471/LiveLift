@@ -94,6 +94,7 @@ jobs:
           npm run e2e -- e2e/island_loading.spec.mjs e2e/devtools.spec.mjs
           e2e/local_actions.spec.mjs e2e/content_security_policy.spec.mjs
           e2e/root_navigation.spec.mjs e2e/timer_lifecycle.spec.mjs
+          e2e/native_list_retention.spec.mjs
         working-directory: bench
         env:
           LIVE_LIFT_TEST_DEPLOY: '1'
