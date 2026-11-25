@@ -90,7 +90,10 @@ jobs:
         working-directory: bench
       - run: npm run e2e
         working-directory: bench
-      - run: npm run e2e -- e2e/island_loading.spec.mjs e2e/devtools.spec.mjs e2e/local_actions.spec.mjs e2e/content_security_policy.spec.mjs
+      - run: >-
+          npm run e2e -- e2e/island_loading.spec.mjs e2e/devtools.spec.mjs
+          e2e/local_actions.spec.mjs e2e/content_security_policy.spec.mjs
+          e2e/root_navigation.spec.mjs
         working-directory: bench
         env:
           LIVE_LIFT_TEST_DEPLOY: '1'

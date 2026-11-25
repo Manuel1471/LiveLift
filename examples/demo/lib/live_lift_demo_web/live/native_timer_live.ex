@@ -4,6 +4,19 @@ defmodule LiveLiftDemoWeb.NativeTimerLive do
 
   def mount(_params, _session, socket), do: {:ok, assign(socket, count: 0)}
 
+  @impl Phoenix.LiveView
+  def handle_params(params, _uri, socket) do
+    count =
+      with value when is_binary(value) and byte_size(value) in 1..3 <- params["start"],
+           {count, ""} when count in 0..999 <- Integer.parse(value) do
+        count
+      else
+        _ -> 0
+      end
+
+    {:noreply, assign(socket, :count, count)}
+  end
+
   def render(assigns) do
     ~H"""
     <main>
