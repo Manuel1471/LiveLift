@@ -58,8 +58,9 @@ The hosted schedule takes effect after the workflow reaches the default branch.
 E055 breaks down into 564 handlers without the required simple return
 shape, 298 without an admitted socket update, 201 clauses in events with
 multiple clauses, and 159 guarded clauses or nonliteral event names.
-E060 was reported on 302 clauses without a literal inline `~H` render,
-before the auditor reached their handler bodies.
+E060 was reported on 301 clauses without a literal inline `~H` render,
+before the auditor reached their handler bodies. One additional E060
+result came from a repeated element without a stable ID.
 
 A second run isolated handler compilation. In a temporary copy of the
 Mix task, remove the early check for a literal render and omit template

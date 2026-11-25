@@ -715,6 +715,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   y 33 al aislar el handler. El corpus se puede repetir para medir la
   adopción potencial con los mismos proyectos.
   [Spike y resultados](docs/public-app-audit-spike.md).
+- **Medido:** El prototipo de `assign/2` y variables locales elevó de 33
+  a 90 las cláusulas que pasan el análisis del handler. La comprobación
+  conjunta con las plantillas siguió en cero. Ambos parsers ahora
+  identifican las expresiones EEx rechazadas y sugieren el equivalente HEEx.
+  [Spike y evidencia](docs/public-handler-shapes-spike.md).
 - **Verificado localmente:** La guía define el versionado y las
   deprecaciones. Una herramienta prepara el changelog para la versión de
   Mix y CI valida y muestra esas notas antes de publicar.

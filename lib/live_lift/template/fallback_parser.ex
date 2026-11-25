@@ -69,6 +69,9 @@ defmodule LiveLift.Template.FallbackParser do
     nodes(skip_eex_comment(state, "<%#", "%>"), tag, acc)
   end
 
+  defp nodes(%{rest: <<"<%", next, _::binary>>} = state, _tag, _acc) when next != ?%,
+    do: reject_eex!(state)
+
   defp nodes(%{rest: <<"<!", name::binary-size(7), _::binary>>} = state, _tag, _acc)
        when name in ["doctype", "DOCTYPE"] do
     Diagnostic.error!(
@@ -101,7 +104,7 @@ defmodule LiveLift.Template.FallbackParser do
   defp add_text(acc, value), do: [{:text, value, %{}} | acc]
 
   defp html_comment(state, acc, start) do
-    case :binary.match(state.rest, ["-->" | @eex_comments]) do
+    case :binary.match(state.rest, ["-->", "<%%", "<%" | @eex_comments]) do
       {index, length} ->
         prefix = binary_part(state.rest, 0, index)
         state = advance(state, prefix)
@@ -115,11 +118,29 @@ defmodule LiveLift.Template.FallbackParser do
 
           "<%#" ->
             html_comment(skip_eex_comment(state, "<%#", "%>"), [prefix | acc], start)
+
+          "<%%" ->
+            html_comment(advance(state, "<%%"), ["<%", prefix | acc], start)
+
+          "<%" ->
+            reject_eex!(state)
         end
 
       :nomatch ->
         error!(start, "expected closing --> for comment")
     end
+  end
+
+  defp reject_eex!(state) do
+    if :binary.match(state.rest, "%>") == :nomatch,
+      do: error!(state, "expected closing '%>' for EEx expression")
+
+    Diagnostic.error!(
+      "E061",
+      state.file,
+      "#{state.line}:#{state.column}",
+      "EEx expressions are outside the client template subset; use {...} for supported values, :if or keyed :for for elements, or keep the EEx in the server template"
+    )
   end
 
   defp skip_eex_comment(state, open, close) do

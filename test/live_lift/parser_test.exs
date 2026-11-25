@@ -32,9 +32,37 @@ defmodule LiveLift.ParserTest do
       Parser.parse_with!("<p><b></p>", "view.ex", MissingLiveViewParser)
     end
 
-    assert_raise ArgumentError, ~r/view.ex:1:.*supported HTML tag name/, fn ->
-      Parser.parse_with!("<%= @name %>", "view.ex", MissingLiveViewParser)
+    assert_raise ArgumentError, ~r/view.ex:1:.*expected closing '%>'/, fn ->
+      Parser.parse_with!("<%= @name", "view.ex", MissingLiveViewParser)
     end
+  end
+
+  test "both parsers explain unsupported EEx body expressions at the opening delimiter" do
+    valid_eex = [
+      "<%= @name %>",
+      "<%= if @shown do %><b>Hi</b><% end %>",
+      "<%= for item <- @items do %><b>{item.label}</b><% end %>"
+    ]
+
+    for parser <- [PhoenixParser, MissingLiveViewParser] do
+      for eex <- valid_eex do
+        assert_raise ArgumentError,
+                     ~r/view\.ex:42:5:.*use \{\.\.\.\}.*:if.*keyed :for.*\(E061\)/,
+                     fn ->
+                       Parser.parse_with!("<p>\r\n    #{eex}\n</p>", "view.ex", parser, 41)
+                     end
+      end
+
+      assert_raise ArgumentError, ~r/view\.ex:42:5:.*expected closing '%>'.*\(E065\)/, fn ->
+        Parser.parse_with!("<p>\r\n    <%= @name", "view.ex", parser, 41)
+      end
+
+      assert_raise ArgumentError, ~r/view\.ex:41:9:.*EEx expressions.*\(E061\)/, fn ->
+        Parser.parse_with!("<p><!-- <%= @name %> --></p>", "view.ex", parser, 41)
+      end
+    end
+
+    assert [tree, tree] = compile_variants("<p><!-- <%%= @name %> --></p>")
   end
 
   test "fallback matches LiveView's supported node shapes" do

@@ -15,6 +15,8 @@
   outer expression lines when available.
 - Preserve Phoenix's handling of server-side HEEx comments and report
   unclosed comments at their source location with both parser paths.
+- Explain unsupported EEx body expressions with source coordinates and
+  the corresponding HEEx bindings or directives.
 
 ## 0.1.0-rc.1
 

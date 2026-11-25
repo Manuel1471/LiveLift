@@ -114,6 +114,8 @@ defmodule LiveLift.TemplatePropertyParityTest do
       {~S(<p><b></p>), "E065"},
       {~S(<li :for={item <- @items}>{item.label}</li>), "E060"},
       {~S(<div data-custom={@title}>Text</div>), "E061"},
+      {~S(<%= @label %>), "E061"},
+      {~S(<%= if @visible do %><span>{@label}</span><% end %>), "E061"},
       {~S(<Other.badge label={@title} />), "E062"},
       {~S(<button phx-click="open" phx-target={@other}>Open</button>), "E063"},
       {~S(<form phx-submit="save"><input name="note" /><input name="note" /></form>), "E063"},
