@@ -1,0 +1,24 @@
+name: Public app audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 14 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '29'
+          elixir-version: '1.20'
+      - run: mix deps.get
+      - name: Report pinned application results
+        shell: bash
+        run: python3 bench/audit_public_apps.py | tee -a "$GITHUB_STEP_SUMMARY"

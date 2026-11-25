@@ -710,6 +710,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   verifica migración, paridad y confirmación de LiveView en tres
   navegadores. Se actualizaron los lockfiles tras auditar con Hex.
   [Evidencia de compatibilidad](docs/progress/7-liveview-compatibility.md).
+- **Medido:** El auditor revisó 1.562 cláusulas de 12 repositorios públicos
+  fijados por commit. Detectó cero candidatas con el componente completo
+  y 33 al aislar el handler. El corpus se puede repetir para medir la
+  adopción potencial con los mismos proyectos.
+  [Spike y resultados](docs/public-app-audit-spike.md).
 - **Verificado localmente:** La guía define el versionado y las
   deprecaciones. Una herramienta prepara el changelog para la versión de
   Mix y CI valida y muestra esas notas antes de publicar.
