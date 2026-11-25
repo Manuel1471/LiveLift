@@ -7,6 +7,7 @@ defmodule LiveLift.Template.FallbackParser do
   # unsupported form raises, so an upstream parser change cannot silently
   # alter browser output.
   @void_tags ~w(area base br col embed hr img input link meta param source track wbr)
+  @eex_comments ["<%!--", "<%#"]
 
   @spec parse!(String.t(), String.t(), pos_integer()) :: list()
   def parse!(source, file, line \\ 1) do
@@ -56,14 +57,16 @@ defmodule LiveLift.Template.FallbackParser do
   end
 
   defp nodes(%{rest: "<!--" <> _} = state, tag, acc) do
-    case :binary.match(state.rest, "-->") do
-      {index, 3} ->
-        value = binary_part(state.rest, 0, index + 3)
-        nodes(advance(state, value), tag, add_text(acc, value))
+    {value, state} = html_comment(advance(state, "<!--"), ["<!--"], state)
+    nodes(state, tag, add_text(acc, value))
+  end
 
-      :nomatch ->
-        error!(state, "expected closing --> for comment")
-    end
+  defp nodes(%{rest: "<%!--" <> _} = state, tag, acc) do
+    nodes(skip_eex_comment(state, "<%!--", "--%>"), tag, acc)
+  end
+
+  defp nodes(%{rest: "<%#" <> _} = state, tag, acc) do
+    nodes(skip_eex_comment(state, "<%#", "%>"), tag, acc)
   end
 
   defp nodes(%{rest: <<"<!", name::binary-size(7), _::binary>>} = state, _tag, _acc)
@@ -96,6 +99,40 @@ defmodule LiveLift.Template.FallbackParser do
     do: [{:text, previous <> value, meta} | rest]
 
   defp add_text(acc, value), do: [{:text, value, %{}} | acc]
+
+  defp html_comment(state, acc, start) do
+    case :binary.match(state.rest, ["-->" | @eex_comments]) do
+      {index, length} ->
+        prefix = binary_part(state.rest, 0, index)
+        state = advance(state, prefix)
+
+        case binary_part(state.rest, 0, length) do
+          "-->" ->
+            {IO.iodata_to_binary(Enum.reverse(["-->", prefix | acc])), advance(state, "-->")}
+
+          "<%!--" ->
+            html_comment(skip_eex_comment(state, "<%!--", "--%>"), [prefix | acc], start)
+
+          "<%#" ->
+            html_comment(skip_eex_comment(state, "<%#", "%>"), [prefix | acc], start)
+        end
+
+      :nomatch ->
+        error!(start, "expected closing --> for comment")
+    end
+  end
+
+  defp skip_eex_comment(state, open, close) do
+    comment = advance(state, open)
+
+    case :binary.match(comment.rest, close) do
+      {index, length} ->
+        advance(comment, binary_part(comment.rest, 0, index + length))
+
+      :nomatch ->
+        error!(state, "expected closing '#{close}' for EEx expression")
+    end
+  end
 
   defp element(state) do
     meta = location(state)
@@ -164,8 +201,11 @@ defmodule LiveLift.Template.FallbackParser do
   end
 
   defp attribute_value(%{rest: <<quote, _::binary>>} = state) when quote in [?', ?"] do
-    state = advance(state, <<quote>>)
-    {value, state} = take_while(state, &(&1 != <<quote>>))
+    start = advance(state, <<quote>>)
+    {value, state} = take_while(start, &(&1 != <<quote>>))
+
+    if String.contains?(value, @eex_comments),
+      do: error!(start, "EEx comments are not supported inside attributes")
 
     unless String.starts_with?(state.rest, <<quote>>),
       do: error!(state, "unterminated quoted attribute")
@@ -190,6 +230,13 @@ defmodule LiveLift.Template.FallbackParser do
 
   defp balanced(%{rest: ""} = state, _depth, _acc),
     do: error!(state, "unterminated Elixir expression")
+
+  defp balanced(%{rest: "<%" <> _} = state, depth, acc) do
+    if String.starts_with?(state.rest, @eex_comments),
+      do: error!(state, "EEx comments are not supported inside braced expressions")
+
+    balanced(advance(state, "<%"), depth, ["<%" | acc])
+  end
 
   defp balanced(%{rest: <<?\\, brace, _::binary>>} = state, depth, acc) when brace in [?{, ?}] do
     escaped = <<?\\, brace>>

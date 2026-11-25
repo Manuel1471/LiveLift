@@ -13,6 +13,8 @@
   a LiveLift template. Keep declarations in the Phoenix root layout.
 - Map generated native actions to their Elixir handler definitions and
   outer expression lines when available.
+- Preserve Phoenix's handling of server-side HEEx comments and report
+  unclosed comments at their source location with both parser paths.
 
 ## 0.1.0-rc.1
 

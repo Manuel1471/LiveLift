@@ -280,6 +280,7 @@ defmodule LiveLift.TemplatePropertyParityTest do
       ~S(<ul><li :for={item <- @items} :key={item.id} id={item.id}><.badge label={item.label} /></li></ul>),
       ~S(<.card title={@title}><label for="note">Note</label><textarea id="note">{@label}</textarea></.card>),
       ~S(<form id="prefs" phx-submit="save" phx-change="validate" phx-auto-recover="ignore"><input name="profile[note]" value={@label} data-live-lift-draft={@scope} phx-debounce="blur" /><button type="submit">Save</button></form>),
+      ~S(<section><p :if={@visible}>left<%!-- { @unused } --%>right<!-- one <%!-- hidden --> --%> two -->{@label}</p></section>),
       ~S'<div><button phx-click={Phoenix.LiveView.JS.focus(to: {:inner, "#entry"})}>Focus</button><button phx-click="open" phx-value-id={@scope}>Open</button><input id="entry" type="checkbox" checked={@active} /></div>'
     ]
 
@@ -347,7 +348,7 @@ defmodule LiveLift.TemplatePropertyParityTest do
         end)
       end)
 
-    assert_dom_parity(cases, updates: 320, phoenix_renders: 640)
+    assert_dom_parity(cases, updates: 384, phoenix_renders: 768)
   end
 
   defp independent_render(tree, state, module) do

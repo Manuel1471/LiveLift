@@ -23,9 +23,18 @@ defmodule LiveLift.Template.Parser do
     unless Code.ensure_loaded?(parser) and function_exported?(parser, :parse!, 2) do
       return_fallback(source, file, line)
     else
-      case parser.parse!(source, tag_handler: Phoenix.LiveView.HTMLEngine, file: file, line: line) do
+      opts = [
+        tag_handler: Phoenix.LiveView.HTMLEngine,
+        file: file,
+        line: line,
+        strip_eex_comments: true
+      ]
+
+      case parser.parse!(source, opts) do
         %{nodes: nodes} when is_list(nodes) ->
-          if compatible_nodes?(nodes), do: nodes, else: return_fallback(source, file, line)
+          if compatible_nodes?(nodes),
+            do: merge_text(nodes),
+            else: return_fallback(source, file, line)
 
         _ ->
           return_fallback(source, file, line)
@@ -39,7 +48,28 @@ defmodule LiveLift.Template.Parser do
         "#{error.line || line}:#{error.column || 1}",
         error.description
       )
+
+    error in MatchError ->
+      case error.term do
+        {:error, description, %{line: line, column: column}} when is_binary(description) ->
+          Diagnostic.error!("E065", file, "#{line}:#{column}", description)
+
+        _ ->
+          reraise error, __STACKTRACE__
+      end
   end
+
+  # Stripping an EEx comment can split a text token in the middle of an
+  # HTML comment or entity. Rejoin the pieces before compiling static text.
+  defp merge_text(nodes), do: nodes |> Enum.reduce([], &merge_text_node/2) |> Enum.reverse()
+
+  defp merge_text_node({:text, value, _}, [{:text, previous, meta} | rest]),
+    do: [{:text, previous <> value, meta} | rest]
+
+  defp merge_text_node({:block, kind, tag, attrs, children, open, close}, acc),
+    do: [{:block, kind, tag, attrs, merge_text(children), open, close} | acc]
+
+  defp merge_text_node(node, acc), do: [node | acc]
 
   defp compatible_nodes?(nodes), do: Enum.all?(nodes, &compatible_node?/1)
 

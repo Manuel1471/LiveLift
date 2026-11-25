@@ -32,6 +32,8 @@ use supported client expressions. One-argument callbacks stay on the server.
 The native template path also accepts expression attributes for `class`,
 `title`, `aria-label`, `value`, and `id`; class lists can use `&&` for conditional
 entries. `nil` and `false` scalar attributes are omitted, as in HEEx.
+Use `<%!-- comment --%>` between elements or within text. Phoenix and
+LiveLift omit these comments from the rendered markup.
 Native `:for` uses the repeated element's `id={item.id}` as its stable key.
 The ID must read a field of the loop item and evaluate to a unique string or
 safe integer. Lists without a stable item ID remain server only.

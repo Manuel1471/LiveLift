@@ -162,3 +162,38 @@ The 14 parser and template property tests passed in a checkout pinned to
 LiveView 1.2.0. The fresh Phoenix consumer again passed migration, both
 asset builds, and the Chromium, Firefox, and WebKit checks. See the
 preceding section for the consumer command and environment.
+
+## Server-side HEEx comments
+
+The [comment spike](../heex-comments-spike.md) found that the native
+tokenizer could leave separately compiled text fragments after removing
+a server-side comment. The adapter now rejoins adjacent text, including
+split HTML comments. The fallback consumes the comment without emitting it.
+Both paths check the source coordinates after a multiline comment and
+report `E065` at the opening delimiter when the closing marker is missing.
+
+A sixth template adds 128 comparisons to the Phoenix oracle, bringing
+the total to 768. It rebuilds and updates conditional content with comments
+inside both visible text and HTML comments. The test in a real browser
+verifies the same accessible button name before and after a marked
+optimistic update using the demo's deployed assets.
+
+```sh
+mix test
+LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix test
+# Run in a scratch checkout with the matching Mix dependencies.
+LIVE_LIFT_LIVE_VIEW_VERSION='== 1.2.0' mix test \
+  test/live_lift/parser_test.exs test/live_lift/template_property_parity_test.exs
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- \
+  e2e/live_lift.spec.mjs --grep 'a normal LiveComponent runs a marked handler'
+LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 npm run e2e -- \
+  e2e/live_lift.spec.mjs --grep 'a normal LiveComponent runs a marked handler'
+```
+
+On 2026-11-25 against baseline `243c703`, 158 Mix tests passed under
+each parser on LiveView 1.2.15, and the 15 focused tests passed on
+LiveView 1.2.0. Both parser paths passed in Chromium 158.0.8127.18,
+Firefox 159.0 and WebKit 27.2. The runs used macOS 26.5.2 arm64,
+Elixir 1.20.2, OTP 29.0.3 and Node 26.5.0. The shared runtime measured
+8,189 gzip bytes against the existing 8,192-byte budget.

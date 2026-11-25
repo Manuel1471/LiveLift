@@ -170,6 +170,46 @@ defmodule LiveLift.ParserTest do
     assert html =~ "text } here"
   end
 
+  test "both parsers strip server-side HEEx comments and preserve following locations" do
+    source = "<p>A<%!-- ignored 🚀\r\n{@ghost} --%>B<!--C<%!-- hidden --> --%>D-->{@label}</p>"
+
+    for parser <- [PhoenixParser, MissingLiveViewParser] do
+      assert [{:block, :tag, "p", [], children, _, _}] =
+               Parser.parse_with!(source, "comment.ex", parser, 31)
+
+      assert [{:text, "AB<!--CD-->", _}, {:body_expr, "@label", %{line: 32, column: 45}}] =
+               children
+
+      assert_raise ArgumentError, ~r/comment.ex:32:4:.*expected closing.*--%>.*\(E065\)/, fn ->
+        Parser.parse_with!("<p>\r\n  A<%!-- missing</p>", "comment.ex", parser, 31)
+      end
+
+      assert_raise ArgumentError, ~r/comment.ex:31:\d+:.*expected closing.*-->.*\(E065\)/s, fn ->
+        Parser.parse_with!("<p><!-- unclosed <%!-- hidden --%></p>", "comment.ex", parser, 31)
+      end
+
+      for invalid <- [
+            ~S(<p <%!-- bad --%> title="a">A</p>),
+            ~S(<p title="A<%!-- bad --%>B">A</p>),
+            ~S(<p>{"A<%!-- bad --%>B"}</p>)
+          ] do
+        assert_raise ArgumentError, ~r/comment.ex:31:\d+:.*\(E065\)/s, fn ->
+          Parser.parse_with!(invalid, "comment.ex", parser, 31)
+        end
+      end
+    end
+
+    assert [native, native] = compile_variants(source)
+
+    assert native |> Template.render_server(%{label: "End"}) |> Phoenix.HTML.safe_to_string() ==
+             ~S(<p>AB<!--CD--><!--live-lift:text-->End<!--live-lift:end--></p>)
+
+    for tree <- compile_variants("<p>&am<%!-- comment --%>p;</p>") do
+      assert tree |> Template.render_server(%{}) |> Phoenix.HTML.safe_to_string() ==
+               "<p>&amp;</p>"
+    end
+  end
+
   defp compile_variants(source) do
     for parser <- [PhoenixParser, MissingLiveViewParser] do
       source

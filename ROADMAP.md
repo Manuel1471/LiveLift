@@ -685,6 +685,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   y remiten al layout de Phoenix. Los comentarios HTML y las llaves
   literales pasan la comparación con el render de Phoenix.
   [Evidencia](docs/progress/7-heex-fuzzing.md#document-declarations-and-literal-markup).
+- **Verificado:** Ambos parsers omiten los comentarios HEEx, incluso dentro
+  de comentarios HTML, y ubican los cierres ausentes. El corpus diferencial
+  compara 768 renders de Phoenix, incluidos los estados con comentarios.
+  [Spike](docs/heex-comments-spike.md) y
+  [evidencia](docs/progress/7-heex-fuzzing.md#server-side-heex-comments).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también

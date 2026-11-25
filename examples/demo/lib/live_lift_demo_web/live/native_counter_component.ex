@@ -5,7 +5,7 @@ defmodule LiveLiftDemoWeb.NativeCounterComponent do
   def render(assigns) do
     ~H"""
     <section aria-label="Native LiveComponent counter">
-      <button type="button" phx-click="inc" phx-target={@myself}>Add one</button>
+      <button type="button" phx-click="inc" phx-target={@myself}>Add one<%!-- Optimistic update --%></button>
       <button type="button" phx-click="reset" phx-target={@myself}>Reset on server</button>
       <button type="button" phx-click="save" phx-target={@myself}>Save on server</button>
       <output aria-live="polite">{@count}</output>
