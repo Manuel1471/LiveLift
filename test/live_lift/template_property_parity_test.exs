@@ -117,8 +117,18 @@ defmodule LiveLift.TemplatePropertyParityTest do
       {~S(<%= @label %>), "E061"},
       {~S(<%= if @visible do %><span>{@label}</span><% end %>), "E061"},
       {~S(<Other.badge label={@title} />), "E062"},
+      {~S(<.card><:heading>Heading</:heading></.card>), "E062"},
+      {~S(<.badge label={@label} :if={@visible} />), "E062"},
+      {~S(<.badge label="A &amp; B" />), "E062"},
       {~S(<button phx-click="open" phx-target={@other}>Open</button>), "E063"},
       {~S(<form phx-submit="save"><input name="note" /><input name="note" /></form>), "E063"},
+      {~S(<form phx-submit="save"><input name="note" /><input name="note[body]" /></form>),
+       "E063"},
+      {~S(<form phx-submit="save"><input name="notes[]" /></form>), "E063"},
+      {~S(<form phx-submit="save"><input name="note[constructor]" /></form>), "E064"},
+      {~S(<input type="radio" name="kind" phx-change="open" />), "E063"},
+      {~S(<textarea name="draft[body]" phx-change="open"></textarea>), "E063"},
+      {~S(<select multiple name="kind" phx-change="open"><option>A</option></select>), "E063"},
       {~S(<input name="note" data-live-lift-draft="draft" />), "E054"},
       {~S'<button phx-click={Phoenix.LiveView.JS.push("open")}>Open</button>', "E053"}
     ]
@@ -283,6 +293,9 @@ defmodule LiveLift.TemplatePropertyParityTest do
       ~S(<.card title={@title}><label for="note">Note</label><textarea id="note">{@label}</textarea></.card>),
       ~S(<form id="prefs" phx-submit="save" phx-change="validate" phx-auto-recover="ignore"><input name="profile[note]" value={@label} data-live-lift-draft={@scope} phx-debounce="blur" /><button type="submit">Save</button></form>),
       ~S(<section><p :if={@visible}>left<%!-- { @unused } --%>right<!-- one <%!-- hidden --> --%> two -->{@label}</p></section>),
+      ~S(<section id={@scope} class={@title} aria-label={@attribute}><.badge label={@attribute} /></section>),
+      ~S(<section><select multiple name="types[]" phx-change="server"><option value={@attribute} selected={@active}>{@label}</option></select><select name="type" phx-change="validate"><option>A</option></select><textarea name="note" phx-change="validate">{@label}</textarea></section>),
+      ~S(<.card title={"A & B"}><.badge label={@label} /><span title={@attribute}>{@label}</span></.card>),
       ~S'<div><button phx-click={Phoenix.LiveView.JS.focus(to: {:inner, "#entry"})}>Focus</button><button phx-click="open" phx-value-id={@scope}>Open</button><input id="entry" type="checkbox" checked={@active} /></div>'
     ]
 
@@ -299,6 +312,7 @@ defmodule LiveLift.TemplatePropertyParityTest do
       StreamData.fixed_map(%{
         label: StreamData.member_of(["", ~s(<hello "there">), "R&D", "É", "🚀"]),
         title: StreamData.member_of([nil, false, "A & B"]),
+        attribute: StreamData.member_of([nil, false, true, 0, -17, "", ~s(A & "B")]),
         visible: StreamData.member_of([nil, false, true, 0]),
         active: StreamData.member_of([nil, false, true]),
         scope: StreamData.member_of(["record-a", "record-b"]),
@@ -337,6 +351,7 @@ defmodule LiveLift.TemplatePropertyParityTest do
             state
             | label: "#{state.label}!",
               active: state.active != true,
+              attribute: if(is_nil(state.attribute), do: true, else: nil),
               visible: state.visible in [nil, false],
               items: Enum.reverse(state.items)
           }
@@ -350,7 +365,7 @@ defmodule LiveLift.TemplatePropertyParityTest do
         end)
       end)
 
-    assert_dom_parity(cases, updates: 384, phoenix_renders: 768)
+    assert_dom_parity(cases, updates: 576, phoenix_renders: 1_152)
   end
 
   defp independent_render(tree, state, module) do

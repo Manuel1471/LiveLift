@@ -692,6 +692,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   compara 768 renders de Phoenix, incluidos los estados con comentarios.
   [Spike](docs/heex-comments-spike.md) y
   [evidencia](docs/progress/7-heex-fuzzing.md#server-side-heex-comments).
+- **Verificado:** El corpus amplía la comparación a 1.152 renders de Phoenix
+  y 304 variantes rechazadas con ambos parsers. Los cambios marcados de
+  un `select` múltiple y los nombres anidados en controles con binding
+  directo ya producen `E063`. [Evidencia](docs/progress/7-heex-fuzzing.md#direct-form-controls-and-component-boundaries).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también

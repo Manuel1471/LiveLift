@@ -197,3 +197,45 @@ LiveView 1.2.0. Both parser paths passed in Chromium 158.0.8127.18,
 Firefox 159.0 and WebKit 27.2. The runs used macOS 26.5.2 arm64,
 Elixir 1.20.2, OTP 29.0.3 and Node 26.5.0. The shared runtime measured
 8,189 gzip bytes against the existing 8,192-byte budget.
+
+## Direct form controls and component boundaries
+
+The rejection corpus exposed a difference between self-closing controls
+and controls with closing tags. Direct marked changes on a `textarea`
+with a nested name or a multiple `select` compiled without a diagnostic.
+Both parsers now return `E063` at the control. The positive cases compile
+a marked single select and a marked textarea with flat names. They also
+compare the unmarked multiple select against Phoenix's rendered binding.
+
+The expanded rejection corpus runs 19 shapes through 16 generated
+nesting and source-offset variations. Each of the 304 cases checks both
+parsers. The added samples cover named slots, directives on component
+calls, encoded static props, form name conflicts, arrays, reserved
+parameter segments, radio controls, and direct changes on textareas and
+selects. The independent renderer adds 384 comparisons for scalar
+attributes, select/option markup, and nested component calls and slots,
+for 1,152 Phoenix comparisons in total.
+
+```sh
+mix test
+LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix test
+# Use a scratch checkout locked to LiveView 1.2.0 for this command.
+LIVE_LIFT_LIVE_VIEW_VERSION='== 1.2.0' mix test \
+  test/live_lift/parser_test.exs test/live_lift/template_property_parity_test.exs
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 npm run e2e -- \
+  e2e/live_lift.spec.mjs e2e/form_drafts.spec.mjs \
+  --grep 'phx-change and phx-submit|phx-debounce delays|submit cancels|persists through reload'
+```
+
+These samples cover selected forms and compile-time diagnostics. The
+independent oracle compares DOM and binding attributes. The deployed
+browser checks exercise native form submission, debounce and drafts.
+
+Against baseline `d85fe6a`, the 165 library tests passed with both parser
+configurations on LiveView 1.2.15. The 16 focused tests passed on LiveView
+1.2.0. The 12 deployed browser checks passed in Chromium 158.0.8127.18,
+Firefox 159.0 and WebKit 27.2. The runs used Elixir 1.20.2, OTP 29.0.3 and
+Node 26.5.0 on macOS arm64. A fresh Phoenix consumer passed migration and
+both asset builds with the fallback forced. The shared hook measured
+8,192 gzip bytes.

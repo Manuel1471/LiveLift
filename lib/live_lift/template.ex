@@ -90,6 +90,7 @@ defmodule LiveLift.Template do
 
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
     validate_native_debounce!(tag, attrs, file, meta.line)
+    validate_change_control!(tag, attrs, file, meta.line, events)
 
     if type == :remote_component do
       Diagnostic.error!(
@@ -313,6 +314,15 @@ defmodule LiveLift.Template do
           file,
           line,
           "@client phx-change does not support #{type} inputs yet; keep this event on the server"
+        )
+      end
+
+      if tag == "select" and unsupported_control?(tag, attrs) do
+        Diagnostic.error!(
+          "E063",
+          file,
+          line,
+          "@client phx-change does not support multiple-select controls; keep this event on the server"
         )
       end
 
