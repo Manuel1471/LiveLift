@@ -778,6 +778,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   el valor de Phoenix y elimina el registro. Los tres navegadores también
   descartan formatos de almacenamiento desconocidos.
   [Evidencia de caducidad](docs/progress/5.4-draft-persistence.md#phase-7--expiry-and-record-format).
+- **Verificado:** Con callbacks demorados en el navegador, los
+  temporizadores de LiveView predicen una vez y convergen con Phoenix.
+  Si Phoenix confirma primero, se cancela el callback local pendiente.
+  [Spike de temporizadores en navegador](docs/browser-timer-delay-spike.md).
 - **Verificado localmente:** El control que ejecuta CI mide el hook
   compartido con esbuild y gzip y falla al superar el límite vigente
   de 8 KiB. [Evidencia y comando](docs/progress/7-runtime-budget.md).
