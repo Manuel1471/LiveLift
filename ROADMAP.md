@@ -20,8 +20,10 @@ está disponible en Hex y HexDocs. La verificación en una app Phoenix nueva
 cubrió la instalación, la migración y el runtime incluido en Hex.
 [Verificación de la fase 6](docs/progress/6-public-registry.md).
 
-Hex es el único canal de publicación. El paquete incluye el runtime JavaScript
-que consume la app Phoenix durante el build de assets.
+Hex es el único canal de publicación del roadmap. `live_lift` incluye el
+runtime JavaScript que Mix integra en el build de assets de Phoenix.
+La instalación de LiveLift en una app Phoenix solo requiere la dependencia
+de Hex. [Guía de assets](docs/versioned-assets.md).
 
 La revisión de rendimiento (`aacf2ff`) midió una edición nativa en listas de 100 y
 1.000 filas y redujo el costo de validar el estado en BEAM y Chromium.

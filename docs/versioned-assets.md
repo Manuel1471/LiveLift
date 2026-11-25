@@ -2,15 +2,16 @@
 
 For app developers using LiveLift 0.1.0-rc.1.
 
-The standard installer copies the matching runtime and its TypeScript
-declaration. It also generates a typed entry registry. Existing Phoenix
-build and deploy commands use these files automatically.
+LiveLift ships on Hex. The standard installer copies the matching runtime
+and its TypeScript declaration from the Mix dependency. It also generates
+a typed entry registry. The app's existing `mix assets.build` and
+`mix assets.deploy` commands use these files automatically.
 
-## Test a locally packed runtime
+## Maintainer test for the local archive
 
-The public distribution is on Hex. The following workflow is for developing
-LiveLift or testing the package format from a source checkout whose assets
-match the installed Hex version.
+Use this workflow when testing packaging and TypeScript resolution in the
+LiveLift repository. The asset manifest is private and packing it creates
+a local archive. Its sources must match the installed Hex version.
 
 ```sh
 (cd /path/to/LiveLift/assets && npm pack)

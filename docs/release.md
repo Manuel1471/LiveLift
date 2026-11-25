@@ -34,7 +34,7 @@ elixir scripts/release_notes.exs prepare
 elixir scripts/release_notes.exs check
 ```
 
-The preparation command also updates `assets/package.json` with npm so
+The preparation command also updates the private `assets/package.json` so
 the local asset package continues to match the version embedded in the
 Hex runtime. Use OTP 27 or newer and the project's Node toolchain.
 Review and commit those changes with the version bump. CI checks the
