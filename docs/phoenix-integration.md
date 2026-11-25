@@ -78,6 +78,8 @@ from 0 to 1 immediately, and LiveView confirms the same value on the server.
 3. Audit a routed LiveView or stateful LiveComponent. Replace the example
    path with the existing module's path. The audit reports which handlers
    can compile and gives a source location when a handler is blocked.
+   It checks local function components declared in the same module,
+   including nested components with explicit props and a default slot.
 
    ```sh
    mix live_lift.audit --path lib/my_app_web/live/counter_component.ex

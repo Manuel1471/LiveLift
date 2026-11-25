@@ -733,6 +733,9 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   ausentes. `Map.get/2` exige un mapa y los patrones conservan sus claves
   requeridas. El demo comprueba la predicción con un evento que omite
   el parámetro. [Spike y paridad](docs/event-param-read-spike.md).
+- **Verificado:** El auditor valida los componentes de función locales
+  con las mismas reglas que la compilación, incluidos los componentes
+  anidados y el slot por defecto. [Spike y resultados](docs/inline-template-audit-spike.md).
 - **Verificado localmente:** La guía define el versionado y las
   deprecaciones. Una herramienta prepara el changelog para la versión de
   Mix y CI valida y muestra esas notas antes de publicar.

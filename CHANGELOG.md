@@ -23,6 +23,8 @@
   newly assigned fields in the authoritative snapshot.
 - Match Elixir's optional event parameter reads, including missing
   values in nested bracket paths.
+- Include inline local function components when auditing a native
+  LiveView or LiveComponent.
 
 ## 0.1.0-rc.1
 

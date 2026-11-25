@@ -146,20 +146,7 @@ defmodule LiveLift.Component do
       env.module
       |> Module.get_attribute(:live_lift_local_components)
       |> Enum.reverse()
-      |> Enum.reduce(%{}, fn {name, body, file, line}, acc ->
-        if Map.has_key?(acc, name) do
-          Diagnostic.error!(
-            "E062",
-            file,
-            line,
-            "client function component .#{name} has multiple clauses; move it to the server"
-          )
-        end
-
-        {source, _line, template_line} = render_source!(body, file, line)
-
-        Map.put(acc, name, %{source: source, file: file, line: line, template_line: template_line})
-      end)
+      |> TemplateSource.local_components!()
 
     if Module.get_attribute(env.module, :client) in [true, :local] do
       Diagnostic.error!(
@@ -672,34 +659,9 @@ defmodule LiveLift.Component do
       {File.read!(template), template, 1, 1}
     else
       _ ->
-        {source, line, template_line} = render_source!(body, env.file, line)
+        {source, line, template_line} = TemplateSource.literal!(body, env.file, line)
         {source, env.file, line, template_line}
     end
-  end
-
-  defp render_source!([do: {:sigil_H, meta, [{:<<>>, _, parts}, []]}], file, definition_line)
-       when is_list(parts) do
-    if Enum.all?(parts, &is_binary/1) do
-      line = meta[:line] || definition_line
-      template_line = if meta[:delimiter] == "\"\"\"", do: line + 1, else: line
-      {Enum.join(parts), line, template_line}
-    else
-      Diagnostic.error!(
-        "E060",
-        file,
-        meta[:line] || definition_line,
-        "@client requires a literal ~H render; move dynamic template construction to the server"
-      )
-    end
-  end
-
-  defp render_source!(_body, file, line) do
-    Diagnostic.error!(
-      "E060",
-      file,
-      line,
-      "@client requires render/1 to return a literal ~H template"
-    )
   end
 
   @doc false

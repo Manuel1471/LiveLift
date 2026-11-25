@@ -130,6 +130,67 @@ defmodule LiveLift.AuditTaskTest do
     assert audit.() =~ "blocked: #{file}:3: render/1 must return a literal ~H template (E060)"
   end
 
+  test "audits nested local HEEx functions and slots like the native compiler" do
+    file = Path.join(tmp_dir!(), "card.ex")
+
+    source = ~S'''
+    defmodule Demo.AuditedCard do
+      use Phoenix.LiveComponent
+
+      def render(assigns) do
+        ~H"<.card title={@title}><strong>{@title}</strong></.card>"
+      end
+
+      defp card(assigns) do
+        ~H"""
+        <section>
+          <.heading title={@title} />
+          {render_slot(@inner_block)}
+        </section>
+        """
+      end
+
+      def heading(assigns), do: ~H"<h2>{@title}</h2>"
+
+      def handle_event("clear", _params, socket),
+        do: {:noreply, assign(socket, :title, "")}
+    end
+    '''
+
+    File.write!(file, source)
+    audit = fn -> capture_io(fn -> Mix.Tasks.LiveLift.Audit.run(["--path", file]) end) end
+    assert audit.() =~ ~s|Demo.AuditedCard.handle_event("clear"): compatible|
+    assert File.read!(file) == source
+
+    opted_in =
+      source
+      |> String.replace(
+        "  use Phoenix.LiveComponent",
+        "  use Phoenix.LiveComponent\n  use LiveLift"
+      )
+      |> String.replace("  def handle_event", "  @client true\n  def handle_event")
+
+    [{module, _binary}] = Code.compile_string(opted_in, file)
+    assert module.__live_lift_component_fields__() == [:title]
+
+    File.write!(file, String.replace(source, "<.heading", "<.external_heading"))
+
+    assert audit.() =~
+             ~r/card\.ex:11:.*unknown client function component \.external_heading.*\(E062\)/
+
+    File.write!(
+      file,
+      String.replace(
+        source,
+        "  def handle_event",
+        "  def heading(_assigns), do: ~H\"<p />\"\n  def handle_event"
+      )
+    )
+
+    assert audit.() =~
+             ~r/card\.ex:19:.*client function component \.heading has multiple clauses.*\(E062\)/
+  end
+
   test "reports the actual render line for unsafe templates" do
     directory =
       Path.join(System.tmp_dir!(), "live_lift_audit_#{System.unique_integer([:positive])}")

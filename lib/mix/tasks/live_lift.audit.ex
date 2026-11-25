@@ -87,6 +87,7 @@ defmodule Mix.Tasks.LiveLift.Audit do
 
         context = %{
           helpers: Enum.flat_map(expressions, &helper_definition(&1, file)),
+          local_components: Enum.flat_map(expressions, &local_component_definition(&1, file)),
           callbacks: callbacks,
           live_view?: kind == :view,
           custom_update?: Enum.any?(definitions, &custom_update?/1),
@@ -203,7 +204,13 @@ defmodule Mix.Tasks.LiveLift.Audit do
   defp source_template(definitions, file, name) do
     case Enum.find(definitions, &match?({:render, [_], [], _, _}, &1)) do
       {:render, [_], [], body, env} ->
-        {render_source(body, file), env.line}
+        template =
+          case TemplateSource.literal(body, env.line) do
+            {:ok, source, _line, template_line} -> {source, file, template_line}
+            {:error, _line, _message} -> nil
+          end
+
+        {template, env.line}
 
       nil ->
         with false <- Enum.any?(definitions, &match?({:render, [_], _, _, _}, &1)),
@@ -215,18 +222,18 @@ defmodule Mix.Tasks.LiveLift.Audit do
     end
   end
 
-  defp render_source([do: body], file) do
-    case body do
-      {:sigil_H, meta, [{:<<>>, _, parts}, []]} when is_list(parts) ->
-        if Enum.all?(parts, &is_binary/1) do
-          line = meta[:line] || 1
-          {Enum.join(parts), file, if(meta[:delimiter] == "\"\"\"", do: line + 1, else: line)}
-        end
+  defp local_component_definition({kind, meta, [head, [do: {:sigil_H, _, _}] = body]}, file)
+       when kind in [:def, :defp] do
+    case function_head(head) do
+      {name, [_assigns], []} when kind == :defp or name != :render ->
+        [{Atom.to_string(name), body, file, meta[:line]}]
 
       _ ->
-        nil
+        []
     end
   end
+
+  defp local_component_definition(_, _file), do: []
 
   defp helper_definition({:defp, meta, [{name, _, args}, [do: body]]}, file)
        when is_atom(name) and is_list(args),
@@ -277,8 +284,16 @@ defmodule Mix.Tasks.LiveLift.Audit do
           Compiler.validate_action!({name, args, expanded}, env.file, env.line)
       end
 
+      components = TemplateSource.local_components!(context.local_components)
+
       tree =
-        LiveLift.Template.compile_liveview(template, template_file, [event], %{}, render_line)
+        LiveLift.Template.compile_liveview(
+          template,
+          template_file,
+          [event],
+          components,
+          render_line
+        )
 
       if match?({%{patch: _}, _}, timer) do
         {spec, timer_line} = timer
