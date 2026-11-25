@@ -15,9 +15,11 @@
 - **Browser behavior.** The suite exercises reordering, duplicates,
   reconnects, native form events, keyed focus, selected field drafts,
   and the development inspector in Chromium, Firefox, and WebKit. The
-  candidate passed 246 browser tests and 12 selected tests with deployed
-  assets. The 30 opt-in benchmark or spike cases were skipped in the
-  default browser run.
+  latest local run passed 264 browser tests with 33 opt-in cases skipped.
+  A further 42 checks passed with deployed assets, covering reconnect,
+  offline expiry, debounce, view loading, native JS commands and compiler
+  parity. The [expiry spike](https://github.com/Manuel1471/LiveLift/blob/main/docs/offline-expiry-browser-spike.md)
+  records the focused reconnect commands.
 - **Operational controls.** Global and per-component `:live_lift` switches
   restore server-only rendering for new mounts. Active clients reload after
   their next synchronized marked event receives the disabled reply. The [security model](security.md) documents the trust
