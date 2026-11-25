@@ -21,6 +21,8 @@
   the audit diagnostics and generated source maps to the template file.
 - Compile native `assign/2` with a literal map or keyword list and include
   newly assigned fields in the authoritative snapshot.
+- Match Elixir's optional event parameter reads, including missing
+  values in nested bracket paths.
 
 ## 0.1.0-rc.1
 

@@ -18,6 +18,7 @@
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"inc","state":{"count":0,"label":""}},
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"inc","state":{"count":9007199254740990,"label":"ready"}},
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"label","state":{"count":1,"label":""},"params":{"label":"é 😀 <&>"}},
+  {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"label","state":{"count":1,"label":"Ready"}},
   {"module":"LiveLiftDemoWeb.NativeCounterComponent","event":"preview_timer","state":{"count":0,"label":""}},
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"draft","state":{"draft_scope":"demo-note","note_value":"Server note","draft":null,"saved":"","active":false,"invalid":false},"params":{"value":"é <draft>"}},
   {"module":"LiveLiftDemoWeb.NativeFormComponent","event":"draft","state":{"draft_scope":"demo-note","note_value":"Server note","draft":"old","saved":"saved","active":true,"invalid":false},"params":{"value":""}},

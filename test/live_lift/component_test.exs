@@ -81,6 +81,33 @@ defmodule LiveLift.ComponentTest do
     def handle_event("inc", _, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
   end
 
+  defmodule ParamReads do
+    use Phoenix.LiveComponent
+    use LiveLift
+
+    def render(assigns), do: ~H"<output>{@label}</output>"
+
+    @client true
+    def handle_event("access", params, socket),
+      do: {:noreply, assign(socket, :label, params["profile"]["name"])}
+
+    @client true
+    def handle_event("map_get", params, socket),
+      do: {:noreply, assign(socket, :label, Map.get(Map.get(params, "profile"), "name"))}
+
+    @client true
+    def handle_event("mixed", params, socket),
+      do: {:noreply, assign(socket, :label, Map.get(params, "profile")["name"])}
+
+    @client true
+    def handle_event("pattern", %{"profile" => %{"name" => label}}, socket),
+      do: {:noreply, assign(socket, :label, label)}
+
+    @client true
+    def handle_event("pattern_unused", %{"profile" => %{"name" => _label}}, socket),
+      do: {:noreply, assign(socket, :label, "accepted")}
+  end
+
   defmodule BatchedCounter do
     use Phoenix.LiveComponent
     use LiveLift
@@ -686,6 +713,60 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  test "optional event reads and required patterns match Phoenix with missing params" do
+    params = [
+      %{},
+      %{"profile" => %{"other" => "value"}},
+      %{"profile" => "not a map"},
+      %{"profile" => %{"name" => ""}},
+      %{"profile" => %{"name" => "Ada"}}
+    ]
+
+    events = ~w(access map_get mixed pattern pattern_unused)
+    socket = %Phoenix.LiveView.Socket{assigns: %{id: "reads", label: "old", __changed__: %{}}}
+
+    expected =
+      for event <- events do
+        for event_params <- params do
+          try do
+            {:reply, %{state: %{label: result}}, _} =
+              ParamReads.handle_event(event, Map.put(event_params, "_live_lift_seq", 1), socket)
+
+            ["ok", result]
+          rescue
+            _ in [BadMapError, FunctionClauseError] -> ["error"]
+          end
+        end
+      end
+
+    assert expected == [
+             [["ok", nil], ["ok", nil], ["error"], ["ok", ""], ["ok", "Ada"]],
+             [["error"], ["ok", nil], ["error"], ["ok", ""], ["ok", "Ada"]],
+             [["ok", nil], ["ok", nil], ["error"], ["ok", ""], ["ok", "Ada"]],
+             [["error"], ["error"], ["error"], ["ok", ""], ["ok", "Ada"]],
+             [["error"], ["error"], ["error"], ["ok", "accepted"], ["ok", "accepted"]]
+           ]
+
+    javascript = LiveLift.Client.Compiler.compile_module(ParamReads)
+
+    script =
+      javascript <>
+        """
+        const [events, cases] = JSON.parse(process.argv[1]);
+        console.log(JSON.stringify(events.map(event => cases.map(params => {
+          try {
+            return ["ok", actions[event]({label: "old"}, {params}).label];
+          } catch {
+            return ["error"];
+          }
+        }))));
+        """
+
+    input = Jason.encode!([events, params])
+    assert {output, 0} = System.cmd("node", ["--input-type=module", "--eval", script, input])
+    assert Jason.decode!(output) == expected
+  end
+
   test "a flat pattern and socket pipe keep native handler semantics" do
     socket = %Phoenix.LiveView.Socket{assigns: %{label: "", id: "pattern", __changed__: %{}}}
 
@@ -778,11 +859,12 @@ defmodule LiveLift.ComponentTest do
   end
 
   test "local writes cannot overlap synchronized reads or writes" do
-    for {shared_body, index} <-
+    for {{params, shared_body}, index} <-
           Enum.with_index([
-            "assign(socket, :shared, socket.assigns.preview)",
-            "assign(socket, :preview, 0)",
-            "assign(socket, preview: 0, shared: 1)"
+            {"_", "assign(socket, :shared, socket.assigns.preview)"},
+            {"_", "assign(socket, :preview, 0)"},
+            {"_", "assign(socket, preview: 0, shared: 1)"},
+            {~S(%{"value" => value}), "assign(socket, preview: 0, shared: value)"}
           ]) do
       source = """
       defmodule LiveLift.ComponentTest.LocalConflict#{index} do
@@ -792,7 +874,7 @@ defmodule LiveLift.ComponentTest do
         @client :local
         def handle_event("preview", _, socket), do: {:noreply, assign(socket, :preview, 1)}
         @client true
-        def handle_event("shared", _, socket), do: {:noreply, #{shared_body}}
+        def handle_event("shared", #{params}, socket), do: {:noreply, #{shared_body}}
       end
       """
 

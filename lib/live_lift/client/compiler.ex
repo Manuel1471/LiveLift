@@ -974,6 +974,24 @@ defmodule LiveLift.Client.Compiler do
     "__liveLiftGet(#{compile_expr(source, arg)}, #{Jason.encode!(identifier!(key))})"
   end
 
+  defp compile_expr({:__live_lift_param_read__, _, [source, key, :map]}, arg) do
+    "__liveLiftMapGet(#{compile_expr(source, arg)}, #{Jason.encode!(key)}, null)"
+  end
+
+  defp compile_expr({:__live_lift_param_read__, _, [source, key, :access]}, arg) do
+    "__liveLiftMapGet(#{compile_expr(source, arg)} ?? {}, #{Jason.encode!(key)}, null)"
+  end
+
+  defp compile_expr({:__live_lift_bind_params__, _, [reads, body]}, arg) do
+    parameters =
+      reads |> Enum.with_index() |> Enum.map_join(", ", fn {_, i} -> "$liveLiftParam#{i}" end)
+
+    values = Enum.map_join(reads, ", ", &compile_expr(&1, arg))
+    "((#{parameters}) => #{compile_expr(body, arg)})(#{values})"
+  end
+
+  defp compile_expr({:__live_lift_bound_param__, _, [index]}, _arg), do: "$liveLiftParam#{index}"
+
   defp compile_expr({:%{}, _, [{:|, _, [map, fields]}]}, arg) when is_list(fields) do
     entries =
       Enum.map(fields, fn

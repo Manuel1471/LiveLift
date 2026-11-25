@@ -235,17 +235,28 @@ defmodule LiveLift.Component.Compiler do
       raise ArgumentError, "@client event pattern binds the same variable twice"
     end
 
-    Macro.prewalk(body, false, fn
-      {name, _, context} = node, used
-      when is_atom(name) and (is_atom(context) or is_nil(context)) ->
-        case List.keyfind(bindings, name, 0) do
-          {_, path} -> {event_param(path), true}
-          nil -> {node, used}
-        end
+    if bindings == [] do
+      {body, false}
+    else
+      reads =
+        Enum.map(bindings, fn {_, path} -> event_param(Enum.map(path, &{:required, &1})) end)
 
-      node, used ->
-        {node, used}
-    end)
+      indices = bindings |> Enum.with_index() |> Map.new(fn {{name, _}, i} -> {name, i} end)
+
+      body =
+        Macro.prewalk(body, fn
+          {name, _, context} = node when is_atom(name) and is_atom(context) ->
+            case Map.fetch(indices, name) do
+              {:ok, index} -> {:__live_lift_bound_param__, [], [index]}
+              :error -> node
+            end
+
+          node ->
+            node
+        end)
+
+      {{:__live_lift_bind_params__, [line: source_line(body, nil)], [reads, body]}, true}
+    end
   end
 
   defp rewrite_params(body, _params), do: {body, false}
@@ -255,20 +266,20 @@ defmodule LiveLift.Component.Compiler do
        do: {:ok, []}
 
   defp params_path({{:., _, [Access, :get]}, _, [source, key]}, name) when is_binary(key),
-    do: append_param_path(source, name, key)
+    do: append_param_path(source, name, {:access, key})
 
   defp params_path(
          {{:., _, [{:__aliases__, _, [:Map]}, :get]}, _, [source, key]},
          name
        )
        when is_binary(key),
-       do: append_param_path(source, name, key)
+       do: append_param_path(source, name, {:map, key})
 
   defp params_path(_node, _name), do: :error
 
-  defp append_param_path(source, name, key) do
+  defp append_param_path(source, name, segment) do
     case params_path(source, name) do
-      {:ok, path} -> {:ok, path ++ [key]}
+      {:ok, path} -> {:ok, path ++ [segment]}
       _ -> :error
     end
   end
@@ -290,17 +301,19 @@ defmodule LiveLift.Component.Compiler do
 
   defp event_param(path) when is_list(path) do
     unless length(path) in 1..4 and
-             Enum.all?(path, fn key ->
+             Enum.all?(path, fn {_mode, key} ->
                Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, key) and
                  key not in ~w(__proto__ constructor prototype _live_lift_seq)
              end) do
-      raise ArgumentError, "unsupported @client event parameter path: #{Enum.join(path, ".")}"
+      names = Enum.map_join(path, ".", &elem(&1, 1))
+      raise ArgumentError, "unsupported @client event parameter path: #{names}"
     end
 
     root = {{:., [], [{:event, [], nil}, :params]}, [], []}
 
-    Enum.reduce(path, root, fn key, source ->
-      {{:., [], [source, String.to_atom(key)]}, [], []}
+    Enum.reduce(path, root, fn
+      {:required, key}, source -> {{:., [], [source, String.to_atom(key)]}, [], []}
+      {mode, key}, source -> {:__live_lift_param_read__, [], [source, key, mode]}
     end)
   end
 

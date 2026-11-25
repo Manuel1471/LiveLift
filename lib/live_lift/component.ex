@@ -777,6 +777,9 @@ defmodule LiveLift.Component do
   defp written_fields({:__live_lift_assign_many__, _, [source, {:%{}, _, fields}]}),
     do: Keyword.keys(fields) ++ written_fields(source)
 
+  defp written_fields({:__live_lift_bind_params__, _, [_reads, body]}),
+    do: written_fields(body)
+
   defp written_fields(_), do: []
 
   defp optional_state_fields(actions) do

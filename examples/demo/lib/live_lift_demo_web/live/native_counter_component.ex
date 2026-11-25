@@ -10,6 +10,7 @@ defmodule LiveLiftDemoWeb.NativeCounterComponent do
       <button type="button" phx-click="save" phx-target={@myself}>Save on server</button>
       <output aria-live="polite">{@count}</output>
       <button type="button" phx-click="label" phx-value-label="ready" phx-target={@myself}>Set label</button>
+      <button type="button" phx-click="label" phx-target={@myself}>Clear label</button>
       <button type="button" phx-click="schedule" phx-target={@myself}>Schedule label on server</button>
       <button type="button" phx-click="preview_timer" phx-target={@myself}>Schedule label locally</button>
       <span>{@label}</span>

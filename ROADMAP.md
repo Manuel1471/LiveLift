@@ -729,6 +729,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   con un mapa o una lista de palabras clave literales. El navegador y
   LiveView coinciden cuando el lote introduce campos ausentes del estado
   inicial. [Spike, paridad y medición](docs/native-batch-assign-spike.md).
+- **Verificado:** Las lecturas con corchetes devuelven `nil` para parámetros
+  ausentes. `Map.get/2` exige un mapa y los patrones conservan sus claves
+  requeridas. El demo comprueba la predicción con un evento que omite
+  el parámetro. [Spike y paridad](docs/event-param-read-spike.md).
 - **Verificado localmente:** La guía define el versionado y las
   deprecaciones. Una herramienta prepara el changelog para la versión de
   Mix y CI valida y muestra esas notas antes de publicar.

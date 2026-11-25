@@ -388,6 +388,10 @@ test("a normal LiveComponent runs a marked handler locally and converges with th
   await root.getByRole("button", {name: "Set label"}).click();
   await expect(root.locator("span")).toHaveText("ready", {timeout: 200});
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
+  await root.getByRole("button", {name: "Clear label"}).click();
+  await expect(root.locator("span")).toHaveText("", {timeout: 200});
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", "3");
+  await expect(root).toHaveAttribute("data-live-lift-state", /"label":null/);
 });
 
 test("pending native component clicks converge after server replies", async ({page}) => {

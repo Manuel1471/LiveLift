@@ -154,6 +154,15 @@ server validation can reject it.
 
 ## Action expressions
 
+### Optional event parameters
+
+`params["label"]` reads an optional string parameter and returns `nil`
+if that key is missing. In a bracket chain such as
+`params["profile"]["name"]`, a missing intermediate value also yields
+`nil`. `Map.get(params, "label")` returns `nil` for an absent key in a
+map and raises when its receiver is another type. In a handler pattern
+like `%{"label" => label}`, the key is required to match the clause.
+
 ### Ecto changeset values
 
 Marked handlers can read `.valid?` or use `Ecto.Changeset.get_field/2` on a
