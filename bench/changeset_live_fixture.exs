@@ -1,8 +1,8 @@
 Mix.install([
-  {:bandit, "1.14.1"},
+  {:bandit, "1.15.0"},
   {:ecto, "3.14.3"},
   {:phoenix_ecto, "4.7.0"},
-  {:phoenix_live_view, "1.2.14"},
+  {:phoenix_live_view, "1.2.15"},
   {:live_lift, path: Path.expand("..", __DIR__)}
 ])
 
