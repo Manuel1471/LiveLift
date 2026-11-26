@@ -1,6 +1,6 @@
 {
   "name": "live-lift-assets",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "private": true,
   "description": "Browser runtime for the LiveLift Phoenix LiveView integration",
   "license": "MIT",

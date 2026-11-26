@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0-rc.2
+
 ### Added
 
 - Compile Phoenix's automatically colocated `.html.heex` files and point

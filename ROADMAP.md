@@ -20,6 +20,9 @@ está disponible en Hex y HexDocs. La verificación en una app Phoenix nueva
 cubrió la instalación, la migración y el runtime incluido en Hex.
 [Verificación de la fase 6](docs/progress/6-public-registry.md).
 
+La versión del checkout ya es `0.1.0-rc.2`. Su publicación en Hex sigue
+pendiente. [Notas de la candidata](CHANGELOG.md#010-rc2).
+
 Hex es el único canal de publicación del roadmap. `live_lift` incluye el
 runtime JavaScript que Mix integra en el build de assets de Phoenix.
 La instalación de LiveLift en una app Phoenix solo requiere la dependencia

@@ -110,10 +110,10 @@ assets. Remove `use LiveLift` from the module if you remove its last marker.
 ## Add the dependency
 
 Add this entry to the existing `deps/0` list in the Phoenix app's
-`mix.exs` to install the [public Hex release](https://hex.pm/packages/live_lift/0.1.0-rc.1).
+`mix.exs` to install the [public Hex release](https://hex.pm/packages/live_lift/0.1.0-rc.2).
 
 ```elixir
-{:live_lift, "~> 0.1.0-rc.1"}
+{:live_lift, "~> 0.1.0-rc.2"}
 ```
 
 To try a local build, run
@@ -182,8 +182,8 @@ For an app that already has Igniter 0.8.5, preview and apply the installer
 using Igniter's standard commands with the published Hex version.
 
 ```sh
-mix igniter.install live_lift@0.1.0-rc.1 --dry-run
-mix igniter.install live_lift@0.1.0-rc.1
+mix igniter.install live_lift@0.1.0-rc.2 --dry-run
+mix igniter.install live_lift@0.1.0-rc.2
 mix assets.build
 ```
 
