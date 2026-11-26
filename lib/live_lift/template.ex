@@ -90,50 +90,37 @@ defmodule LiveLift.Template do
   end
 
   defp adapt_liveview_node({:block, type, tag, attrs, children, meta, close}, file, events) do
-    attrs = normalize_control_attrs(tag, attrs)
-    validate_native_debounce!(tag, attrs, file, meta.line)
-    validate_change_control!(tag, attrs, file, meta.line, events)
-
-    if type == :remote_component do
-      Diagnostic.error!(
-        "E062",
-        file,
-        meta.line,
-        "remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
-      )
-    end
-
-    {:block, type, tag,
-     attrs
-     |> validate_draft_attrs!(tag, file)
-     |> native_loop_key(file)
-     |> adapt_liveview_attrs(file, events),
+    {:block, type, tag, adapt_node_attrs!(type, tag, attrs, file, meta.line, events),
      Enum.map(children, &adapt_liveview_node(&1, file, events)), meta, close}
   end
 
   defp adapt_liveview_node({:self_close, type, tag, attrs, meta}, file, events) do
-    attrs = normalize_control_attrs(tag, attrs)
-    validate_native_debounce!(tag, attrs, file, meta.line)
-
-    if type == :remote_component do
-      Diagnostic.error!(
-        "E062",
-        file,
-        meta.line,
-        "remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
-      )
-    end
-
-    validate_change_control!(tag, attrs, file, meta.line, events)
-
-    {:self_close, type, tag,
-     attrs
-     |> validate_draft_attrs!(tag, file)
-     |> native_loop_key(file)
-     |> adapt_liveview_attrs(file, events), meta}
+    {:self_close, type, tag, adapt_node_attrs!(type, tag, attrs, file, meta.line, events), meta}
   end
 
   defp adapt_liveview_node(node, _file, _events), do: node
+
+  defp adapt_node_attrs!(:tag, tag, attrs, file, line, events) do
+    attrs = normalize_control_attrs(tag, attrs)
+    validate_native_debounce!(tag, attrs, file, line)
+    validate_change_control!(tag, attrs, file, line, events)
+
+    attrs
+    |> validate_draft_attrs!(tag, file)
+    |> native_loop_key(file)
+    |> adapt_liveview_attrs(file, events)
+  end
+
+  defp adapt_node_attrs!(:remote_component, tag, _attrs, file, line, _events) do
+    Diagnostic.error!(
+      "E062",
+      file,
+      line,
+      "remote function component #{tag} is not supported in @client yet; use a local function component or keep this subtree on the server"
+    )
+  end
+
+  defp adapt_node_attrs!(_type, _tag, attrs, _file, _line, _events), do: attrs
 
   defp normalize_control_attrs(tag, attrs) when tag in ~w(button input select textarea) do
     Enum.map(attrs, fn

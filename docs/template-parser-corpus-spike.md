@@ -82,3 +82,37 @@ LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- --grep 'native form validates a nested fi
 (cd ../examples/demo && LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix compile --force)
 LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 npm run e2e -- --grep 'native form validates a nested field|native form validation reaches Phoenix before'
 ```
+
+## Follow-up on function components named like HTML controls
+
+The adapter represents `<.input>` as a local component named `input`.
+The fallback retains its leading dot. The native compiler previously
+used the spelling alone when validating `phx-debounce` and other form
+attributes. On `<.input phx-debounce="blur" />`, the paths could reach
+different diagnostics. Marked bindings and `phx-target` conversion
+could also treat component props like attributes of an HTML element.
+
+The compiler now uses the node kind before applying those HTML rules.
+Both paths keep function component call props intact for prop validation.
+Tests cover self-closing and paired function tags, a rejected HTML binding
+on a component call, and a genuine input rendered by the function.
+
+On 2026-11-25, the pinned audit found 2,638 matching rejection codes and
+11 different codes, down from 20. The 158 compiled trees still matched.
+Ten remaining cases use Alpine's `@event` shorthand and one contains a
+standalone `)` in an attribute list. The fallback rejects those names
+while the LiveView path can reach a later compiler diagnostic. All eleven
+templates remain rejected by both paths.
+
+The library passed 171 tests with each parser on LiveView 1.2.15. The
+parser suite passed 13 tests on 1.2.0. The demo passed nine tests,
+57 handler parity cases, and both asset builds. The focused Playwright
+selection passed nine checks with each parser. It covers validation, blur,
+and submit cancellation in Chromium, Firefox, and WebKit with digested assets:
+
+```sh
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- --grep 'native form validates a nested field|phx-debounce delays|submit cancels'
+(cd ../examples/demo && LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix compile --force)
+LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 npm run e2e -- --grep 'native form validates a nested field|phx-debounce delays|submit cancels'
+```

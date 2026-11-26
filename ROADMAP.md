@@ -687,6 +687,7 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   compilables del demo y del corpus público. De 2.807 plantillas públicas,
   158 compilaron en ambos. Alinear los nombres de props de componentes
   terminados en `?` o `!` redujo de 99 a 20 los rechazos con códigos distintos.
+  Aplicar las reglas de bindings solo a elementos HTML redujo esa cifra a 11.
   CI compara el demo con LiveView 1.2.0 y 1.2.15 y la auditoría semanal
   informa las diferencias del corpus público. [Spike y método](docs/template-parser-corpus-spike.md).
 - **Verificado:** Ambos parsers ubican las declaraciones de documento

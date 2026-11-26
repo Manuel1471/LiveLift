@@ -54,6 +54,9 @@ the demo form. LiveLift expands its client template at compilation; LiveView ren
 the original function on the server. Parent handlers own events emitted inside
 the function component. One default slot may be rendered with
 `{render_slot(@inner_block)}`; its children retain the caller's assigns.
+Put `phx-*` bindings on the HTML elements inside that function or slot.
+An invocation such as `<.input ...>` takes named props. Its name does not
+make the call a native form control.
 Named slots, remote functions, default props omitted at the call site, and
 call-site directives are outside this subset and fail at build time. Encoded
 static prop strings require an Elixir string expression.

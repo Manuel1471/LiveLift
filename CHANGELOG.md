@@ -15,6 +15,8 @@
 
 - Preserve function component props ending in `?` or `!` in both HEEx
   parser paths.
+- Apply form and event binding rules to HTML elements inside function
+  components. Report unsupported props at the component call.
 - Accept Phoenix's native form target metadata before client mount and
   when LiveLift is disabled.
 - Report view loading failures through the browser's standard error

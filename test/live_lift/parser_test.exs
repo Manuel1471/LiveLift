@@ -151,6 +151,43 @@ defmodule LiveLift.ParserTest do
     assert adapted == fallback
   end
 
+  test "both parsers distinguish function components from native form controls" do
+    components = %{
+      "input" => %{
+        source: ~s(<input type="text" name="title" value={@field} phx-debounce="blur" />),
+        file: "input.ex"
+      }
+    }
+
+    for parser <- [PhoenixParser, MissingLiveViewParser] do
+      tree =
+        ~s(<.input field={@title} />)
+        |> Parser.parse_with!("props.ex", parser, 9)
+        |> Template.compile_parsed("props.ex", {:liveview, %{}, components})
+
+      assert tree |> Template.render_server(%{title: "Ready"}) |> Phoenix.HTML.safe_to_string() =~
+               ~s(value="Ready" phx-debounce="blur")
+
+      for source <- [
+            ~s(<.input field="title" phx-debounce="blur" />),
+            ~s(<.input field="title" phx-debounce="blur"></.input>),
+            ~s(<.input field="title" phx-target={@myself} />)
+          ] do
+        assert_raise ArgumentError, ~r/props.ex:9:.*supports named props only.*\(E062\)/, fn ->
+          source
+          |> Parser.parse_with!("props.ex", parser, 9)
+          |> Template.compile_parsed("props.ex", {:liveview, %{}, components})
+        end
+      end
+
+      assert_raise ArgumentError, ~r/props.ex:9:.*phx-debounce supports an input.*\(E063\)/, fn ->
+        ~s(<form phx-debounce="blur"></form>)
+        |> Parser.parse_with!("props.ex", parser, 9)
+        |> Template.compile_parsed("props.ex", {:liveview, %{}, components})
+      end
+    end
+  end
+
   test "fallback compiles and renders the same supported templates" do
     cases = [
       {~s(<button $click="inc">Go</button><output>{@count}</output>), :legacy, %{count: 4}},
