@@ -15,10 +15,18 @@ for (const [name, engine] of Object.entries({chromium, firefox, webkit})) {
     page.setDefaultTimeout(10_000);
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
+    const sockets = [];
+    if (mode === "manual") {
+      page.on("websocket", (socket) => sockets.push(new URL(socket.url()).pathname));
+    }
     await page.goto(url);
     await page.locator(`.phx-connected [${ack}="0"]`).waitFor({state: "attached"});
     if (mode === "npm-split") {
       await page.locator('[data-live-lift-load="ready"]').waitFor({state: "attached"});
+    }
+    if (mode === "manual") {
+      await page.locator('#consumer-status[data-consumer-hook="mounted"]').waitFor({state: "attached"});
+      assert.ok(sockets.includes("/workbench/websocket"));
     }
 
     // Sample in the same JavaScript turn as the click, before a server reply can apply.
@@ -36,6 +44,10 @@ for (const [name, engine] of Object.entries({chromium, firefox, webkit})) {
     await page.getByText("Saved 4", {exact: true}).waitFor();
     assert.equal(await page.locator(`[${ack}]`).getAttribute(ack), "1");
     assert.deepEqual(pageErrors, []);
+    if (mode === "manual") {
+      assert.equal(await page.locator("#consumer-status").getAttribute("data-consumer-hook"), "mounted");
+      console.log(`${mode} ${name}: app hook mounted with the existing WebSocket path`);
+    }
 
     console.log(`${mode} ${name} ${browser.version()}: SSR 3, local 4 before ack, ack 1, Saved 4`);
 

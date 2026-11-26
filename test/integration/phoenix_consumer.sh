@@ -10,8 +10,13 @@ mix phx.new "$consumer_dir/consumer_lift" --module ConsumerLift \
 
 live_lift_dep="$repo_dir"
 igniter_mode="${LIVE_LIFT_INTEGRATION_IGNITER:-0}"
+manual_mode="${LIVE_LIFT_INTEGRATION_MANUAL:-0}"
 registry_version="${LIVE_LIFT_REGISTRY_VERSION:-}"
-if [ -z "$registry_version" ] && [ "$igniter_mode" = "1" ]; then
+if [ "$igniter_mode" = "1" ] && [ "$manual_mode" = "1" ]; then
+  printf '%s\n' 'Choose Igniter or manual integration for each consumer run.' >&2
+  exit 1
+fi
+if [ -z "$registry_version" ] && { [ "$igniter_mode" = "1" ] || [ "$manual_mode" = "1" ]; }; then
   live_lift_dep="$consumer_dir/live_lift_package"
   (cd "$repo_dir" && mix hex.build --unpack --output "$live_lift_dep" >/dev/null)
 fi
@@ -284,6 +289,8 @@ PYTHON
     cmp installed-mix.exs mix.exs
     cmp installed-gitignore .gitignore
     printf '%s\n' 'Verified Igniter preview, idempotence, custom steps, and unsupported layouts.'
+  elif [ "$manual_mode" = "1" ]; then
+    sh "$repo_dir/test/integration/phoenix_consumer_manual.sh"
   else
     mix live_lift.install >/dev/null
   fi
@@ -397,7 +404,9 @@ NODE
   fi
   mix assets.deploy
   if [ -n "${LIVE_LIFT_CONSUMER_BROWSER_PORT:-}" ]; then
-    sh "$repo_dir/test/integration/phoenix_consumer_browser.sh" "$repo_dir" copied
+    browser_mode=copied
+    if [ "$manual_mode" = "1" ]; then browser_mode=manual; fi
+    sh "$repo_dir/test/integration/phoenix_consumer_browser.sh" "$repo_dir" "$browser_mode"
   fi
   if [ -z "$registry_version" ] && [ "$igniter_mode" = "1" ]; then
     sh "$repo_dir/test/integration/npm_assets.sh" "$repo_dir" "$consumer_dir/npm_assets"

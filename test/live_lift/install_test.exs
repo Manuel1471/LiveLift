@@ -109,6 +109,36 @@ defmodule LiveLift.InstallTest do
     end
   end
 
+  test "an unsupported deploy alias leaves the standard hook source untouched" do
+    root = temp_root()
+
+    js = """
+    import {hooks as colocatedHooks} from "phoenix-colocated/my_app"
+    const liveSocket = new LiveSocket("/live", Socket, {hooks: {...colocatedHooks}})
+    """
+
+    mix = """
+    "assets.build": ["compile", "esbuild my_app"],
+    "assets.deploy": &deploy_assets/1
+    """
+
+    files = %{"assets/js/app.js" => js, "mix.exs" => mix, ".gitignore" => "/_build/\n"}
+
+    try do
+      File.cd!(root, fn ->
+        Enum.each(files, fn {file, content} -> File.write!(file, content) end)
+
+        assert_raise Mix.Error, ~r/unsupported Phoenix assets aliases/, fn ->
+          Mix.Tasks.LiveLift.Install.run([])
+        end
+
+        for {file, content} <- files, do: assert(File.read!(file) == content)
+      end)
+    after
+      File.rm_rf!(root)
+    end
+  end
+
   defp temp_root do
     root = Path.join(System.tmp_dir!(), "live_lift_install_#{System.unique_integer([:positive])}")
     File.mkdir_p!(Path.join(root, "assets/js"))

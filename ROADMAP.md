@@ -724,6 +724,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   verifica migración, paridad y confirmación de LiveView en tres
   navegadores. Se actualizaron los lockfiles tras auditar con Hex.
   [Evidencia de compatibilidad](docs/progress/7-liveview-compatibility.md).
+- **Verificado:** Una segunda app Phoenix integra LiveLift a mano con
+  su propia fábrica de hooks y ruta de WebSocket. El instalador detecta
+  la fábrica y deja intactos los tres archivos de integración.
+  [Prueba de la app consumidora](docs/progress/7-custom-consumer.md).
 - **Medido:** El auditor revisó 1.562 cláusulas de 12 repositorios públicos
   fijados por commit. Detectó cero candidatas con el componente completo
   y 33 al aislar el handler. El corpus se puede repetir para medir la

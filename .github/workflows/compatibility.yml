@@ -34,3 +34,9 @@ jobs:
         env:
           LIVE_LIFT_CONSUMER_BROWSER_PORT: '4047'
         run: sh test/integration/phoenix_consumer.sh
+      - name: Verify manual integration with a custom LiveSocket
+        if: matrix.live_view == '== 1.2.15'
+        env:
+          LIVE_LIFT_CONSUMER_BROWSER_PORT: '4047'
+          LIVE_LIFT_INTEGRATION_MANUAL: '1'
+        run: sh test/integration/phoenix_consumer.sh
