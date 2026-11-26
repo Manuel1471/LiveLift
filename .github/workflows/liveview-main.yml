@@ -1,0 +1,49 @@
+name: LiveView main advisory
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 14 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  upstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    env:
+      LIVE_LIFT_LIVE_VIEW_VERSION: main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '29'
+          elixir-version: '1.20'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: mix deps.get
+      - name: Record upstream revision
+        run: |
+          revision=$(git -C deps/phoenix_live_view rev-parse HEAD)
+          printf 'Phoenix LiveView main revision: `%s`\n' "$revision" >> "$GITHUB_STEP_SUMMARY"
+      - run: npm ci --prefix bench
+        id: fixtures
+      - name: Verify the upstream parser path
+        run: mix test
+      - name: Verify the fallback parser path
+        if: ${{ !cancelled() && steps.fixtures.outcome == 'success' }}
+        run: mix test
+        env:
+          LIVE_LIFT_FORCE_TEMPLATE_FALLBACK: '1'
+      - name: Verify the upstream LiveView APIs
+        if: ${{ !cancelled() && steps.fixtures.outcome == 'success' }}
+        run: mix run spikes/liveview_api.exs
+      - name: Report upstream compatibility failure
+        if: failure()
+        run: |
+          echo '::warning title=LiveView main advisory::Review the failing step and upstream revision in this run.'
+          echo 'A check against LiveView `main` failed. See the failing step for details.' >> "$GITHUB_STEP_SUMMARY"

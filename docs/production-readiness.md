@@ -42,7 +42,9 @@ using Node 22. Both stable lanes run against the repository lockfiles, which
 pin Phoenix LiveView 1.2.15. The compatibility workflow covers 1.2.0 and
 1.2.15 with the library tests and a fresh Phoenix app. The app verifies both
 asset builds and the client/server round trip in Chromium, Firefox, and
-WebKit. A separate advisory lane targets LiveView `main`.
+WebKit. A weekly advisory workflow checks LiveView `main`, records the
+upstream commit, and runs both parser paths. Push and pull request runs
+report advisories. The weekly and manual runs surface failures in Actions.
 
 The dependency requirement `~> 1.2.0` declares the LiveView 1.2.x range. For
 deployment, use a patched release in that range and check the application's
