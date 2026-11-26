@@ -49,7 +49,8 @@ The ID must read a field of the loop item and evaluate to a unique string or
 safe integer. Lists without a stable item ID remain server only.
 Native `~H` may call a local function component (`<.badge label={@label} />`)
 defined in the same LiveComponent with one literal `~H` body and explicit
-props. LiveLift expands its client template at compilation; LiveView renders
+props. Named props may end in `?` or `!`, as in `invalid?={@invalid}` in
+the demo form. LiveLift expands its client template at compilation; LiveView renders
 the original function on the server. Parent handlers own events emitted inside
 the function component. One default slot may be rendered with
 `{render_slot(@inner_block)}`; its children retain the caller's assigns.

@@ -13,6 +13,8 @@
 
 ### Fixed
 
+- Preserve function component props ending in `?` or `!` in both HEEx
+  parser paths.
 - Accept Phoenix's native form target metadata before client mount and
   when LiveLift is disabled.
 - Report view loading failures through the browser's standard error

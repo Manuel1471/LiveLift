@@ -26,7 +26,7 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
         <button type="submit">Save note</button>
         <button type="reset">Discard draft</button>
       </form>
-      <.feedback title={@saved}><.validation_error invalid={@invalid} /></.feedback>
+      <.feedback title={@saved}><.validation_error invalid?={@invalid} /></.feedback>
       <p>Saved: {@saved}</p>
     </section>
     """
@@ -40,11 +40,11 @@ defmodule LiveLiftDemoWeb.NativeFormComponent do
     """
   end
 
-  attr :invalid, :boolean, required: true
+  attr :invalid?, :boolean, required: true
 
   defp validation_error(assigns) do
     ~H"""
-    <p :if={@invalid} id="note-error" role="alert">Note must have at least 3 characters.</p>
+    <p :if={@invalid?} id="note-error" role="alert">Note must have at least 3 characters.</p>
     """
   end
 

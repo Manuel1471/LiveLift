@@ -139,11 +139,11 @@ defmodule LiveLift.ComponentTest do
     use LiveLift
 
     attr(:label, :string, required: true)
-    attr(:visible, :boolean, required: true)
+    attr(:visible?, :boolean, required: true)
 
     defp badge(assigns) do
       ~H"""
-      <span :if={@visible} class="badge">{@label}</span>
+      <span :if={@visible?} class="badge">{@label}</span>
       """
     end
 
@@ -158,7 +158,7 @@ defmodule LiveLift.ComponentTest do
 
     def render(assigns) do
       ~H"""
-      <section><.card label="Card"><.badge label={@label} visible={@visible} /></.card><.badge label="Ready" visible={true} /><.badge label={"A & B"} visible={true} /><button phx-click="toggle" phx-target={@myself}>Toggle</button></section>
+      <section><.card label="Card"><.badge label={@label} visible?={@visible} /></.card><.badge label="Ready" visible?={true} /><.badge label={"A & B"} visible?={true} /><button phx-click="toggle" phx-target={@myself}>Toggle</button></section>
       """
     end
 

@@ -674,7 +674,7 @@ defmodule LiveLift.Template do
   end
 
   defp validate_local_prop_name!(name, file, line) do
-    unless Regex.match?(~r/^[a-zA-Z_][a-zA-Z0-9_]*$/, name) and
+    unless Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_]*[?!]?\z/, name) and
              name not in ~w(__proto__ constructor prototype) do
       Diagnostic.error!(
         "E062",

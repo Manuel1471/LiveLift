@@ -50,3 +50,35 @@ public comparison in the weekly source audit. Both checks fail if exactly
 one parser compiles a template or if the compiled trees differ. The demo
 also requires at least one successful comparison and agreement on the
 first code for rejected templates.
+
+## Follow-up on function component props
+
+Several public templates use ordinary Phoenix props such as `autofocus?`
+and `footer?`. The adapter recognized the names, but the fallback stopped
+at the attribute and reported `E065`. In an opted-in local function call,
+LiveLift's compiler also rejected these names after parsing.
+
+Both paths now accept one trailing `?` or `!` in local function prop names.
+Remote function components still report `E062` in native templates. The
+comparison checks a local component with both suffixes, verifies equal
+compiled trees, and confirms that `constructor` is still rejected. These
+prop names are expanded inside the compiler and are not emitted as HTML
+attribute names.
+
+On 2026-11-25, rerunning the same corpus with LiveView 1.2.15 reduced
+different rejection codes from **99 to 20**. Identical rejections rose
+from 2,550 to 2,629. All 158 compiled trees still matched. The public
+component-and-handler audit still found 0 of 1,562 candidates.
+
+The library suite passed 170 tests with each parser on LiveView 1.2.15.
+The parser suite also passed 12 tests with LiveView 1.2.0 using the updated
+compiler and fallback. The demo form uses `invalid?={@invalid}` in a
+local function component. With deployed assets, both parser paths passed
+the validation and delayed-mount checks in Chromium, Firefox, and WebKit:
+
+```sh
+cd bench
+LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- --grep 'native form validates a nested field|native form validation reaches Phoenix before'
+(cd ../examples/demo && LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix compile --force)
+LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 npm run e2e -- --grep 'native form validates a nested field|native form validation reaches Phoenix before'
+```

@@ -171,7 +171,7 @@ defmodule LiveLift.Template.FallbackParser do
         true -> :tag
       end
 
-    {attrs, closing, state} = attributes(state, [], tag)
+    {attrs, closing, state} = attributes(state, [], tag, type)
     meta = Map.merge(meta, %{tag_name: tag, closing: closing})
 
     if closing in [:self, :void] do
@@ -182,7 +182,7 @@ defmodule LiveLift.Template.FallbackParser do
     end
   end
 
-  defp attributes(state, acc, tag) do
+  defp attributes(state, acc, tag, type) do
     state = skip_space(state)
 
     cond do
@@ -199,13 +199,13 @@ defmodule LiveLift.Template.FallbackParser do
       String.starts_with?(state.rest, "{") ->
         meta = location(state)
         {value, state} = attribute_value(state)
-        attributes(state, [{:root, value, meta} | acc], tag)
+        attributes(state, [{:root, value, meta} | acc], tag, type)
 
       true ->
         meta = location(state)
         {name, state} = take_while(state, &attr_char?/1)
 
-        unless Regex.match?(~r/^[:$]?[A-Za-z_][A-Za-z0-9_:.-]*$/, name),
+        unless valid_attr_name?(name, type),
           do: error!(state, "expected a supported attribute name")
 
         state = skip_space(state)
@@ -217,8 +217,14 @@ defmodule LiveLift.Template.FallbackParser do
             {nil, state}
           end
 
-        attributes(state, [{name, value, meta} | acc], tag)
+        attributes(state, [{name, value, meta} | acc], tag, type)
     end
+  end
+
+  defp valid_attr_name?(name, type) do
+    Regex.match?(~r/\A[:$]?[A-Za-z_][A-Za-z0-9_:.-]*\z/, name) or
+      (type in [:local_component, :remote_component] and
+         Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_]*[?!]\z/, name))
   end
 
   defp attribute_value(%{rest: <<quote, _::binary>>} = state) when quote in [?', ?"] do

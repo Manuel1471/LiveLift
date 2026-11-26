@@ -119,6 +119,38 @@ defmodule LiveLift.ParserTest do
     end
   end
 
+  test "both parsers preserve predicate and bang props on function components" do
+    source = ~s(<.badge shown?={@visible} label!="Ready" />)
+    components = %{"badge" => %{source: "<span :if={@shown?}>{@label!}</span>", file: "badge.ex"}}
+
+    [adapted, fallback] =
+      for parser <- [PhoenixParser, MissingLiveViewParser] do
+        tree =
+          source
+          |> Parser.parse_with!("props.ex", parser)
+          |> Template.compile_parsed("props.ex", {:liveview, %{}, components})
+
+        html = tree |> Template.render_server(%{visible: true}) |> Phoenix.HTML.safe_to_string()
+        assert html =~ "Ready"
+
+        assert_raise ArgumentError, ~r/props.ex:8:.*remote function component.*\(E062\)/, fn ->
+          ~s(<Some.Remote.badge shown?={true} />)
+          |> Parser.parse_with!("props.ex", parser, 8)
+          |> Template.compile_parsed("props.ex", {:liveview, %{}, components})
+        end
+
+        assert_raise ArgumentError, ~r/props.ex:8:.*supports named props only.*\(E062\)/, fn ->
+          ~s(<.badge constructor={true} />)
+          |> Parser.parse_with!("props.ex", parser, 8)
+          |> Template.compile_parsed("props.ex", {:liveview, %{}, components})
+        end
+
+        tree
+      end
+
+    assert adapted == fallback
+  end
+
   test "fallback compiles and renders the same supported templates" do
     cases = [
       {~s(<button $click="inc">Go</button><output>{@count}</output>), :legacy, %{count: 4}},
