@@ -139,6 +139,10 @@ defmodule LiveLift.TemplatePropertyParityTest do
        "E063"},
       {~S(<form phx-submit="save"><input name="note" /><input NAME="note" /></form>), "E063"},
       {~S(<input name="first" NAME="second" phx-change="open" />), "E061"},
+      {~S(<p title="initial" TITLE="updated">Text</p>), "E061"},
+      {~S(<div CLASS="static" class={@title}>Text</div>), "E061"},
+      {~S(<button aria-label="first" ARIA-LABEL="second">Open</button>), "E061"},
+      {~S(<button phx-click="open" DATA-LIVE-LIFT-ACTION="other">Open</button>), "E061"},
       {~S(<input name="note" data-live-lift-draft="draft" />), "E054"},
       {~S'<button phx-click={Phoenix.LiveView.JS.push("open")}>Open</button>', "E053"}
     ]

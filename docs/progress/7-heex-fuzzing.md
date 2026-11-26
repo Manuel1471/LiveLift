@@ -240,6 +240,28 @@ Node 26.5.0 on macOS arm64. A fresh Phoenix consumer passed migration and
 both asset builds with the fallback forced. The shared hook measured
 8,192 gzip bytes.
 
+## Duplicate HTML attributes
+
+On 2026-11-25, both compiler paths accepted one element with `title` and
+`TITLE`. A Playwright probe compared HTML parsing with applying the same
+pair using `setAttribute` on a new element. Chromium 158, Firefox 159,
+and WebKit 27.2 all kept the first value when parsing HTML and the second
+when setting the attributes. [HTML attribute name state](https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state) ·
+[DOM attribute setting](https://dom.spec.whatwg.org/#dom-element-setattribute).
+
+The compiler now compares final attribute names using ASCII lowercase.
+The generated rejection corpus covers static duplicates, a static and
+dynamic class duplicate, an ARIA name, and a collision with a binding
+LiveLift inserts. Four new shapes crossed with 16 seeded nestings bring
+the corpus to 512 rejections per parser. These inputs must report `E061`
+at their element's source line.
+
+The complete suite passed 172 tests with each parser on LiveView 1.2.15.
+The focused rejection corpus also passed on 1.2.0. The public audit
+still matched 158 compiled trees and all 2,649 rejection codes. Six
+deployed browser checks passed for native class commands and nested form
+validation across the three engines. The JavaScript runtime was unchanged.
+
 ## Forms after component expansion
 
 The spike asked whether a form gets the same validation when local

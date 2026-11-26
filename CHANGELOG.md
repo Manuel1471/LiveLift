@@ -19,6 +19,8 @@
   components. Report unsupported props at the component call.
 - Apply the same attribute-name rules with both HEEx parsers. Use
   `x-on:click` for Alpine event attributes in opted-in templates.
+- Reject duplicate HTML attributes with different capitalization, including
+  duplicates of a generated binding.
 - Accept Phoenix's native form target metadata before client mount and
   when LiveLift is disabled.
 - Report view loading failures through the browser's standard error

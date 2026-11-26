@@ -642,7 +642,7 @@ defmodule LiveLift.Template do
       Diagnostic.error!("E061", file, meta.line, "textarea supports only text and bindings")
     end
 
-    if length(names) != length(Enum.uniq(names)) do
+    if length(names) != length(Enum.uniq_by(names, &String.downcase(&1, :ascii))) do
       Diagnostic.error!("E061", file, meta.line, "duplicate client attribute on <#{tag}>")
     end
 

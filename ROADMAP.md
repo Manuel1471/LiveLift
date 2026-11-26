@@ -713,6 +713,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   los controles se validan sin distinguir mayúsculas. Los eventos
   marcados requieren tipos de `input` escritos sin entidades HTML.
   [Spike y corpus](docs/progress/7-heex-fuzzing.md#html-control-attribute-casing).
+- **Verificado:** Ambos parsers rechazan atributos HTML duplicados que
+  solo difieren en mayúsculas, incluso si LiveLift genera uno de ellos.
+  El corpus de rechazos cubre 512 casos por parser.
+  [Spike y corpus](docs/progress/7-heex-fuzzing.md#duplicate-html-attributes).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también

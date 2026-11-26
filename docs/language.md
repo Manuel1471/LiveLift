@@ -44,6 +44,8 @@ The native template path also accepts expression attributes for `class`,
 entries. `nil` and `false` scalar attributes are omitted, as in HEEx.
 Ordinary HTML attribute names start with an ASCII letter or underscore
 and continue with letters, digits, underscores, colons, dots, or dashes.
+Duplicate names are rejected without regard to ASCII case, including names
+that collide with attributes generated for a marked LiveView event.
 For Alpine event attributes, use the full spelling such as `x-on:click`
 instead of `@click` in an opted-in template.
 Use `<%!-- comment --%>` between elements or within text. Phoenix and
