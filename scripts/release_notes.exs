@@ -7,6 +7,11 @@ version =
 
 path = "CHANGELOG.md"
 asset_manifest = "assets/package.json"
+guide_path = "docs/phoenix-integration.md"
+
+guide_pins =
+  ~r/(hex\.pm\/packages\/live_lift\/|\{:live_lift, "~> |live_lift@)(\d+\.\d+\.\d+(?:[-+][\w.+-]+)?)/
+
 asset_version = asset_manifest |> File.read!() |> :json.decode() |> Map.fetch!("version")
 [title | raw_sections] = Regex.split(~r/^## /m, File.read!(path))
 
@@ -26,6 +31,9 @@ case {System.argv(), sections} do
       Mix.raise("Bump the Mix version and add release notes under Unreleased before preparing")
     end
 
+    guide = File.read!(guide_path)
+    guide = Regex.replace(guide_pins, guide, fn _, prefix, _ -> prefix <> version end)
+
     if asset_version != version do
       npm =
         System.find_executable("npm") ||
@@ -41,11 +49,18 @@ case {System.argv(), sections} do
 
     history = Enum.map(tl(raw_sections), &["## ", &1])
     File.write!(path, [title, "## Unreleased\n\n## ", version, "\n", notes, history])
-    IO.puts("Prepared CHANGELOG.md and #{asset_manifest} for LiveLift #{version}")
+    File.write!(guide_path, guide)
+    IO.puts("Prepared CHANGELOG.md, #{asset_manifest}, and #{guide_path} for LiveLift #{version}")
 
   {["check"], _} ->
     unless asset_version == version do
       Mix.raise("Expected version #{version} in #{asset_manifest}; found #{asset_version}")
+    end
+
+    pins = Regex.scan(guide_pins, File.read!(guide_path), capture: [2])
+
+    unless pins != [] and Enum.all?(pins, &(&1 == [version])) do
+      Mix.raise("Expected version #{version} in the Hex installation examples in #{guide_path}")
     end
 
     released = Enum.reject(sections, &match?({"Unreleased", _}, &1))

@@ -844,6 +844,12 @@ de Ecto y LiveView.
 - Auditoría de seguridad externa o, como mínimo, revisión cruzada.
 - Documentación entendible en una o dos lecturas para quien conoce LiveView.
 
+La [guía de operación](docs/production-readiness.md#acceptance-for-10)
+detalla la evidencia que falta registrar para cada criterio y para las dos
+apps piloto. La [guía de publicación](docs/release.md) prepara y verifica
+una candidata en Hex con la versión de Mix, las notas y los ejemplos de
+instalación sincronizados. CI audita los lockfiles de la biblioteca y el demo.
+
 ## Fase 8: Escalera avanzada (post-1.0, opcional)
 
 Decidir con datos de usuarios reales. Es un salto de costo, no un peldaño más.

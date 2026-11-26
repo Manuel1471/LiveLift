@@ -25,6 +25,9 @@ jobs:
         with:
           node-version: '22'
       - run: mix deps.get
+      - name: Audit the library's locked Hex packages
+        if: matrix.otp == '29'
+        run: mix hex.audit
       - run: mix format --check-formatted
       - run: npm ci
         working-directory: bench
@@ -37,6 +40,10 @@ jobs:
       - run: npm test
         working-directory: assets
       - run: mix deps.get
+        working-directory: examples/demo
+      - name: Audit the demo's locked Hex packages
+        if: matrix.otp == '29'
+        run: mix hex.audit
         working-directory: examples/demo
       - run: mix format --check-formatted
         working-directory: examples/demo

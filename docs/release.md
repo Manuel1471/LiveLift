@@ -34,12 +34,11 @@ elixir scripts/release_notes.exs prepare
 elixir scripts/release_notes.exs check
 ```
 
-The preparation command also updates the private `assets/package.json` so
-the local asset package continues to match the version embedded in the
-Hex runtime. Use OTP 27 or newer and the project's Node toolchain.
-Review and commit those changes with the version bump. CI checks the
-manifest and the newest changelog section against `mix.exs`, then adds
-the notes to the publishing job summary before submitting to Hex.
+The preparation command updates the private `assets/package.json` and the
+Phoenix guide's Hex links, dependency and Igniter examples. Use OTP 27 or
+newer and the project's Node toolchain. Review and commit those changes
+with the version bump. CI checks those pins and the newest changelog section
+against `mix.exs`, then adds the notes to the publishing job summary.
 
 ## Review the package
 
@@ -48,8 +47,14 @@ From the verified LiveLift checkout, run the documentation and package checks.
 ```sh
 mix docs --warnings-as-errors
 mix hex.publish --dry-run --yes
-sh test/integration/phoenix_consumer.sh
+LIVE_LIFT_INTEGRATION_IGNITER=1 sh test/integration/phoenix_consumer.sh
 ```
+
+The consumer check builds and unpacks the local Hex artifact and installs
+it into a fresh Phoenix app. The release pipeline audits the library and
+demo lockfiles for Hex retirements and advisories. See the
+[1.0 acceptance status](production-readiness.md#acceptance-for-10) when
+deciding whether to publish another candidate or an eventual stable release.
 
 ## Publish Hex from GitHub Actions
 
@@ -94,8 +99,9 @@ Install the Phoenix 1.8.16 generator if it is unavailable locally.
 
 ```sh
 mix archive.install hex phx_new 1.8.16
-mix hex.info live_lift 0.1.0-rc.1
-LIVE_LIFT_REGISTRY_VERSION=0.1.0-rc.1 sh test/integration/phoenix_consumer.sh
+version=$(elixir -e 'Mix.start(); Mix.Project.in_project(:live_lift, ".", fn _ -> IO.puts(Mix.Project.config()[:version]) end)')
+mix hex.info live_lift "$version"
+LIVE_LIFT_REGISTRY_VERSION="$version" sh test/integration/phoenix_consumer.sh
 ```
 
 The script creates a fresh Phoenix app with an exact Hex requirement and

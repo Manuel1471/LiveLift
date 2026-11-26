@@ -270,7 +270,9 @@ config :live_lift, disabled_components: [MyAppWeb.Counter]
 New renders use the original LiveView
 markup and event path. An already mounted client reloads on its next marked
 event when the server reports that the switch is off; reload active pages to
-apply the switch immediately.
+apply the switch immediately. During server-only rendering or before the
+browser view mounts, LiveView still delivers its ordinary `phx-change`
+payload, including the native `_target` field path.
 
 The demo route `/native-list` reverses a native HEEx list while keeping a focused
 row in place. It adds and removes rows with `phx-value-id={item.id}`, and saves

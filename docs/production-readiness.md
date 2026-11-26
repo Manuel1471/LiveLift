@@ -15,11 +15,8 @@
 - **Browser behavior.** The suite exercises reordering, duplicates,
   reconnects, native form events, keyed focus, selected field drafts,
   and the development inspector in Chromium, Firefox, and WebKit. The
-  latest local run passed 264 browser tests with 33 opt-in cases skipped.
-  A further 42 checks passed with deployed assets, covering reconnect,
-  offline expiry, debounce, view loading, native JS commands and compiler
-  parity. The [expiry spike](https://github.com/Manuel1471/LiveLift/blob/main/docs/offline-expiry-browser-spike.md)
-  records the focused reconnect commands.
+  [expiry spike](https://github.com/Manuel1471/LiveLift/blob/main/docs/offline-expiry-browser-spike.md)
+  records the focused reconnect commands for deployed assets.
 - **Operational controls.** Global and per-component `:live_lift` switches
   restore server-only rendering for new mounts. Active clients reload after
   their next synchronized marked event receives the disabled reply. The [security model](security.md) documents the trust
@@ -51,7 +48,9 @@ deployment, use a patched release in that range and check the application's
 own lockfile with `mix hex.audit`. LiveView 1.2.0 is a compatibility test
 target and is affected by published security advisories. The published
 subset uses a bounded fallback when the internal LiveView template parser
-is unavailable. See the
+is unavailable. On the pinned public corpus, both paths produced identical
+trees for all 158 templates that compiled in isolation. Both rejected the
+remaining templates. See the
 [compatibility evidence](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-liveview-compatibility.md).
 
 ### Browser requirements
@@ -84,15 +83,29 @@ before mounting LiveLift. The browser suite verifies that Phoenix
 validates and saves the same Unicode text with both APIs removed and
 LiveLift disabled for the demo.
 
-## Pending
+## Acceptance for 1.0
 
-- Verify the phase 7 security and compatibility criteria, including a
-  cross-review or external audit and the full HEEx fuzzing work.
-- Verify signed publication through a hosted Hex release. The
-  [release policy](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md)
-  covers versioning, deprecations, and preparing release notes.
-- Collect evidence from two real applications in production and at least one
-  LiveView cycle with a frozen API before declaring 1.0.
+| Requirement | Evidence to record |
+| --- | --- |
+| Public API frozen for a LiveView cycle | Record the baseline LiveLift commit, the public surface being frozen, and the LiveView releases covered. |
+| Zero parity differences | Run the Elixir and generated JavaScript harness on the proposed release. Record the SHA and test outcomes. |
+| Two applications in production | Collect the deployment results described below for two independent apps. |
+| Independent review | Record a security audit or a cross-review against the release candidate and resolve its findings. |
+| Documentation for LiveView developers | Have developers install and reverse an opt-in using the published guide. Record unclear steps and their corrections. |
+
+Phase 7 also tracks signed publication of a hosted Hex artifact,
+manual assistive technology testing, and the remaining HEEx fuzzing.
+The [release policy](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md)
+covers versioning, deprecations, and the public verification commands.
+
+### Pilot evidence
+
+Record the LiveLift and LiveView versions and the component being tried.
+Start from a server-only baseline. Compare interaction latency, error rates,
+and event volume under comparable traffic. Exercise reconnects and roll back
+to server-only mode using the published [switches](native-livecomponent.md#server-only-mode).
+Record the observation window, the scope of the deployment, and any rollback
+or unexpected reconciliation. Keep event parameters and state out of reports.
 
 The [roadmap](https://github.com/Manuel1471/LiveLift/blob/main/ROADMAP.md) tracks the gates in order.
 

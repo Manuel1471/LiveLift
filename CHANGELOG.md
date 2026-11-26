@@ -2,9 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- Compile Phoenix's automatically colocated `.html.heex` files and point
+  the audit diagnostics and generated source maps to the template file.
+- Compile native `assign/2` with a literal map or keyword list and include
+  newly assigned fields in the authoritative snapshot.
+- Include inline local function components when auditing a native
+  LiveView or LiveComponent.
+
+### Fixed
+
 - Accept Phoenix's native form target metadata before client mount and
   when LiveLift is disabled.
-
 - Report view loading failures through the browser's standard error
   event and omit exception details from loading and offline replay reports.
 - Escape quotes in static template attributes emitted by the Elixir renderer,
@@ -20,14 +30,8 @@
   unclosed comments at their source location with both parser paths.
 - Explain unsupported EEx body expressions with source coordinates and
   the corresponding HEEx bindings or directives.
-- Compile Phoenix's automatically colocated `.html.heex` files and point
-  the audit diagnostics and generated source maps to the template file.
-- Compile native `assign/2` with a literal map or keyword list and include
-  newly assigned fields in the authoritative snapshot.
 - Match Elixir's optional event parameter reads, including missing
   values in nested bracket paths.
-- Include inline local function components when auditing a native
-  LiveView or LiveComponent.
 - Show a status message when reconnecting discards expired offline actions.
 - Report `E063` for marked changes on multiple-select controls and on
   direct textareas or selects with unsupported field names.

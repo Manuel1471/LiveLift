@@ -1,6 +1,6 @@
 # Add LiveLift to a Phoenix LiveView app
 
-LiveLift 0.1.0-rc.1 is experimental and supports Phoenix LiveView 1.2.x.
+LiveLift is experimental and supports Phoenix LiveView 1.2.x.
 The automatic installer targets the standard Phoenix 1.8 asset layout.
 Choose [a new Phoenix app](#start-a-new-phoenix-app) or
 [an existing Phoenix app](#adopt-livelift-in-an-existing-phoenix-app).

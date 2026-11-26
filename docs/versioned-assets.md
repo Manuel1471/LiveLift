@@ -1,6 +1,6 @@
 # Versioned browser assets
 
-For app developers using LiveLift 0.1.0-rc.1.
+For Phoenix app developers using the LiveLift 0.1 release line.
 
 LiveLift ships on Hex. The standard installer copies the matching runtime
 and its TypeScript declaration from the Mix dependency. It also generates
@@ -14,8 +14,8 @@ LiveLift repository. The asset manifest is private and packing it creates
 a local archive. Its sources must match the installed Hex version.
 
 ```sh
-(cd /path/to/LiveLift/assets && npm pack)
-npm install --prefix assets --save-exact /path/to/LiveLift/assets/live-lift-assets-0.1.0-rc.1.tgz
+archive=$(cd /path/to/LiveLift/assets && npm pack --silent)
+npm install --prefix assets --save-exact "/path/to/LiveLift/assets/$archive"
 ```
 
 In both `assets.build` and `assets.deploy`, use this generator command before
