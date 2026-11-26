@@ -737,10 +737,9 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   verifica migración, paridad y confirmación de LiveView en tres
   navegadores. Se actualizaron los lockfiles tras auditar con Hex.
   [Evidencia de compatibilidad](docs/progress/7-liveview-compatibility.md).
-- **Configurado y probado localmente:** El carril de LiveView `main`
-  registra la revisión upstream y ejecuta ambos parsers y el spike de API.
-  La ejecución semanal reporta el fallo en GitHub Actions. Su primera
-  ejecución alojada sigue pendiente.
+- **Verificado en GitHub Actions tras un push:** El carril de LiveView `main`
+  registró la revisión upstream y pasó ambos parsers y el spike de API.
+  La primera ejecución programada sigue pendiente.
   [Carril semanal y resultados](docs/progress/7-liveview-compatibility.md#weekly-upstream-check).
 - **Verificado:** La matriz publicada distingue los navegadores probados
   y las versiones con las APIs requeridas. Con LiveLift desactivado,

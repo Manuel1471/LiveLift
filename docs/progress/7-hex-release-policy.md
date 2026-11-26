@@ -58,3 +58,9 @@ verification is a hosted run on a new release and a successful
 `gh attestation verify` on the package downloaded from the public Hex
 registry after approval. The [release guide](../release.md#verify-a-signed-release)
 records the verification command.
+
+On 2026-11-25, the Hex registry listed `0.1.0-rc.1` as its only public
+release. The [hosted publish job for `c65ae03`](https://github.com/Manuel1471/LiveLift/actions/runs/45739320913/job/139643758679)
+passed the version check and skipped release preparation, staging, and
+attestation. This verifies the existing-version guard. The new-release
+path still needs verification.

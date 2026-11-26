@@ -65,3 +65,10 @@ On 2026-11-25, the upstream check resolved LiveView
 `62674c2226ada1770c8d5e10920014c9a9e4b091`. All 168 tests passed per
 parser configuration and the LiveView API spike passed. This local run
 used Elixir 1.20.2, OTP 29.0.3 and Node 26.5.0 on macOS arm64.
+
+The hosted [CI run for `c65ae03`](https://github.com/Manuel1471/LiveLift/actions/runs/45739320913)
+also passed. Its [upstream job](https://github.com/Manuel1471/LiveLift/actions/runs/45739320913/job/139640162048)
+recorded the upstream revision and passed both parser steps and the API spike.
+Both pinned LiveView compatibility jobs passed their demo parser comparison
+and fresh Phoenix consumer checks. The run was triggered by a push. The
+scheduled workflow had zero runs when checked on 2026-11-25.
