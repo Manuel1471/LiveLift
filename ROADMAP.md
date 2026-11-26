@@ -720,6 +720,9 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   solo difieren en mayúsculas, incluso si LiveLift genera uno de ellos.
   El corpus de rechazos cubre 512 casos por parser.
   [Spike y corpus](docs/progress/7-heex-fuzzing.md#duplicate-html-attributes).
+- **En curso:** El HTML inicial y el render del cliente difieren en seis
+  casos de saltos de línea en `pre` y `textarea` en los tres navegadores.
+  [Spike reproducible](docs/preformatted-text-spike.md).
 - **Verificado:** El wrapper emite duración y resultado por `:telemetry`.
   El navegador informa fallos de carga de vistas con un mensaje fijo y
   conserva los eventos de LiveView. Los conflictos de repetición también
