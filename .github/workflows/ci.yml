@@ -94,7 +94,7 @@ jobs:
           npm run e2e -- e2e/island_loading.spec.mjs e2e/devtools.spec.mjs
           e2e/local_actions.spec.mjs e2e/content_security_policy.spec.mjs
           e2e/root_navigation.spec.mjs e2e/timer_lifecycle.spec.mjs
-          e2e/native_list_retention.spec.mjs
+          e2e/native_list_retention.spec.mjs e2e/browser_capabilities.spec.mjs
         working-directory: bench
         env:
           LIVE_LIFT_TEST_DEPLOY: '1'
@@ -111,6 +111,12 @@ jobs:
         env:
           LIVE_LIFT_TEST_DEPLOY: '1'
           LIVE_LIFT_DEMO_DISCARD_OFFLINE: '1'
+      - name: Verify server-only behavior with missing browser APIs
+        run: npm run e2e -- e2e/browser_capabilities.spec.mjs
+        working-directory: bench
+        env:
+          LIVE_LIFT_TEST_DEPLOY: '1'
+          LIVE_LIFT_DEMO_SERVER_ONLY: '1'
 
   compatibility:
     name: Compatibility

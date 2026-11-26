@@ -54,6 +54,36 @@ subset uses a bounded fallback when the internal LiveView template parser
 is unavailable. See the
 [compatibility evidence](https://github.com/Manuel1471/LiveLift/blob/main/docs/progress/7-liveview-compatibility.md).
 
+### Browser requirements
+
+The shared hook uses `Object.hasOwn` and `Array.prototype.at`. Operations
+that count or split graphemes also use `Intl.Segmenter`, including
+`String.length/1` and changeset length validation. These are the first
+desktop versions with each API available.
+
+| Browser | `Object.hasOwn` | `Array.prototype.at` | `Intl.Segmenter` |
+| --- | ---: | ---: | ---: |
+| Chrome | 93 | 92 | 87 |
+| Firefox | 92 | 90 | 125 |
+| Safari | 15.4 | 15.4 | 14.1 |
+
+Sources are the browser compatibility data for [Object](https://github.com/mdn/browser-compat-data/blob/main/javascript/builtins/Object.json),
+[Array](https://github.com/mdn/browser-compat-data/blob/main/javascript/builtins/Array.json)
+and [Intl.Segmenter](https://github.com/mdn/browser-compat-data/blob/main/javascript/builtins/Intl/Segmenter.json).
+The Playwright suite verifies its pinned browser versions. The table
+reports API availability. End-to-end support for the historical versions
+depends on the rest of the app and its asset build.
+
+Without `Object.hasOwn`, the hook can fail during mounting. Without
+`Intl.Segmenter`, grapheme-dependent marked actions raise in the browser
+and can leave the event unsubmitted. A regular counter can still predict
+without `Intl.Segmenter`. Keep grapheme-dependent handlers on LiveView
+when serving clients without it. For broader compatibility, use the
+[server-only switches](native-livecomponent.md#server-only-mode)
+before mounting LiveLift. The browser suite verifies that Phoenix
+validates and saves the same Unicode text with both APIs removed and
+LiveLift disabled for the demo.
+
 ## Pending
 
 - Verify the phase 7 security and compatibility criteria, including a

@@ -729,6 +729,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   La ejecución semanal reporta el fallo en GitHub Actions. Su primera
   ejecución alojada sigue pendiente.
   [Carril semanal y resultados](docs/progress/7-liveview-compatibility.md#weekly-upstream-check).
+- **Verificado:** La matriz publicada distingue los navegadores probados
+  y las versiones con las APIs requeridas. Con LiveLift desactivado,
+  Phoenix valida y guarda texto Unicode al simular ambas APIs ausentes.
+  Los formularios aceptan el `_target` nativo también antes del montaje.
+  [Spike y comprobaciones](docs/progress/7-browser-capabilities.md).
 - **Verificado:** Una segunda app Phoenix integra LiveLift a mano con
   su propia fábrica de hooks y ruta de WebSocket. El instalador detecta
   la fábrica y deja intactos los tres archivos de integración.

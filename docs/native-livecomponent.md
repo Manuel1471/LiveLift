@@ -258,6 +258,8 @@ snapshot. If replay against the new server state fails, LiveLift restores the
 snapshot, drops the queue, and raises an explicit conflict error. The queue is
 not durable across a page reload or a remount.
 
+### Server-only mode
+
 To turn off prediction without editing components, configure either switch:
 
 ```elixir

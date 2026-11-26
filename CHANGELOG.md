@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Accept Phoenix's native form target metadata before client mount and
+  when LiveLift is disabled.
+
 - Report view loading failures through the browser's standard error
   event and omit exception details from loading and offline replay reports.
 - Escape quotes in static template attributes emitted by the Elixir renderer,

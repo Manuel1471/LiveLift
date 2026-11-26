@@ -790,7 +790,7 @@ defmodule LiveLift.Component do
 
   @doc false
   def sequence!(params) when is_map(params) do
-    event_params = Map.delete(params, "_live_lift_seq")
+    event_params = event_params_for_validation(params)
     validate_event_params!(event_params, 0, {0, 0})
 
     seq = Map.get(params, "_live_lift_seq", 0)
@@ -803,6 +803,20 @@ defmodule LiveLift.Component do
   end
 
   def sequence!(_params), do: raise(ArgumentError, "LiveLift event params must be a map")
+
+  # LiveView adds a path as metadata for native form events. Count its text
+  # toward the same budget without changing the params the handler receives.
+  defp event_params_for_validation(%{"_target" => target} = params)
+       when not is_map_key(params, "_live_lift_seq") and is_list(target) and
+              length(target) in 1..4 do
+    if Enum.all?(target, &is_binary/1) do
+      Map.put(params, "_target", Enum.join(target, "."))
+    else
+      params
+    end
+  end
+
+  defp event_params_for_validation(params), do: Map.delete(params, "_live_lift_seq")
 
   defp validate_event_params!(params, depth, budget) do
     if depth > 0 and map_size(params) == 0,

@@ -663,6 +663,27 @@ defmodule LiveLift.ComponentTest do
     end
   end
 
+  test "native form target metadata keeps the sequenced parameter constraints" do
+    params = %{"_target" => ["profile", "note"], "profile" => %{"note" => "Example"}}
+    assert LiveLift.Component.sequence!(params) == 0
+
+    assert_raise ArgumentError, ~r/unsupported LiveLift event parameter: _target/, fn ->
+      LiveLift.Component.sequence!(Map.put(params, "_live_lift_seq", 1))
+    end
+
+    assert_raise ArgumentError, ~r/unsupported LiveLift event parameter: _target/, fn ->
+      LiveLift.Component.sequence!(Map.put(params, "_target", ["profile", 1]))
+    end
+
+    assert_raise ArgumentError, ~r/unsupported LiveLift event parameter: _target/, fn ->
+      LiveLift.Component.sequence!(Map.put(params, "_target", ~w(profile a b c d)))
+    end
+
+    assert_raise ArgumentError, ~r/event parameter size limit exceeded/, fn ->
+      LiveLift.Component.sequence!(Map.put(params, "_target", [String.duplicate("x", 65_536)]))
+    end
+  end
+
   test "assign and update actions agree with generated JavaScript" do
     for {module, action, step} <- [{Counter, "inc", 1}, {AssignCounter, "add_two", 2}] do
       javascript = LiveLift.Client.Compiler.compile_module(module)

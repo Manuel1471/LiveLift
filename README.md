@@ -77,6 +77,15 @@ also covers working from a local build.
 See the [release instructions](https://github.com/Manuel1471/LiveLift/blob/main/docs/release.md)
 for publication and public verification.
 
+### Compatibility
+
+| Environment | Published requirement or verification target |
+| --- | --- |
+| Elixir and OTP | The package declares Elixir `~> 1.15`. CI runs Elixir 1.18 with OTP 27 and Elixir 1.20 with OTP 29. |
+| Phoenix | The installer and consumer checks use the Phoenix 1.8 layout and the 1.8.16 generator. |
+| Phoenix LiveView | The package declares `~> 1.2.0`. The compatibility workflow tests 1.2.0 and 1.2.15. A weekly advisory runs against `main`. |
+| Browsers | CI uses Playwright Chromium, Firefox and WebKit. See the [browser requirements](docs/production-readiness.md#browser-requirements) for the APIs required by the client runtime. |
+
 ## Go deeper
 
 - [Event flow and state ownership](docs/sync.md) traces a prediction through server confirmation.
