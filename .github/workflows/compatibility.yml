@@ -24,6 +24,8 @@ jobs:
       - run: npm ci --prefix bench
       - run: rm mix.lock && mix deps.get
       - run: mix test
+      - name: Compare parser outcomes on demo templates
+        run: mix run bench/compare_template_parsers.exs demo examples/demo/lib
       - run: node --test assets/js/live_lift/client_hook.test.js
       - name: Install Phoenix generator
         run: mix archive.install hex phx_new 1.8.16 --force

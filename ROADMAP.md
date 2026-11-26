@@ -683,6 +683,11 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
 - **Verificado:** Ambos parsers compilan las mismas variantes de atributos
   y reportan archivo, línea y diagnóstico para los casos inválidos
   probados. [Evidencia de sintaxis](docs/progress/7-heex-fuzzing.md#attribute-syntax-and-diagnostics).
+- **Verificado:** Ambos parsers produjeron el mismo árbol en las plantillas
+  compilables del demo y del corpus público. De 2.807 plantillas públicas,
+  158 compilaron en ambos y 99 fueron rechazadas con códigos distintos.
+  CI compara el demo con LiveView 1.2.0 y 1.2.15 y la auditoría semanal
+  informa las diferencias del corpus público. [Spike y método](docs/template-parser-corpus-spike.md).
 - **Verificado:** Ambos parsers ubican las declaraciones de documento
   y remiten al layout de Phoenix. Los comentarios HTML y las llaves
   literales pasan la comparación con el render de Phoenix.

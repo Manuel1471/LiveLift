@@ -54,6 +54,7 @@ def main():
     print("| --- | --- | ---: | ---: |", flush=True)
     count_compatible = count_total = 0
     blockers = Counter()
+    parser_results = []
 
     for line in MANIFEST.read_text().splitlines():
         if not line or line.startswith("#"):
@@ -66,6 +67,15 @@ def main():
                 cwd=ROOT, text=True, timeout=180,
             )
             compatible, total, diagnostics = summarize_audit(output)
+            parser_output = subprocess.check_output(
+                ["mix", "run", "bench/compare_template_parsers.exs", "public",
+                 str(Path(directory) / source_dir)],
+                cwd=ROOT, text=True, timeout=180,
+            )
+            matched, rejected, different_rejection, different_tree = map(
+                int, parser_output.splitlines()[-1].split("\t")
+            )
+            parser_results.append((repo, matched, rejected, different_rejection, different_tree))
 
         url = f"https://github.com/{repo}/tree/{commit}/{source_dir}"
         print(f"| [{repo} @ {commit[:7]}]({url}) | `{source_dir}` | {compatible} | {total} |", flush=True)
@@ -79,6 +89,12 @@ def main():
     print("| --- | ---: |")
     for code, total in sorted(blockers.items(), key=lambda pair: (-pair[1], pair[0])):
         print(f"| `{code}` | {total} |")
+
+    print()
+    print("| HEEx corpus | Same compiled tree | Same rejection code | Different rejection code | Compilation mismatch |")
+    print("| --- | ---: | ---: | ---: | ---: |")
+    for row in parser_results:
+        print("| " + " | ".join(map(str, row)) + " |")
 
 
 if __name__ == "__main__":
