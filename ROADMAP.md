@@ -773,6 +773,10 @@ Inventario de trabajo pendiente y evidencia que debe verificarse para cerrar la 
   estado de la URL. Dos pestañas con la misma sesión conservan sus
   instancias y confirmaciones independientes.
   [Spike y pruebas de navegación](docs/root-liveview-navigation-spike.md).
+- **Verificado:** Una actualización real de Phoenix PubSub modifica la
+  base de una pestaña con una acción pendiente. LiveLift vuelve a aplicar
+  la predicción sobre esa base y confirma una sola vez el evento duplicado.
+  [Prueba entre pestañas](docs/pubsub-reconciliation-spike.md).
 - **Verificado:** Al reconectar, LiveLift avisa cuando descarta acciones
   offline de más de 30 segundos y aplica las acciones recientes una sola
   vez. La prueba inspecciona las secuencias en Chromium, Firefox y WebKit.

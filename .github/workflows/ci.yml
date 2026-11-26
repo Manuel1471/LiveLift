@@ -101,7 +101,7 @@ jobs:
       - name: Verify reconnect, expiry and debounce with digested assets
         run: >-
           npm run e2e -- --grep
-          'connection cut|offline clicks follow|offline action expiry|opt-in draft expires|phx-debounce delays|submit cancels'
+          'connection cut|offline clicks follow|offline action expiry|opt-in draft expires|phx-debounce delays|submit cancels|PubSub updates'
         working-directory: bench
         env:
           LIVE_LIFT_TEST_DEPLOY: '1'

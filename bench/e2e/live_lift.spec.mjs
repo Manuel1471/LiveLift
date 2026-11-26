@@ -1,4 +1,5 @@
 import {test, expect} from "@playwright/test";
+import {randomUUID} from "node:crypto";
 import {gotoLiveLift} from "./support.mjs";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -545,6 +546,55 @@ test("a native LiveView receives root events and reconciles mailbox updates", as
   await expect(count).toHaveText("11");
   await expect(root).toHaveAttribute("data-live-lift-server-revision", "2");
   await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+});
+
+test("PubSub updates rebase an unconfirmed LiveView action across tabs", async ({page}) => {
+  let deliver;
+  await page.routeWebSocket(/\/live\/websocket/, (browser) => {
+    const server = browser.connectToServer();
+    browser.onMessage((message) => {
+      const event = typeof message === "string" ? JSON.parse(message)?.[4] : null;
+      if (event?.event === "double" && !deliver) {
+        deliver = () => server.send(message);
+      } else {
+        server.send(message);
+      }
+    });
+  });
+
+  const room = randomUUID();
+  const selector = '[data-live-lift-module="LiveLiftDemoWeb.NativeTimerLive"]';
+  const publisher = await page.context().newPage();
+  await gotoLiveLift(publisher, `/native-timer?room=${room}&start=7`);
+  await gotoLiveLift(page, `/native-timer?room=${room}&start=5`);
+  const root = page.locator(selector);
+  const other = publisher.locator(selector);
+  const count = root.locator("output");
+  await expect(count).toHaveText("5");
+  await expect(other.locator("output")).toHaveText("7");
+  const initialRevision = Number(await root.getAttribute("data-live-lift-server-revision"));
+  const publisherRevision = Number(await other.getAttribute("data-live-lift-server-revision"));
+
+  await root.getByRole("button", {name: "Double"}).click();
+  await expect(count).toHaveText("10");
+  await expect.poll(() => Boolean(deliver)).toBe(true);
+  await other.getByRole("button", {name: "Add ten in this room"}).click();
+  await expect(other.locator("output")).toHaveText("17");
+  await expect(other).toHaveAttribute("data-live-lift-server-revision", String(publisherRevision + 1));
+
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", String(initialRevision + 1));
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "0");
+  await expect(root).toHaveAttribute("data-live-lift-state", /"count":15[,}]/);
+  await expect(count).toHaveText("30");
+
+  deliver();
+  deliver();
+  await expect(root).toHaveAttribute("data-live-lift-ack-seq", "1");
+  await expect(root).toHaveAttribute("data-live-lift-server-revision", String(initialRevision + 2));
+  await expect(root).toHaveAttribute("data-live-lift-state", /"count":30[,}]/);
+  await expect(count).toHaveText("30");
+  await expect(other).toHaveAttribute("data-live-lift-ack-seq", "0");
+  await expect(other.locator("output")).toHaveText("17");
 });
 
 test("a marked LiveView mailbox timer replays after earlier pending actions", async ({page}) => {
