@@ -1,6 +1,6 @@
 # Phase 7 — Independent review handoff
 
-The review baseline is `a9e802575c7b75f6da213c3397f94d0f3f26c124`.
+The review baseline is `c0d07c4074d802e2e49cc1332bd292f89bfb3f39`.
 The handoff includes a source archive from that commit, a local Hex
 package built from the extracted archive, the commit ID, and SHA-256
 checksums. The public Hex release `0.1.0-rc.1` was built from `ac48734`.
@@ -13,7 +13,7 @@ Run this from a Git checkout that contains the review commit.
 
 ```sh
 review_dir=$(mktemp -d)
-commit=a9e802575c7b75f6da213c3397f94d0f3f26c124
+commit=c0d07c4074d802e2e49cc1332bd292f89bfb3f39
 mkdir "$review_dir/source"
 git rev-parse --verify "$commit^{commit}" >"$review_dir/COMMIT"
 git archive --format=tar "$commit" >"$review_dir/source.tar"
@@ -63,11 +63,13 @@ From the extracted source root:
 ```sh
 mix archive.install hex phx_new 1.8.16
 mix deps.get
+mix hex.audit
 npm ci --prefix bench
 mix format --check-formatted
+mix compile --warnings-as-errors
 mix test
 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix test
-mix hex.audit
+mix run bench/compare_template_parsers.exs demo examples/demo/lib
 mix docs --warnings-as-errors
 mix hex.publish --dry-run --yes
 (cd assets && npm test)
@@ -151,7 +153,7 @@ connection cuts, debounce, and cancellation on submit. These two runs
 used a separate local port while the full suite ran. All three runs
 used Chromium 158.0.8127.18, Firefox 159.0, and WebKit 27.2.
 
-## Results for the current handoff
+## Results for `a9e8025`
 
 On 2026-11-25, two extractions of `a9e8025` produced identical Hex
 archives. The source archive reproduces byte for byte on the build host
@@ -187,6 +189,46 @@ dependency advisory output. The 1,440 Ecto and Node comparisons and nine
 deployed changeset browser checks passed with the updated pins.
 [Ecto advisory](https://github.com/elixir-ecto/ecto/security/advisories/GHSA-cxjx-vmm2-qr8r)
 · [LiveView advisory](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-v4p7-3pm2-wq6c).
+
+## Results for the current handoff
+
+On 2026-11-25, a Git archive of `c0d07c4` embedded the expected commit.
+Two clean extractions built identical Hex archives. The build host used
+Elixir 1.20.2, OTP 29.0.3, Hex 2.5.1, and Node 26.5.0 on Apple M4.
+
+| File | SHA-256 |
+| --- | --- |
+| `source.tar.gz` | `3cc41425c01b4e725674b4b013572ec38ad0b3bfc8c90b09e17087ac36e1a45b` |
+| `live_lift-review.tar` | `d70280d30b9f83d68145bfc66d22f376a2b9e611d227131f0ab391b43be4e333` |
+
+In an isolated extraction, a simulated bump to `0.1.0-rc.2` passed
+`release_notes.exs prepare`, `release_notes.exs check`, and `mix hex.build`.
+The preparation synchronized the changelog, the Hex installation guide,
+and the local asset manifest. The source branch still declares `0.1.0-rc.1`.
+
+The library passed strict compilation and 169 ExUnit checks per parser.
+Node passed 34 runtime tests. Both lockfiles passed `mix hex.audit`.
+The demo passed nine tests, 57 handler parity cases across 10 modules,
+and both asset builds.
+The shared runtime measured 8,192 gzip bytes. The clean package build
+and ExDoc passed. The dry run completed but reported an expired local
+authentication session. The [template comparison spike](../template-parser-corpus-spike.md)
+records the new parser check and its results.
+
+The full Playwright 1.65.0 run passed 285 tests with 33 opt-in cases
+skipped. It used Chromium 158.0.8127.18, Firefox 159.0 and WebKit 27.2.
+With digested assets, 27 focused checks passed for reconnect, form events,
+draft expiry, debounce, PubSub, and missing browser APIs before or after
+mount. Separate runs passed three server-only browser capability checks
+and three checks for the `:discard` reconnect policy. The demo source-map
+check traced a generated development action to its Elixir handler and
+verified the absence of public source maps in production.
+
+`test/integration/phoenix_consumer.sh` passed in three modes using the
+Phoenix 1.8.16 generator. The default mode installed from the checkout.
+Igniter and manual integration both used the unpacked local Hex package.
+All three modes verified SSR, prediction before acknowledgment, server
+save, and both emergency switches in Chromium, Firefox, and WebKit.
 
 ## Release verification
 
