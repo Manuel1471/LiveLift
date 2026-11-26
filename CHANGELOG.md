@@ -17,6 +17,8 @@
   parser paths.
 - Apply form and event binding rules to HTML elements inside function
   components. Report unsupported props at the component call.
+- Apply the same attribute-name rules with both HEEx parsers. Use
+  `x-on:click` for Alpine event attributes in opted-in templates.
 - Accept Phoenix's native form target metadata before client mount and
   when LiveLift is disabled.
 - Report view loading failures through the browser's standard error

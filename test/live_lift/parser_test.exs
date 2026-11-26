@@ -188,6 +188,28 @@ defmodule LiveLift.ParserTest do
     end
   end
 
+  test "both parsers apply the bounded attribute name grammar" do
+    for parser <- [PhoenixParser, MissingLiveViewParser] do
+      for attr <- [~s(@click="toggle"), ")", ~s(1x="toggle")] do
+        assert_raise ArgumentError,
+                     ~r/attributes\.heex:42:3:.*unsupported client attribute name.*\(E061\)/,
+                     fn ->
+                       Parser.parse_with!(
+                         "<button\r\n  #{attr}>Toggle</button>",
+                         "attributes.heex",
+                         parser,
+                         41
+                       )
+                     end
+      end
+    end
+
+    assert [tree, tree] =
+             compile_variants(~s(<button x-on:click="toggle" data-item="a">Toggle</button>))
+
+    assert [%{attrs: [%{name: "x-on:click"}, %{name: "data-item"}]}] = tree
+  end
+
   test "fallback compiles and renders the same supported templates" do
     cases = [
       {~s(<button $click="inc">Go</button><output>{@count}</output>), :legacy, %{count: 4}},

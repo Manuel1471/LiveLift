@@ -205,8 +205,19 @@ defmodule LiveLift.Template.FallbackParser do
         meta = location(state)
         {name, state} = take_while(state, &attr_char?/1)
 
-        unless valid_attr_name?(name, type),
-          do: error!(state, "expected a supported attribute name")
+        unless supported_attr_name?(name, type) do
+          code =
+            if name == "" or String.contains?(name, ["<", "}", "\"", "'"]),
+              do: "E065",
+              else: "E061"
+
+          Diagnostic.error!(
+            code,
+            state.file,
+            "#{meta.line}:#{meta.column}",
+            "unsupported client attribute name #{inspect(name)}"
+          )
+        end
 
         state = skip_space(state)
 
@@ -221,11 +232,15 @@ defmodule LiveLift.Template.FallbackParser do
     end
   end
 
-  defp valid_attr_name?(name, type) do
+  def supported_attr_name?(:root, _type), do: true
+
+  def supported_attr_name?(name, type) when is_binary(name) do
     Regex.match?(~r/\A[:$]?[A-Za-z_][A-Za-z0-9_:.-]*\z/, name) or
       (type in [:local_component, :remote_component] and
          Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_]*[?!]\z/, name))
   end
+
+  def supported_attr_name?(_name, _type), do: false
 
   defp attribute_value(%{rest: <<quote, _::binary>>} = state) when quote in [?', ?"] do
     start = advance(state, <<quote>>)

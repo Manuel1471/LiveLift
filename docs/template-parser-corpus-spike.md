@@ -116,3 +116,28 @@ LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- --grep 'native form validates a nested fi
 (cd ../examples/demo && LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 mix compile --force)
 LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_FORCE_TEMPLATE_FALLBACK=1 npm run e2e -- --grep 'native form validates a nested field|phx-debounce delays|submit cancels'
 ```
+
+## Follow-up on attribute names
+
+Reducing the remaining eleven templates to individual attributes showed that
+the adapter accepted names such as `@click` and `)`, while the fallback
+rejected them. A Playwright probe compared `DOMParser` and `setAttribute`
+for `@click`, `)`, `1x`, `x-on:click`, and `data-item` on a new button.
+Chromium 158, Firefox 159, and WebKit 27.2 accepted all five. The
+[DOM standard change](https://github.com/whatwg/dom/pull/1079) explains
+the wider syntax. Historical browser versions were outside this probe.
+
+LiveLift now uses the fallback grammar for both paths. The regression test
+checks the diagnostic code and column for unsupported names and equal trees
+for `x-on:click` and `data-item`. Existing malformed markup still reports
+`E065`. See the [attribute-name decision](decisions/ADR-0010-portable-attribute-names.md).
+
+On 2026-11-25, the audit matched the compiled trees for 158 public
+templates and the first rejection codes for the other 2,649. The demo
+comparison matched all 40 outcomes. ExUnit passed 172 tests with each
+parser on LiveView 1.2.15 and the focused parser suite passed 14 tests
+on LiveView 1.2.0. The demo passed nine tests, 57 handler parity cases,
+and both asset builds. The deployed asset run passed six focused checks
+for form validation and native class commands across the three browsers.
+This corpus does not establish coverage of every HEEx form or support
+for every component in the source projects.

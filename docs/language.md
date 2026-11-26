@@ -42,6 +42,10 @@ use supported client expressions. One-argument callbacks stay on the server.
 The native template path also accepts expression attributes for `class`,
 `title`, `aria-label`, `value`, and `id`; class lists can use `&&` for conditional
 entries. `nil` and `false` scalar attributes are omitted, as in HEEx.
+Ordinary HTML attribute names start with an ASCII letter or underscore
+and continue with letters, digits, underscores, colons, dots, or dashes.
+For Alpine event attributes, use the full spelling such as `x-on:click`
+instead of `@click` in an opted-in template.
 Use `<%!-- comment --%>` between elements or within text. Phoenix and
 LiveLift omit these comments from the rendered markup.
 Native `:for` uses the repeated element's `id={item.id}` as its stable key.
