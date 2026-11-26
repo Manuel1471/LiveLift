@@ -1,6 +1,6 @@
 # Phase 7 — Independent review handoff
 
-The review baseline is `d5a1ffc71bb46a433217b9dadb49835936826fb5`.
+The review baseline is `a9e802575c7b75f6da213c3397f94d0f3f26c124`.
 The handoff includes a source archive from that commit, a local Hex
 package built from the extracted archive, the commit ID, and SHA-256
 checksums. The public Hex release `0.1.0-rc.1` was built from `ac48734`.
@@ -13,7 +13,7 @@ Run this from a Git checkout that contains the review commit.
 
 ```sh
 review_dir=$(mktemp -d)
-commit=d5a1ffc71bb46a433217b9dadb49835936826fb5
+commit=a9e802575c7b75f6da213c3397f94d0f3f26c124
 mkdir "$review_dir/source"
 git rev-parse --verify "$commit^{commit}" >"$review_dir/COMMIT"
 git archive --format=tar "$commit" >"$review_dir/source.tar"
@@ -79,9 +79,12 @@ mix hex.publish --dry-run --yes
 (cd bench && npx playwright install chromium firefox webkit)
 (cd bench && npm run e2e)
 (cd bench && LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- e2e/island_loading.spec.mjs \
-  e2e/devtools.spec.mjs e2e/local_actions.spec.mjs e2e/content_security_policy.spec.mjs)
+  e2e/devtools.spec.mjs e2e/local_actions.spec.mjs e2e/content_security_policy.spec.mjs \
+  e2e/root_navigation.spec.mjs e2e/timer_lifecycle.spec.mjs e2e/native_list_retention.spec.mjs)
 (cd bench && LIVE_LIFT_TEST_DEPLOY=1 npm run e2e -- \
-  --grep 'connection cut|phx-debounce delays|submit cancels')
+  --grep 'connection cut|offline clicks follow|offline action expiry|opt-in draft expires|phx-debounce delays|submit cancels|PubSub updates')
+(cd bench && LIVE_LIFT_TEST_DEPLOY=1 LIVE_LIFT_DEMO_DISCARD_OFFLINE=1 npm run e2e -- \
+  e2e/live_lift.spec.mjs --grep 'offline clicks follow')
 
 LIVE_LIFT_INTEGRATION_IGNITER=1 LIVE_LIFT_CONSUMER_BROWSER_PORT=4053 \
   sh test/integration/phoenix_consumer.sh
@@ -113,7 +116,7 @@ The Hex archive rebuilt from `cc4f26e` matched the original review
 artifact byte for byte. Its SHA-256 is
 `df91bc65f82368d96304422dfd431211e1b584e81643b5809c5f3762ec49044e`.
 
-## Results for the current baseline
+## Results for `d5a1ffc`
 
 On 2026-11-25, two clean extractions of `d5a1ffc` produced the same
 local Hex archive byte for byte. The recipe above reproduced the same
@@ -147,6 +150,43 @@ inspector cases. A separate deployed run passed all nine checks for
 connection cuts, debounce, and cancellation on submit. These two runs
 used a separate local port while the full suite ran. All three runs
 used Chromium 158.0.8127.18, Firefox 159.0, and WebKit 27.2.
+
+## Results for the current handoff
+
+On 2026-11-25, two extractions of `a9e8025` produced identical Hex
+archives. The source archive reproduces byte for byte on the build host
+and embeds the expected Git commit. The handoff manifest verified after
+extracting the bundle.
+
+| File | SHA-256 |
+| --- | --- |
+| `source.tar.gz` | `a55e99e21b3fb7d6df0ac129fd2fdece4e41571bf51c6562b20aee244f4b0efa` |
+| `live_lift-review.tar` | `58c5cfef6a0a04d2e7e8595e4e3670c221a9fcf0b65d5e2875a4ad43683a3311` |
+
+The previous source commit `3af69b3` produced the same Hex archive.
+Its clean extraction passed 167 Mix tests per parser, 34 JavaScript
+runtime tests, nine demo tests, and 57 demo parity cases. Hex audits
+for the library and the demo passed. The packaged Phoenix consumer
+passed migration, builds and source maps. Browser checks verified
+prediction, save and emergency switches in Chromium, Firefox and WebKit.
+The source-map deployment regression passed and the shared runtime
+measured 8,192 gzip bytes.
+The full browser run on `3af69b3` passed 279 tests with 33 opt-in skips
+and no failures.
+
+The production-assets selections passed 57 feature checks, 21
+reconnect and PubSub checks, and three `:discard` checks across the three
+browsers. Fifteen cases in the feature selection were opt-in benchmarks
+or development inspector tests skipped in this mode.
+
+A cold install exposed advisories in the standalone changeset fixtures
+for Ecto 3.14.2 and LiveView 1.2.13. Commit `a9e8025` changes only three
+fixture scripts and aligns them with patched Ecto 3.14.3, LiveView 1.2.15
+and the demo's Bandit 1.15.0. Cold runs of the updated scripts showed no
+dependency advisory output. The 1,440 Ecto and Node comparisons and nine
+deployed changeset browser checks passed with the updated pins.
+[Ecto advisory](https://github.com/elixir-ecto/ecto/security/advisories/GHSA-cxjx-vmm2-qr8r)
+· [LiveView advisory](https://github.com/phoenixframework/phoenix_live_view/security/advisories/GHSA-v4p7-3pm2-wq6c).
 
 ## Release verification
 

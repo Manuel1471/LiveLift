@@ -811,9 +811,11 @@ La cobertura de todas las formas HEEx y una revisión de seguridad externa
 siguen pendientes.
 
 La [guía de revisión independiente](docs/progress/7-independent-review.md)
-fija `d5a1ffc` como referencia, documenta los límites de confianza y permite
+fija `a9e8025` como referencia, documenta los límites de confianza y permite
 recrear el paquete local para la revisión. Dos extracciones limpias
-produjeron el mismo paquete y verificaron el SHA-256.
+produjeron el mismo paquete y verificaron el SHA-256. La preparación
+también confirmó que los fixtures de cambiosets usan versiones corregidas
+de Ecto y LiveView.
 
 ## Criterios para 1.0
 
